@@ -813,6 +813,39 @@
             font-size: 0.8rem;
         }
 
+        .chat-bubble.system {
+            background: rgba(14, 165, 233, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #e0f2fe;
+        }
+
+        .chat-bubble.glitch {
+            animation: glitch 0.5s ease-in-out;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0, 0); text-shadow: 0 0 2px rgba(96, 165, 250, 0.6); }
+            20% { transform: translate(-1px, 1px); text-shadow: 1px 0 4px rgba(56, 189, 248, 0.75); }
+            40% { transform: translate(1px, -1px); text-shadow: -1px 1px 4px rgba(96, 165, 250, 0.75); }
+            60% { transform: translate(-1px, -1px); text-shadow: 1px -1px 4px rgba(0, 255, 255, 0.8); }
+            80% { transform: translate(1px, 1px); text-shadow: -1px -1px 4px rgba(96, 165, 250, 0.75); }
+            100% { transform: translate(0, 0); text-shadow: 0 0 2px rgba(96, 165, 250, 0.6); }
+        }
+
+        body.hollow-square-rally .geometric {
+            border-color: #38bdf8;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+            background: rgba(56, 189, 248, 0.12);
+        }
+
+        body.hollow-square-rally .background-container {
+            background: radial-gradient(circle at center, rgba(56, 189, 248, 0.08), transparent 40%);
+        }
+
+        body.upside-down-mode {
+            filter: hue-rotate(180deg) saturate(1.25) brightness(0.95);
+        }
+
         .achievement-card-large {
             display: grid;
             grid-template-columns: 72px 1fr auto;
@@ -1948,13 +1981,13 @@
                 <h2>🌟 Special Events</h2>
                 <div class="event-controls">
                     <div class="event-item">
-                        <h3>Blue Storm</h3>
-                        <p>Intense blue particle storm with 3x luck</p>
+                        <h3>Hollow Square Rally</h3>
+                        <p>Activate a rally of glowing squares and rally player luck.</p>
                         <div class="event-buttons">
-                            <button class="btn" id="start-blue-storm">Start</button>
-                            <button class="btn stop-btn" id="stop-blue-storm">Stop</button>
+                            <button class="btn" id="start-hollow-rally">Start</button>
+                            <button class="btn stop-btn" id="stop-hollow-rally">Stop</button>
                         </div>
-                        <div class="event-status" id="blue-storm-status"></div>
+                        <div class="event-status" id="hollow-rally-status"></div>
                     </div>
 
                     <div class="event-item">
@@ -1974,9 +2007,13 @@
                     </div>
 
                     <div class="event-item">
-                        <h3>Void Event</h3>
-                        <p>Cosmic void pulls everything in</p>
-                        <button class="btn" id="start-void-event">Begin</button>
+                        <h3>Upside Down</h3>
+                        <p>Flip the game theme with an inverted cosmic surge.</p>
+                        <div class="event-buttons">
+                            <button class="btn" id="start-upside-down">Activate</button>
+                            <button class="btn stop-btn" id="stop-upside-down">Deactivate</button>
+                        </div>
+                        <div class="event-status" id="upside-down-status"></div>
                     </div>
                 </div>
             </div>
@@ -2013,6 +2050,8 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/multiplayer.js"></script>
     <script>
         // Tagline cycling
         const taglines = [
@@ -2188,8 +2227,13 @@
             }
 
             items.forEach(item => {
+                const rarity = rarityOptions.find(r => r.name === item.name);
                 const card = document.createElement('div');
                 card.className = 'inventory-item';
+                if (rarity) {
+                    card.style.borderLeft = `4px solid ${rarity.color}`;
+                    card.style.background = 'rgba(15, 23, 42, 0.85)';
+                }
                 card.innerHTML = `
                     <div>
                         <h4>${item.name}</h4>
@@ -2213,6 +2257,7 @@
                     <span class="rarity-label">${rarity.name}</span>
                     <span class="rarity-chance">${rarity.chance}% • ${formatCoins(rarity.reward)} coins</span>
                 `;
+                row.style.borderLeft = `4px solid ${rarity.color}`;
                 container.appendChild(row);
             });
         }
@@ -2332,7 +2377,7 @@
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             if (!text) return;
-            addChatMessage(currentUser ? currentUser.username : 'Guest', text);
+            sendChatToServer(text);
             input.value = '';
         });
 
@@ -2343,14 +2388,45 @@
             }
         });
 
-        function addChatMessage(user, message) {
+        function applyThemeEvent(eventName, initiatedBy) {
+            document.body.classList.remove('hollow-square-rally', 'upside-down-mode');
+            const statusMap = {
+                'hollow-square': { bodyClass: 'hollow-square-rally', statusId: 'hollow-rally-status', label: 'Hollow Square Rally active' },
+                'upside-down': { bodyClass: 'upside-down-mode', statusId: 'upside-down-status', label: 'Upside Down theme active' }
+            };
+            const config = statusMap[eventName];
+            if (config) {
+                document.body.classList.add(config.bodyClass);
+                const statusElement = document.getElementById(config.statusId);
+                if (statusElement) {
+                    statusElement.textContent = `${config.label} • triggered by ${initiatedBy || 'Admin'}`;
+                    statusElement.style.color = '#60a5fa';
+                }
+                showPopup(`Event activated: ${config.label}`);
+                addChatMessage('System', `Event activated: ${config.label} by ${initiatedBy || 'Admin'}.`, new Date().toISOString(), true);
+                return;
+            }
+            showPopup('Unknown event triggered', 'error');
+        }
+
+        function addChatMessage(user, message, timestamp = null, system = false) {
             const container = document.getElementById('chat-messages');
             const bubble = document.createElement('div');
-            bubble.className = 'chat-bubble';
-            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            bubble.innerHTML = `<strong>${user}</strong><span>${message}</span><time>${timestamp}</time>`;
+            bubble.className = `chat-bubble${system ? ' system' : ''}`;
+            const author = document.createElement('strong');
+            author.textContent = user;
+            const text = document.createElement('span');
+            text.textContent = message;
+            const time = document.createElement('time');
+            const moment = timestamp ? new Date(timestamp) : new Date();
+            time.textContent = moment.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            bubble.appendChild(author);
+            bubble.appendChild(text);
+            bubble.appendChild(time);
             container.appendChild(bubble);
             container.scrollTop = container.scrollHeight;
+            setTimeout(() => bubble.classList.add('glitch'), 10);
+            setTimeout(() => bubble.classList.remove('glitch'), 900);
         }
 
         document.querySelectorAll('.content-tab').forEach((tab) => {
@@ -2376,6 +2452,38 @@
         document.getElementById('back-to-game').addEventListener('click', () => {
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('game-page').classList.remove('hidden');
+        });
+
+        document.getElementById('start-hollow-rally').addEventListener('click', () => {
+            triggerAdminEvent('hollow-square');
+        });
+        document.getElementById('stop-hollow-rally').addEventListener('click', () => {
+            document.body.classList.remove('hollow-square-rally');
+            const status = document.getElementById('hollow-rally-status');
+            if (status) status.textContent = 'Hollow Square Rally stopped';
+        });
+        document.getElementById('start-geometric-cascade').addEventListener('click', () => {
+            showPopup('Geometric Cascade launched — watch the shapes fall!', 'success');
+        });
+        document.getElementById('start-quantum-boost').addEventListener('click', () => {
+            const status = document.getElementById('quantum-status');
+            if (status) status.textContent = 'Quantum Boost active — 10x luck live';
+            showPopup('Quantum Boost activated!', 'success');
+        });
+        document.getElementById('stop-quantum-boost').addEventListener('click', () => {
+            const status = document.getElementById('quantum-status');
+            if (status) status.textContent = 'Quantum Boost paused';
+        });
+        document.getElementById('start-upside-down').addEventListener('click', () => {
+            triggerAdminEvent('upside-down');
+        });
+        document.getElementById('stop-upside-down').addEventListener('click', () => {
+            document.body.classList.remove('upside-down-mode');
+            const status = document.getElementById('upside-down-status');
+            if (status) status.textContent = 'Upside Down mode deactivated';
+        });
+        document.getElementById('clear-chat').addEventListener('click', () => {
+            requestClearChat();
         });
 
         document.getElementById('login-page').addEventListener('click', (event) => {
