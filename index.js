@@ -157,6 +157,59 @@ async function ensureDatabase() {
 
 let connectedUsers = 0;
 
+async function getRecentChatMessages(limit = 60) {
+  if (pool) {
+    const result = await executeQuery(
+      'SELECT username, message, created_at FROM chat_messages ORDER BY created_at DESC LIMIT $1',
+      [limit]
+    );
+    return result.rows.reverse().map(row => ({
+      username: row.username,
+      message: row.message,
+      timestamp: row.created_at,
+      system: false
+    }));
+  }
+  return inMemoryStore.chatMessages.slice(-limit);
+}
+
+async function saveChatMessage(username, message) {
+  const record = {
+    username: username || 'Guest',
+    message,
+    timestamp: new Date().toISOString(),
+    system: false
+  };
+
+  if (pool) {
+    await executeQuery(
+      'INSERT INTO chat_messages (username, message) VALUES ($1, $2)',
+      [record.username, record.message]
+    );
+  } else {
+    inMemoryStore.chatMessages.push(record);
+    if (inMemoryStore.chatMessages.length > 200) {
+      inMemoryStore.chatMessages.shift();
+    }
+  }
+
+  return record;
+}
+
+async function clearChatHistory() {
+  if (pool) {
+    await executeQuery('TRUNCATE chat_messages');
+  }
+  inMemoryStore.chatMessages = [];
+}
+
+async function isAdminSocket(socket) {
+  const username = socket.request?.session?.username;
+  if (!username) return false;
+  const user = await findUser(username);
+  return user && user.is_admin;
+}
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -224,7 +277,7 @@ app.use(express.static(path.join(__dirname)));
 app.set('trust proxy', 1);
 
 // Apply rate limiting
-app.use('/api/auth', authLimiter);
+app.use(['/api/login', '/api/register'], authLimiter);
 app.use('/api', apiLimiter);
 
 // CORS for development
@@ -442,19 +495,78 @@ io.use((socket, next) => {
 
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   console.log(`🔌 RNG 3 Player connected: ${socket.id}`);
+  connectedUsers += 1;
+  io.emit('online-count', connectedUsers);
+
+  const history = await getRecentChatMessages(60);
+  socket.emit('chat-history', history);
+  socket.emit('system-message', {
+    username: 'System',
+    message: 'Welcome to RNG 3 chat. Be kind and enjoy the roll!',
+    timestamp: new Date().toISOString(),
+    system: true
+  });
 
   socket.on('disconnect', () => {
     console.log(`🔌 RNG 3 Player disconnected: ${socket.id}`);
+    connectedUsers = Math.max(0, connectedUsers - 1);
+    io.emit('online-count', connectedUsers);
   });
 
-  // Game events will be implemented in the next steps
-  socket.on('join-game', (data) => {
+  socket.on('join-game', () => {
     socket.emit('game-joined', {
       message: 'Welcome to RNG 3!',
       version: '3.0.0',
       features: ['New Mechanics', 'Enhanced UI', 'Community Features']
+    });
+  });
+
+  socket.on('chat-message', async (data) => {
+    const text = String(data?.message || '').trim().slice(0, 500);
+    if (!text) return;
+    const username = socket.request?.session?.username || 'Guest';
+    const record = await saveChatMessage(username, text);
+    io.emit('chat-message', record);
+  });
+
+  socket.on('clear-chat', async () => {
+    if (!(await isAdminSocket(socket))) {
+      socket.emit('system-message', {
+        username: 'System',
+        message: 'Admin privileges required to clear chat.',
+        timestamp: new Date().toISOString(),
+        system: true
+      });
+      return;
+    }
+    await clearChatHistory();
+    io.emit('chat-history', []);
+    io.emit('system-message', {
+      username: 'System',
+      message: 'Chat history has been cleared by an administrator.',
+      timestamp: new Date().toISOString(),
+      system: true
+    });
+  });
+
+  socket.on('admin-event', async (data) => {
+    if (!(await isAdminSocket(socket))) {
+      socket.emit('system-message', {
+        username: 'System',
+        message: 'Admin privileges required to trigger events.',
+        timestamp: new Date().toISOString(),
+        system: true
+      });
+      return;
+    }
+    const eventName = String(data?.eventName || '').trim();
+    if (!eventName) return;
+    io.emit('theme-event', {
+      eventName,
+      initiatedBy: socket.request?.session?.username || 'Admin',
+      timestamp: new Date().toISOString()
     });
   });
 });
