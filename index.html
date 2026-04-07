@@ -421,6 +421,631 @@
             line-height: 1.5;
         }
 
+        /* Game Page Styles */
+        .game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: var(--z-overlay);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .game-container:not(.hidden) {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .game-header {
+            background: rgba(30, 58, 138, 0.9);
+            border-bottom: 2px solid var(--secondary-blue);
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .game-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--light-blue);
+            text-shadow: 0 0 10px var(--glow-blue);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .username {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .coins {
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, var(--error), #c0392b);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .game-main {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .spin-section {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .spin-container {
+            background: rgba(30, 58, 138, 0.8);
+            border: 2px solid var(--secondary-blue);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .spin-display {
+            margin-bottom: 20px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spin-result {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--light-blue);
+            text-shadow: 0 0 10px var(--glow-blue);
+        }
+
+        .spin-btn {
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .spin-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+        }
+
+        .spin-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .active-effects {
+            background: rgba(30, 58, 138, 0.6);
+            border: 1px solid var(--accent-blue);
+            border-radius: 12px;
+            padding: 15px;
+            min-height: 80px;
+        }
+
+        .game-content {
+            flex: 1;
+            background: rgba(30, 58, 138, 0.8);
+            border: 2px solid var(--secondary-blue);
+            border-radius: 16px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--accent-blue);
+            padding-bottom: 15px;
+        }
+
+        .content-tab {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: var(--light-blue);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .content-tab:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .content-tab.active {
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+            color: white;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-pane {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .collection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .collection-header h2 {
+            color: var(--light-blue);
+            margin: 0;
+        }
+
+        .collection-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .collection-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: var(--light-blue);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .filter-btn.active {
+            background: var(--secondary-blue);
+            color: white;
+        }
+
+        .collection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .chat-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .chat-header h2 {
+            margin: 0;
+            color: var(--light-blue);
+        }
+
+        .chat-status {
+            color: var(--success);
+            font-size: 0.9rem;
+        }
+
+        .chat-messages {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--secondary-blue);
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-light);
+            font-family: inherit;
+        }
+
+        .market-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .market-section h3 {
+            color: var(--light-blue);
+            margin-bottom: 15px;
+        }
+
+        .market-timer {
+            color: var(--warning);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .potion-shop {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .potion-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .potion-info h4 {
+            margin: 0 0 5px 0;
+            color: var(--light-blue);
+        }
+
+        .potion-info p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            opacity: 0.8;
+        }
+
+        .potion-price {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .profile-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .profile-section h3 {
+            color: var(--light-blue);
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .rarity-chances {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .version-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .version-info p {
+            margin: 5px 0;
+            color: var(--text-light);
+        }
+
+        /* Admin Panel Styles */
+        .admin-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: var(--z-overlay);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .admin-panel:not(.hidden) {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .admin-header {
+            background: rgba(30, 58, 138, 0.9);
+            border-bottom: 2px solid var(--secondary-blue);
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .admin-header h1 {
+            color: var(--light-blue);
+            text-shadow: 0 0 10px var(--glow-blue);
+        }
+
+        .admin-content {
+            flex: 1;
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .admin-section {
+            background: rgba(30, 58, 138, 0.8);
+            border: 2px solid var(--secondary-blue);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .admin-section h2 {
+            color: var(--light-blue);
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .event-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .event-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .event-item h3 {
+            color: var(--accent-blue);
+            margin: 0 0 10px 0;
+        }
+
+        .event-item p {
+            color: var(--text-light);
+            opacity: 0.8;
+            margin: 0 0 15px 0;
+            font-size: 0.9rem;
+        }
+
+        .event-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stop-btn {
+            background: linear-gradient(135deg, var(--error), #c0392b) !important;
+        }
+
+        .event-status {
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-height: 20px;
+        }
+
+        .chat-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .danger-btn {
+            background: linear-gradient(135deg, var(--error), #c0392b);
+        }
+
+        .chat-stats {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .user-list {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 100px;
+        }
+
+        .announcement-form {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--secondary-blue);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .announcement-form .form-group {
+            margin-bottom: 15px;
+        }
+
+        .announcement-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--light-blue);
+        }
+
+        .announcement-form input,
+        .announcement-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--secondary-blue);
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-light);
+            font-family: inherit;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid var(--secondary-blue);
+        }
+
+        .chat-message strong {
+            color: var(--accent-blue);
+        }
+
+        /* Loading animation */
+        .loading {
+            position: relative;
+            color: transparent !important;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .game-main {
+                flex-direction: column;
+            }
+            
+            .spin-section {
+                width: 100%;
+            }
+            
+            .content-tabs {
+                flex-wrap: wrap;
+            }
+            
+            .content-tab {
+                flex: 1;
+                min-width: 100px;
+            }
+            
+            .event-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Auth Pages */
         .auth-container {
             position: fixed;
@@ -749,6 +1374,238 @@
         </div>
     </div>
 
+    <!-- Game Page -->
+    <div class="game-container hidden" id="game-page">
+        <header class="game-header">
+            <div class="header-left">
+                <h1 class="game-title">17 News RNG 3</h1>
+                <div class="user-info">
+                    <span class="username" id="game-username">Player</span>
+                    <span class="coins" id="game-coins">0 coins</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn logout-btn" id="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <div class="game-main">
+            <!-- Spin Section -->
+            <div class="spin-section">
+                <div class="spin-container">
+                    <div class="spin-display" id="spin-display">
+                        <div class="spin-result" id="spin-result">Click Spin to Start!</div>
+                    </div>
+                    <button class="spin-btn" id="spin-btn">SPIN</button>
+                </div>
+                <div class="active-effects" id="active-effects"></div>
+            </div>
+
+            <!-- Game Content -->
+            <div class="game-content">
+                <div class="content-tabs">
+                    <button class="content-tab active" data-tab="collection">Collection</button>
+                    <button class="content-tab" data-tab="chat">Chat</button>
+                    <button class="content-tab" data-tab="market">Market</button>
+                    <button class="content-tab" data-tab="achievements">Achievements</button>
+                    <button class="content-tab" data-tab="profile">Profile</button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Collection Tab -->
+                    <div class="tab-pane active" id="collection-tab">
+                        <div class="collection-header">
+                            <h2>Your Collection</h2>
+                            <div class="collection-actions">
+                                <button class="btn" id="value-check">Check Value</button>
+                                <button class="btn" id="vault-access">Secret Vault</button>
+                            </div>
+                        </div>
+                        <div class="collection-filters">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="rarities">Rarities</button>
+                            <button class="filter-btn" data-filter="potions">Potions</button>
+                            <button class="filter-btn" data-filter="items">Items</button>
+                        </div>
+                        <div class="collection-grid" id="collection-grid"></div>
+                    </div>
+
+                    <!-- Chat Tab -->
+                    <div class="tab-pane" id="chat-tab">
+                        <div class="chat-container">
+                            <div class="chat-header">
+                                <h2>Global Chat</h2>
+                                <div class="chat-status">🟢 Online</div>
+                            </div>
+                            <div class="chat-messages" id="chat-messages"></div>
+                            <div class="chat-input-area">
+                                <input type="text" id="chat-input" placeholder="Type your message..." maxlength="500">
+                                <button class="btn" id="send-chat">Send</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Tab -->
+                    <div class="tab-pane" id="market-tab">
+                        <div class="market-sections">
+                            <div class="market-section">
+                                <h3>Daily Shop</h3>
+                                <div class="market-timer" id="market-timer">Rotates in: 00:00:00</div>
+                                <div class="market-items" id="daily-shop"></div>
+                            </div>
+                            <div class="market-section">
+                                <h3>Potion Shop</h3>
+                                <div class="potion-shop">
+                                    <div class="potion-item">
+                                        <div class="potion-info">
+                                            <h4>Luck Boost I</h4>
+                                            <p>2x luck for 5 minutes</p>
+                                        </div>
+                                        <div class="potion-price">500 coins</div>
+                                        <button class="btn buy-potion" data-potion="luck1">Buy</button>
+                                    </div>
+                                    <div class="potion-item">
+                                        <div class="potion-info">
+                                            <h4>Speed Boost I</h4>
+                                            <p>50% faster spins for 5 minutes</p>
+                                        </div>
+                                        <div class="potion-price">800 coins</div>
+                                        <button class="btn buy-potion" data-potion="speed1">Buy</button>
+                                    </div>
+                                    <div class="potion-item">
+                                        <div class="potion-info">
+                                            <h4>Coin Multiplier I</h4>
+                                            <p>2x coins for 3 minutes</p>
+                                        </div>
+                                        <div class="potion-price">1500 coins</div>
+                                        <button class="btn buy-potion" data-potion="coin1">Buy</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Achievements Tab -->
+                    <div class="tab-pane" id="achievements-tab">
+                        <h2>Achievements</h2>
+                        <div class="achievements-grid" id="achievements-grid"></div>
+                    </div>
+
+                    <!-- Profile Tab -->
+                    <div class="tab-pane" id="profile-tab">
+                        <div class="profile-sections">
+                            <div class="profile-section">
+                                <h3>Statistics</h3>
+                                <div class="stats-grid">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total Spins:</span>
+                                        <span class="stat-value" id="stat-spins">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Account Age:</span>
+                                        <span class="stat-value" id="stat-age">-</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Current Coins:</span>
+                                        <span class="stat-value" id="stat-coins">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="profile-section">
+                                <h3>Rarity Chances</h3>
+                                <div class="rarity-chances" id="rarity-chances"></div>
+                            </div>
+                            <div class="profile-section">
+                                <h3>Game Version</h3>
+                                <div class="version-info">
+                                    <p><strong>RNG 3:</strong> v1.0.0</p>
+                                    <p><strong>Last Updated:</strong> December 2024</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="admin-panel hidden" id="admin-panel">
+        <header class="admin-header">
+            <h1>Admin Control Center</h1>
+            <button class="btn" id="back-to-game">Back to Game</button>
+        </header>
+
+        <div class="admin-content">
+            <div class="admin-section">
+                <h2>🌟 Special Events</h2>
+                <div class="event-controls">
+                    <div class="event-item">
+                        <h3>Blue Storm</h3>
+                        <p>Intense blue particle storm with 3x luck</p>
+                        <div class="event-buttons">
+                            <button class="btn" id="start-blue-storm">Start</button>
+                            <button class="btn stop-btn" id="stop-blue-storm">Stop</button>
+                        </div>
+                        <div class="event-status" id="blue-storm-status"></div>
+                    </div>
+
+                    <div class="event-item">
+                        <h3>Geometric Cascade</h3>
+                        <p>Falling geometric shapes with coin bonuses</p>
+                        <button class="btn" id="start-geometric-cascade">Launch</button>
+                    </div>
+
+                    <div class="event-item">
+                        <h3>Quantum Boost</h3>
+                        <p>10x luck multiplier for all players</p>
+                        <div class="event-buttons">
+                            <button class="btn" id="start-quantum-boost">Activate</button>
+                            <button class="btn stop-btn" id="stop-quantum-boost">Deactivate</button>
+                        </div>
+                        <div class="event-status" id="quantum-status"></div>
+                    </div>
+
+                    <div class="event-item">
+                        <h3>Void Event</h3>
+                        <p>Cosmic void pulls everything in</p>
+                        <button class="btn" id="start-void-event">Begin</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h2>💬 Chat Management</h2>
+                <div class="chat-controls">
+                    <button class="btn danger-btn" id="clear-chat">Clear All Messages</button>
+                    <div class="chat-stats">
+                        <span id="online-count">0 users online</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h2>👥 User Management</h2>
+                <div class="user-list" id="user-list"></div>
+            </div>
+
+            <div class="admin-section">
+                <h2>📢 Announcements</h2>
+                <form class="announcement-form" id="announcement-form">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="announcement-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="announcement-content" required></textarea>
+                    </div>
+                    <button type="submit" class="btn">Send Announcement</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Tagline cycling
         const taglines = [
@@ -819,6 +1676,7 @@
         // Form handling (placeholder for now)
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
+            const username = document.getElementById('login-username').value;
             const button = e.target.querySelector('button');
             const originalText = button.textContent;
             button.textContent = 'Logging in...';
@@ -828,12 +1686,40 @@
             setTimeout(() => {
                 button.textContent = originalText;
                 button.classList.remove('loading');
-                alert('Login functionality will be implemented with the backend!');
+                
+                // Show game page
+                document.getElementById('login-page').classList.remove('active');
+                document.getElementById('game-page').classList.remove('hidden');
+                
+                // Set username
+                document.getElementById('game-username').textContent = username;
+                
+                // Check if admin
+                if (username.toLowerCase() === 'mr_fernanski') {
+                    // Add admin button to header
+                    const headerRight = document.querySelector('.header-right');
+                    const adminBtn = document.createElement('button');
+                    adminBtn.className = 'btn';
+                    adminBtn.id = 'admin-btn';
+                    adminBtn.textContent = 'Admin Panel';
+                    adminBtn.style.background = 'linear-gradient(135deg, #9b59b6, #8e44ad)';
+                    adminBtn.style.marginRight = '10px';
+                    headerRight.insertBefore(adminBtn, headerRight.firstChild);
+                    
+                    // Add admin button event listener
+                    adminBtn.addEventListener('click', () => {
+                        document.getElementById('game-page').classList.add('hidden');
+                        document.getElementById('admin-panel').classList.remove('hidden');
+                    });
+                }
+                
+                alert('Welcome to RNG 3! (Backend integration coming soon)');
             }, 2000);
         });
 
         document.getElementById('register-form').addEventListener('submit', (e) => {
             e.preventDefault();
+            const username = document.getElementById('register-username').value;
             const button = e.target.querySelector('button');
             const originalText = button.textContent;
             button.textContent = 'Creating account...';
@@ -843,8 +1729,163 @@
             setTimeout(() => {
                 button.textContent = originalText;
                 button.classList.remove('loading');
-                alert('Registration functionality will be implemented with the backend!');
+                
+                // Show game page
+                document.getElementById('register-page').classList.remove('active');
+                document.getElementById('game-page').classList.remove('hidden');
+                
+                // Set username
+                document.getElementById('game-username').textContent = username;
+                
+                alert('Account created! Welcome to RNG 3! (Backend integration coming soon)');
             }, 2000);
+        });
+
+        // Game page functionality
+        function switchTab(tabName) {
+            // Hide all tab panes
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.content-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        // Tab switching
+        document.querySelectorAll('.content-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                switchTab(tabName);
+            });
+        });
+
+        // Logout functionality
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            document.getElementById('game-page').classList.add('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+            
+            // Remove admin button if exists
+            const adminBtn = document.getElementById('admin-btn');
+            if (adminBtn) {
+                adminBtn.remove();
+            }
+        });
+
+        // Back to game from admin
+        document.getElementById('back-to-game').addEventListener('click', () => {
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('game-page').classList.remove('hidden');
+        });
+
+        // Spin button
+        document.getElementById('spin-btn').addEventListener('click', () => {
+            const spinResult = document.getElementById('spin-result');
+            const button = document.getElementById('spin-btn');
+            
+            button.disabled = true;
+            button.textContent = 'SPINNING...';
+            
+            // Simulate spin animation
+            const results = ['17 News', '17 News Reborn', 'Hudson Walter', 'Baxter Walter', 'Stanley Bowden'];
+            let currentResult = 0;
+            
+            const spinInterval = setInterval(() => {
+                spinResult.textContent = results[currentResult % results.length];
+                currentResult++;
+            }, 100);
+            
+            setTimeout(() => {
+                clearInterval(spinInterval);
+                const finalResult = results[Math.floor(Math.random() * results.length)];
+                spinResult.textContent = `You got: ${finalResult}!`;
+                button.disabled = false;
+                button.textContent = 'SPIN';
+            }, 2000);
+        });
+
+        // Collection filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Chat functionality
+        document.getElementById('send-chat').addEventListener('click', () => {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                const chatMessages = document.getElementById('chat-messages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'chat-message';
+                messageDiv.innerHTML = `<strong>${document.getElementById('game-username').textContent}:</strong> ${message}`;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                input.value = '';
+            }
+        });
+
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('send-chat').click();
+            }
+        });
+
+        // Value check
+        document.getElementById('value-check').addEventListener('click', () => {
+            alert('Collection value calculation coming soon!');
+        });
+
+        // Secret vault
+        document.getElementById('vault-access').addEventListener('click', () => {
+            alert('🎁 Secret Vault: Use code "RNG3BETA" in the profile tab!');
+        });
+
+        // Admin panel events
+        document.getElementById('start-blue-storm')?.addEventListener('click', () => {
+            document.getElementById('blue-storm-status').textContent = 'Blue Storm Active!';
+            document.getElementById('blue-storm-status').style.color = '#10b981';
+        });
+
+        document.getElementById('stop-blue-storm')?.addEventListener('click', () => {
+            document.getElementById('blue-storm-status').textContent = '';
+        });
+
+        document.getElementById('start-quantum-boost')?.addEventListener('click', () => {
+            document.getElementById('quantum-status').textContent = 'Quantum Boost Active!';
+            document.getElementById('quantum-status').style.color = '#10b981';
+        });
+
+        document.getElementById('stop-quantum-boost')?.addEventListener('click', () => {
+            document.getElementById('quantum-status').textContent = '';
+        });
+
+        document.getElementById('start-geometric-cascade')?.addEventListener('click', () => {
+            alert('Geometric Cascade launched!');
+        });
+
+        document.getElementById('start-void-event')?.addEventListener('click', () => {
+            alert('Void Event initiated!');
+        });
+
+        document.getElementById('clear-chat')?.addEventListener('click', () => {
+            document.getElementById('chat-messages').innerHTML = '';
+            alert('Chat cleared!');
+        });
+
+        document.getElementById('announcement-form')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Announcement sent!');
+            e.target.reset();
         });
 
         // Close auth pages when clicking outside
