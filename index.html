@@ -1905,12 +1905,32 @@
 
                 <div class="tabbed-content">
                     <div class="content-tabs">
-                        <button class="content-tab active" data-tab="chat">Chat</button>
-                        <button class="content-tab" data-tab="achievements">Achievement</button>
+                        <button class="content-tab active" data-tab="inventory">Inventory</button>
+                        <button class="content-tab" data-tab="market">Market</button>
+                        <button class="content-tab" data-tab="chat">Chat</button>
+                        <button class="content-tab" data-tab="achievements">Achievements</button>
                         <button class="content-tab" data-tab="profile">Profile</button>
                     </div>
                     <div class="tab-content">
-                        <div class="tab-pane active" id="chat-tab">
+                        <div class="tab-pane active" id="inventory-tab">
+                            <div class="collection-header">
+                                <h2>Inventory Dashboard</h2>
+                                <div class="collection-actions">
+                                    <button class="btn" id="refresh-inventory">Refresh</button>
+                                </div>
+                            </div>
+                            <div class="inventory-grid" id="inventory-tab-grid"></div>
+                        </div>
+                        <div class="tab-pane" id="market-tab">
+                            <div class="collection-header">
+                                <h2>Market</h2>
+                                <div class="collection-actions">
+                                    <button class="btn" id="buy-lucky-pack">Lucky Pack</button>
+                                </div>
+                            </div>
+                            <div class="collection-grid" id="market-grid"></div>
+                        </div>
+                        <div class="tab-pane" id="chat-tab">
                             <div class="chat-container">
                                 <div class="chat-header">
                                     <div>
@@ -2069,6 +2089,12 @@
             { key: 'delan-fernando', name: 'Delan Fernando', reward: 1450, chance: 7, color: '#0f172a' }
         ];
 
+        const marketOptions = [
+            { name: 'Lucky Pack', description: 'Guaranteed rare item chance boost.', price: 500, badge: 'NEW' },
+            { name: 'Spin Accelerator', description: 'Roll faster with glowing reels.', price: 250, badge: 'HOT' },
+            { name: 'Collector Bundle', description: 'Grab bonus inventory value with every spin.', price: 1200, badge: 'EPIC' }
+        ];
+
         let currentTaglineIndex = 0;
         let currentUser = null;
         const taglineElement = document.getElementById('tagline');
@@ -2202,12 +2228,75 @@
             document.getElementById('stat-coins').textContent = formatCoins(user.coins);
             document.getElementById('stat-age').textContent = user.accountAge || '-';
             renderInventoryGrid(user.inventory || {});
+            renderInventoryTab(user.inventory || {});
+            renderMarketGrid();
             renderRarityChances();
             updateAchievementStatus(user.spins || 0);
             renderAchievementPanels(user.spins || 0);
         }
 
-        function renderInventoryGrid(inventory) {
+        function renderInventoryTab(inventory) {
+            const grid = document.getElementById('inventory-tab-grid');
+            grid.innerHTML = '';
+            const rarities = inventory.rarities || {};
+            const items = Object.keys(rarities).map(key => {
+                const rarity = rarityOptions.find(r => r.key === key);
+                if (!rarity) return null;
+                return {
+                    name: rarity.name,
+                    count: rarities[key],
+                    value: rarity.reward
+                };
+            }).filter(Boolean);
+
+            if (!items.length) {
+                grid.innerHTML = '<div class="inventory-item" style="justify-content:center;">Your inventory is empty — every roll counts!</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'inventory-item';
+                const rarity = rarityOptions.find(r => r.name === item.name);
+                if (rarity) {
+                    card.style.borderLeft = `4px solid ${rarity.color}`;
+                    card.style.background = 'rgba(15, 23, 42, 0.85)';
+                }
+                card.innerHTML = `
+                    <div>
+                        <h4>${item.name}</h4>
+                        <span>${item.count} owned</span>
+                    </div>
+                    <div>
+                        <span>${formatCoins(item.value)} each</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderMarketGrid() {
+            const marketGrid = document.getElementById('market-grid');
+            if (!marketGrid) return;
+            marketGrid.innerHTML = '';
+            marketOptions.forEach(option => {
+                const card = document.createElement('div');
+                card.className = 'potion-item';
+                card.innerHTML = `
+                    <div class="potion-info">
+                        <h4>${option.name}</h4>
+                        <p>${option.description}</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="potion-price">${formatCoins(option.price)}</div>
+                        <small style="color: rgba(241,245,249,0.75);">${option.badge}</small>
+                    </div>
+                `;
+                marketGrid.appendChild(card);
+            });
+        }
+
+        function renderRarityChances() {
             const grid = document.getElementById('inventory-grid');
             grid.innerHTML = '';
             const rarities = inventory.rarities || {};
@@ -2386,6 +2475,19 @@
                 event.preventDefault();
                 document.getElementById('send-chat').click();
             }
+        });
+
+        document.getElementById('refresh-inventory').addEventListener('click', () => {
+            if (!currentUser) {
+                showPopup('Login first to refresh inventory', 'error');
+                return;
+            }
+            renderInventoryTab(currentUser.inventory || {});
+            showPopup('Inventory refreshed');
+        });
+
+        document.getElementById('buy-lucky-pack').addEventListener('click', () => {
+            showPopup('Lucky Pack is ready — coming soon with a cosmic upgrade!', 'success');
         });
 
         function applyThemeEvent(eventName, initiatedBy) {
