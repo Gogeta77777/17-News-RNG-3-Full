@@ -55,6 +55,62 @@ const inMemoryStore = {
   chatMessages: []
 };
 
+const STORAGE_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(STORAGE_DIR, 'users.json');
+const CHAT_FILE = path.join(STORAGE_DIR, 'chat.json');
+const JSON_ENCODING = 'utf8';
+
+function ensureStorageFiles() {
+  try {
+    if (!fs.existsSync(STORAGE_DIR)) {
+      fs.mkdirSync(STORAGE_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(USERS_FILE)) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify({}, null, 2), JSON_ENCODING);
+    }
+    if (!fs.existsSync(CHAT_FILE)) {
+      fs.writeFileSync(CHAT_FILE, JSON.stringify([], null, 2), JSON_ENCODING);
+    }
+  } catch (error) {
+    console.error('Storage initialization failed:', error);
+  }
+}
+
+function loadStorageFiles() {
+  try {
+    const usersRaw = fs.readFileSync(USERS_FILE, JSON_ENCODING);
+    inMemoryStore.users = JSON.parse(usersRaw) || {};
+  } catch (error) {
+    inMemoryStore.users = {};
+  }
+
+  try {
+    const chatRaw = fs.readFileSync(CHAT_FILE, JSON_ENCODING);
+    inMemoryStore.chatMessages = JSON.parse(chatRaw) || [];
+  } catch (error) {
+    inMemoryStore.chatMessages = [];
+  }
+}
+
+ensureStorageFiles();
+loadStorageFiles();
+
+function persistUsers() {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(inMemoryStore.users, null, 2), JSON_ENCODING);
+  } catch (error) {
+    console.error('Unable to persist users:', error);
+  }
+}
+
+function persistChatMessages() {
+  try {
+    fs.writeFileSync(CHAT_FILE, JSON.stringify(inMemoryStore.chatMessages, null, 2), JSON_ENCODING);
+  } catch (error) {
+    console.error('Unable to persist chat messages:', error);
+  }
+}
+
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
@@ -114,6 +170,7 @@ async function saveUser(user) {
     return;
   }
   inMemoryStore.users[normalized] = user;
+  persistUsers();
 }
 
 async function updateUser(username, updates) {
@@ -128,6 +185,7 @@ async function updateUser(username, updates) {
   }
   const existing = inMemoryStore.users[normalized] || {};
   inMemoryStore.users[normalized] = { ...existing, ...updates };
+  persistUsers();
 }
 
 async function ensureDatabase() {
@@ -191,6 +249,7 @@ async function saveChatMessage(username, message) {
     if (inMemoryStore.chatMessages.length > 200) {
       inMemoryStore.chatMessages.shift();
     }
+    persistChatMessages();
   }
 
   return record;
@@ -201,6 +260,7 @@ async function clearChatHistory() {
     await executeQuery('TRUNCATE chat_messages');
   }
   inMemoryStore.chatMessages = [];
+  persistChatMessages();
 }
 
 async function isAdminSocket(socket) {
