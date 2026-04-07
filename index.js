@@ -40,14 +40,22 @@ app.set('trust proxy', 1);
 let pool;
 const IS_VERCEL = process.env.VERCEL === '1';
 const IS_RENDER = process.env.RENDER === 'true';
-const USE_POSTGRES = process.env.DATABASE_URL;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.PG_CONNECTION_STRING;
+const USE_POSTGRES = Boolean(DATABASE_URL);
 
 if (USE_POSTGRES) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  });
-  console.log('✅ PostgreSQL initialized for RNG 3');
+  try {
+    pool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: (process.env.NODE_ENV === 'production' || DATABASE_URL.includes('sslmode=require') || process.env.PGSSLMODE === 'require')
+        ? { rejectUnauthorized: false }
+        : false
+    });
+    console.log('✅ PostgreSQL/Neon initialized for RNG 3');
+  } catch (error) {
+    console.error('⚠️ PostgreSQL initialization failed, falling back to local storage:', error.message || error);
+    pool = null;
+  }
 }
 
 const inMemoryStore = {
