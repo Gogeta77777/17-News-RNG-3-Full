@@ -503,13 +503,436 @@
             display: flex;
             padding: 20px;
             gap: 20px;
+            min-height: calc(100vh - 110px);
         }
 
-        .spin-section {
-            width: 300px;
+        .left-panel,
+        .right-panel {
             display: flex;
             flex-direction: column;
             gap: 20px;
+        }
+
+        .left-panel {
+            width: 420px;
+        }
+
+        .right-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .inventory-panel,
+        .achievement-panel,
+        .roll-panel,
+        .tabbed-content,
+        .profile-sections {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(18px);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .section-header h2 {
+            margin: 0;
+            color: var(--light-blue);
+            font-size: 1.3rem;
+        }
+
+        .inventory-value {
+            color: var(--accent-blue);
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-align: right;
+        }
+
+        .inventory-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .inventory-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .inventory-card span {
+            color: var(--text-light);
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+
+        .inventory-card strong {
+            color: #ffffff;
+            font-size: 1.4rem;
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .inventory-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .inventory-item h4 {
+            margin: 0;
+            color: var(--light-blue);
+            font-size: 1rem;
+        }
+
+        .inventory-item span {
+            color: var(--text-light);
+            opacity: 0.9;
+        }
+
+        .achievement-panel h2,
+        .profile-section h3,
+        .chat-header h2 {
+            color: var(--light-blue);
+        }
+
+        .achievement-card {
+            display: grid;
+            grid-template-columns: 48px 1fr auto;
+            gap: 16px;
+            align-items: center;
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(30, 58, 138, 0.8);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .achievement-icon {
+            font-size: 1.8rem;
+        }
+
+        .achievement-status {
+            color: var(--warning);
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            padding: 8px 12px;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .roll-panel {
+            padding: 30px;
+        }
+
+        .roll-status {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .roll-label {
+            color: var(--accent-blue);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .roll-display {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 20px;
+            padding: 24px;
+            color: var(--light-blue);
+            font-size: 1.4rem;
+            font-weight: 700;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .roll-footer {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .reward-display {
+            flex: 1;
+            color: var(--accent-blue);
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 16px 18px;
+            background: rgba(59, 130, 246, 0.08);
+            border-radius: 16px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .roll-btn {
+            flex: 0 0 auto;
+            min-width: 150px;
+            padding: 18px 28px;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            box-shadow: 0 12px 28px rgba(14, 165, 233, 0.35);
+            border: none;
+        }
+
+        .tabbed-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .content-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .content-tab {
+            flex: 1;
+            min-width: 120px;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(96, 165, 250, 0.25);
+            color: var(--light-blue);
+            padding: 14px 18px;
+            border-radius: 14px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 700;
+            transition: all 0.25s ease;
+        }
+
+        .content-tab.active {
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+            color: white;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .chat-subtitle {
+            color: rgba(241, 245, 249, 0.8);
+            margin-top: 6px;
+            font-size: 0.95rem;
+        }
+
+        .chat-messages {
+            height: 340px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 18px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 18px;
+            background: rgba(15, 23, 42, 0.95);
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text-light);
+        }
+
+        .chat-bubble {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 18px;
+            padding: 14px 18px;
+            display: inline-flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 95%;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .chat-bubble strong {
+            color: var(--accent-blue);
+        }
+
+        .chat-bubble time {
+            color: rgba(241, 245, 249, 0.7);
+            font-size: 0.8rem;
+        }
+
+        .achievement-card-large {
+            display: grid;
+            grid-template-columns: 72px 1fr auto;
+            gap: 20px;
+            align-items: center;
+            padding: 24px;
+            border-radius: 20px;
+            background: rgba(30, 58, 138, 0.9);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .achievement-icon-large {
+            font-size: 2.4rem;
+        }
+
+        .achievement-status-large {
+            color: #60a5fa;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        .profile-sections {
+            display: grid;
+            gap: 22px;
+        }
+
+        .profile-section {
+            display: grid;
+            gap: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .stat-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 14px;
+            padding: 18px;
+        }
+
+        .stat-label {
+            display: block;
+            margin-bottom: 8px;
+            color: rgba(241, 245, 249, 0.75);
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+            color: var(--light-blue);
+            font-weight: 700;
+        }
+
+        .rarity-chances {
+            display: grid;
+            gap: 10px;
+            padding: 16px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(96, 165, 250, 0.12);
+            border-radius: 16px;
+        }
+
+        .rarity-chance-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 14px;
+            background: rgba(59, 130, 246, 0.08);
+            border-radius: 12px;
+        }
+
+        .rarity-label {
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .rarity-chance {
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .reward-pop {
+            position: fixed;
+            left: 50%;
+            top: 22%;
+            transform: translateX(-50%);
+            padding: 16px 24px;
+            border-radius: 999px;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #ffffff;
+            font-weight: 700;
+            z-index: 1200;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.6);
+            animation: rewardPop 1s ease-out forwards;
+        }
+
+        @keyframes rewardPop {
+            0% { opacity: 0; transform: translate(-50%, 0) scale(0.85); }
+            50% { opacity: 1; transform: translate(-50%, -10px) scale(1.02); }
+            100% { opacity: 0; transform: translate(-50%, -40px) scale(1); }
+        }
+
+        @media (max-width: 1100px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .left-panel {
+                width: 100%;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .inventory-summary {
+                grid-template-columns: 1fr;
+            }
         }
 
         .spin-container {
@@ -1022,6 +1445,20 @@
             100% { transform: rotate(360deg); }
         }
 
+        .popup {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            padding: 14px 22px;
+            border-radius: 999px;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+            z-index: 1200;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             .game-main {
@@ -1298,7 +1735,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="main-container">
+    <div class="main-container" id="landing-page">
         <div class="content-wrapper">
             <!-- Welcome Section -->
             <div class="welcome-section">
@@ -1390,136 +1827,106 @@
         </header>
 
         <div class="game-main">
-            <!-- Spin Section -->
-            <div class="spin-section">
-                <div class="spin-container">
-                    <div class="spin-display" id="spin-display">
-                        <div class="spin-result" id="spin-result">Click Spin to Start!</div>
+            <div class="left-panel">
+                <div class="inventory-panel">
+                    <div class="section-header">
+                        <h2>Inventory</h2>
+                        <div class="inventory-value" id="inventory-value">Inventory Value: 0 coins</div>
                     </div>
-                    <button class="spin-btn" id="spin-btn">SPIN</button>
+                    <div class="inventory-summary">
+                        <div class="inventory-card">
+                            <span>Total Rarities</span>
+                            <strong id="inventory-count">0</strong>
+                        </div>
+                        <div class="inventory-card">
+                            <span>Total Rolls</span>
+                            <strong id="inventory-rolls">0</strong>
+                        </div>
+                    </div>
+                    <div class="inventory-grid" id="inventory-grid"></div>
                 </div>
-                <div class="active-effects" id="active-effects"></div>
+                <div class="achievement-panel">
+                    <h2>Achievement</h2>
+                    <div class="achievement-card" id="achievement-card">
+                        <div class="achievement-icon">🏅</div>
+                        <div>
+                            <h3>First Roll</h3>
+                            <p>Roll once to unlock your first achievement and claim RNG fame.</p>
+                        </div>
+                        <span class="achievement-status" id="achievement-status">Locked</span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Game Content -->
-            <div class="game-content">
-                <div class="content-tabs">
-                    <button class="content-tab active" data-tab="collection">Collection</button>
-                    <button class="content-tab" data-tab="chat">Chat</button>
-                    <button class="content-tab" data-tab="market">Market</button>
-                    <button class="content-tab" data-tab="achievements">Achievements</button>
-                    <button class="content-tab" data-tab="profile">Profile</button>
+            <div class="right-panel">
+                <div class="roll-panel">
+                    <div class="roll-status">
+                        <div class="roll-label">Roll Hub</div>
+                        <div class="roll-display" id="roll-display">Ready to roll</div>
+                    </div>
+                    <div class="roll-footer">
+                        <div class="reward-display" id="reward-display">Reward: 0 coins</div>
+                        <button class="roll-btn" id="roll-btn">ROLL</button>
+                    </div>
                 </div>
 
-                <div class="tab-content">
-                    <!-- Collection Tab -->
-                    <div class="tab-pane active" id="collection-tab">
-                        <div class="collection-header">
-                            <h2>Your Collection</h2>
-                            <div class="collection-actions">
-                                <button class="btn" id="value-check">Check Value</button>
-                                <button class="btn" id="vault-access">Secret Vault</button>
-                            </div>
-                        </div>
-                        <div class="collection-filters">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="rarities">Rarities</button>
-                            <button class="filter-btn" data-filter="potions">Potions</button>
-                            <button class="filter-btn" data-filter="items">Items</button>
-                        </div>
-                        <div class="collection-grid" id="collection-grid"></div>
+                <div class="tabbed-content">
+                    <div class="content-tabs">
+                        <button class="content-tab active" data-tab="chat">Chat</button>
+                        <button class="content-tab" data-tab="achievements">Achievement</button>
+                        <button class="content-tab" data-tab="profile">Profile</button>
                     </div>
-
-                    <!-- Chat Tab -->
-                    <div class="tab-pane" id="chat-tab">
-                        <div class="chat-container">
-                            <div class="chat-header">
-                                <h2>Global Chat</h2>
-                                <div class="chat-status">🟢 Online</div>
-                            </div>
-                            <div class="chat-messages" id="chat-messages"></div>
-                            <div class="chat-input-area">
-                                <input type="text" id="chat-input" placeholder="Type your message..." maxlength="500">
-                                <button class="btn" id="send-chat">Send</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Market Tab -->
-                    <div class="tab-pane" id="market-tab">
-                        <div class="market-sections">
-                            <div class="market-section">
-                                <h3>Daily Shop</h3>
-                                <div class="market-timer" id="market-timer">Rotates in: 00:00:00</div>
-                                <div class="market-items" id="daily-shop"></div>
-                            </div>
-                            <div class="market-section">
-                                <h3>Potion Shop</h3>
-                                <div class="potion-shop">
-                                    <div class="potion-item">
-                                        <div class="potion-info">
-                                            <h4>Luck Boost I</h4>
-                                            <p>2x luck for 5 minutes</p>
-                                        </div>
-                                        <div class="potion-price">500 coins</div>
-                                        <button class="btn buy-potion" data-potion="luck1">Buy</button>
+                    <div class="tab-content">
+                        <div class="tab-pane active" id="chat-tab">
+                            <div class="chat-container">
+                                <div class="chat-header">
+                                    <div>
+                                        <h2>Global Chat</h2>
+                                        <p class="chat-subtitle">Community chat for RNG 3 players.</p>
                                     </div>
-                                    <div class="potion-item">
-                                        <div class="potion-info">
-                                            <h4>Speed Boost I</h4>
-                                            <p>50% faster spins for 5 minutes</p>
-                                        </div>
-                                        <div class="potion-price">800 coins</div>
-                                        <button class="btn buy-potion" data-potion="speed1">Buy</button>
-                                    </div>
-                                    <div class="potion-item">
-                                        <div class="potion-info">
-                                            <h4>Coin Multiplier I</h4>
-                                            <p>2x coins for 3 minutes</p>
-                                        </div>
-                                        <div class="potion-price">1500 coins</div>
-                                        <button class="btn buy-potion" data-potion="coin1">Buy</button>
-                                    </div>
+                                    <div class="chat-status">🟢 Online</div>
+                                </div>
+                                <div class="chat-messages" id="chat-messages"></div>
+                                <div class="chat-input-area">
+                                    <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
+                                    <button class="btn" id="send-chat">Send</button>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Achievements Tab -->
-                    <div class="tab-pane" id="achievements-tab">
-                        <h2>Achievements</h2>
-                        <div class="achievements-grid" id="achievements-grid"></div>
-                    </div>
-
-                    <!-- Profile Tab -->
-                    <div class="tab-pane" id="profile-tab">
-                        <div class="profile-sections">
-                            <div class="profile-section">
-                                <h3>Statistics</h3>
-                                <div class="stats-grid">
-                                    <div class="stat-item">
-                                        <span class="stat-label">Total Spins:</span>
-                                        <span class="stat-value" id="stat-spins">0</span>
+                        <div class="tab-pane" id="achievements-tab">
+                            <div class="achievement-panel-large">
+                                <div class="achievement-card-large" id="achievement-card-large">
+                                    <div class="achievement-icon-large">🏆</div>
+                                    <div>
+                                        <h3>First Roll</h3>
+                                        <p>Complete your first roll and unlock the new age of RNG 3.</p>
                                     </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Account Age:</span>
-                                        <span class="stat-value" id="stat-age">-</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Current Coins:</span>
-                                        <span class="stat-value" id="stat-coins">0</span>
-                                    </div>
+                                    <div class="achievement-status-large" id="achievement-status-large">Locked</div>
                                 </div>
                             </div>
-                            <div class="profile-section">
-                                <h3>Rarity Chances</h3>
-                                <div class="rarity-chances" id="rarity-chances"></div>
-                            </div>
-                            <div class="profile-section">
-                                <h3>Game Version</h3>
-                                <div class="version-info">
-                                    <p><strong>RNG 3:</strong> v1.0.0</p>
-                                    <p><strong>Last Updated:</strong> December 2024</p>
+                        </div>
+                        <div class="tab-pane" id="profile-tab">
+                            <div class="profile-sections">
+                                <div class="profile-section">
+                                    <h3>Statistics</h3>
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <span class="stat-label">Total Rolls</span>
+                                            <span class="stat-value" id="stat-rolls">0</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Account Age</span>
+                                            <span class="stat-value" id="stat-age">-</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-label">Current Coins</span>
+                                            <span class="stat-value" id="stat-coins">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="profile-section">
+                                    <h3>Rarity Chances</h3>
+                                    <div class="rarity-chances" id="rarity-chances"></div>
                                 </div>
                             </div>
                         </div>
@@ -1609,32 +2016,38 @@
     <script>
         // Tagline cycling
         const taglines = [
-            "The third installment",
-            "Back for more",
-            "For the community",
-            "For Ellerslie School",
-            "For 17 News",
-            "The Threequel"
+            'The third installment',
+            'Back for more',
+            'For the community',
+            'For Ellerslie School',
+            'For 17 News',
+            'The Threequel'
+        ];
+
+        const rarityOptions = [
+            { key: '17-news', name: '17 News', reward: 150, chance: 68, color: '#60a5fa' },
+            { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 25, color: '#3b82f6' },
+            { key: 'delan-fernando', name: 'Delan Fernando', reward: 1450, chance: 7, color: '#0f172a' }
         ];
 
         let currentTaglineIndex = 0;
+        let currentUser = null;
         const taglineElement = document.getElementById('tagline');
 
-        function typeText(text, element, speed = 50) {
+        function typeText(text, element, speed = 45) {
             element.classList.add('typing');
             element.textContent = '';
             let i = 0;
-
             const timer = setInterval(() => {
                 if (i < text.length) {
                     element.textContent += text.charAt(i);
-                    i++;
+                    i += 1;
                 } else {
                     clearInterval(timer);
                     setTimeout(() => {
                         element.classList.remove('typing');
-                        setTimeout(nextTagline, 2000);
-                    }, 1000);
+                        setTimeout(nextTagline, 2200);
+                    }, 1200);
                 }
             }, speed);
         }
@@ -1644,14 +2057,56 @@
             typeText(taglines[currentTaglineIndex], taglineElement);
         }
 
-        // Start the tagline animation
         typeText(taglines[0], taglineElement);
 
-        // Page navigation
+        function formatCoins(amount) {
+            return Number(amount).toLocaleString();
+        }
+
+        function showPopup(message, type = 'success') {
+            const popup = document.createElement('div');
+            popup.className = 'popup';
+            popup.textContent = message;
+            popup.style.background = type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(14, 165, 233, 0.95)';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        function showRewardPopup(message) {
+            const reward = document.createElement('div');
+            reward.className = 'reward-pop';
+            reward.textContent = message;
+            document.body.appendChild(reward);
+            setTimeout(() => reward.remove(), 1100);
+        }
+
+        function setLoading(button, isLoading, text = 'Loading...') {
+            if (!button) return;
+            button.disabled = isLoading;
+            button.textContent = isLoading ? text : button.dataset.defaultText || button.textContent;
+        }
+
+        async function handleAPI(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    ...options,
+                    body: options.body ? JSON.stringify(options.body) : undefined
+                });
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('API error:', error);
+                return { success: false, error: 'Unable to contact server' };
+            }
+        }
+
         function showPage(page) {
             document.getElementById('login-page').classList.remove('active');
             document.getElementById('register-page').classList.remove('active');
-
             if (page === 'login') {
                 document.getElementById('login-page').classList.add('active');
             } else if (page === 'register') {
@@ -1659,257 +2114,291 @@
             }
         }
 
-        // Event listeners
-        document.getElementById('login-btn').addEventListener('click', () => showPage('login'));
-        document.getElementById('register-btn').addEventListener('click', () => showPage('register'));
-
-        document.getElementById('show-register').addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage('register');
-        });
-
-        document.getElementById('show-login').addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage('login');
-        });
-
-        // Form handling (placeholder for now)
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const username = document.getElementById('login-username').value;
-            const button = e.target.querySelector('button');
-            const originalText = button.textContent;
-            button.textContent = 'Logging in...';
-            button.classList.add('loading');
-
-            // Simulate login process
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.classList.remove('loading');
-                
-                // Show game page
-                document.getElementById('login-page').classList.remove('active');
-                document.getElementById('game-page').classList.remove('hidden');
-                
-                // Set username
-                document.getElementById('game-username').textContent = username;
-                
-                // Check if admin
-                if (username.toLowerCase() === 'mr_fernanski') {
-                    // Add admin button to header
-                    const headerRight = document.querySelector('.header-right');
-                    const adminBtn = document.createElement('button');
-                    adminBtn.className = 'btn';
-                    adminBtn.id = 'admin-btn';
-                    adminBtn.textContent = 'Admin Panel';
-                    adminBtn.style.background = 'linear-gradient(135deg, #9b59b6, #8e44ad)';
-                    adminBtn.style.marginRight = '10px';
-                    headerRight.insertBefore(adminBtn, headerRight.firstChild);
-                    
-                    // Add admin button event listener
-                    adminBtn.addEventListener('click', () => {
-                        document.getElementById('game-page').classList.add('hidden');
-                        document.getElementById('admin-panel').classList.remove('hidden');
-                    });
-                }
-                
-                alert('Welcome to RNG 3! (Backend integration coming soon)');
-            }, 2000);
-        });
-
-        document.getElementById('register-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const username = document.getElementById('register-username').value;
-            const button = e.target.querySelector('button');
-            const originalText = button.textContent;
-            button.textContent = 'Creating account...';
-            button.classList.add('loading');
-
-            // Simulate registration process
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.classList.remove('loading');
-                
-                // Show game page
-                document.getElementById('register-page').classList.remove('active');
-                document.getElementById('game-page').classList.remove('hidden');
-                
-                // Set username
-                document.getElementById('game-username').textContent = username;
-                
-                alert('Account created! Welcome to RNG 3! (Backend integration coming soon)');
-            }, 2000);
-        });
-
-        // Game page functionality
-        function switchTab(tabName) {
-            // Hide all tab panes
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('active');
-            });
-            
-            // Remove active class from all tabs
-            document.querySelectorAll('.content-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById(tabName + '-tab').classList.add('active');
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        function hideLanding() {
+            document.getElementById('landing-page').classList.add('hidden');
         }
 
-        // Tab switching
-        document.querySelectorAll('.content-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabName = tab.dataset.tab;
-                switchTab(tabName);
+        function showLanding() {
+            document.getElementById('landing-page').classList.remove('hidden');
+        }
+
+        function showGamePage() {
+            hideLanding();
+            document.getElementById('login-page').classList.remove('active');
+            document.getElementById('register-page').classList.remove('active');
+            document.getElementById('game-page').classList.remove('hidden');
+            if (currentUser && currentUser.is_admin) {
+                ensureAdminButton();
+            }
+        }
+
+        function hideGamePage() {
+            document.getElementById('game-page').classList.add('hidden');
+        }
+
+        function ensureAdminButton() {
+            if (document.getElementById('admin-btn')) return;
+            const headerRight = document.querySelector('.header-right');
+            const adminBtn = document.createElement('button');
+            adminBtn.className = 'btn';
+            adminBtn.id = 'admin-btn';
+            adminBtn.textContent = 'Admin Panel';
+            adminBtn.style.background = 'linear-gradient(135deg, #9b59b6, #8e44ad)';
+            adminBtn.style.marginRight = '10px';
+            headerRight.insertBefore(adminBtn, headerRight.firstChild);
+            adminBtn.addEventListener('click', () => {
+                hideGamePage();
+                document.getElementById('admin-panel').classList.remove('hidden');
             });
+        }
+
+        function updateUI(user) {
+            currentUser = user;
+            document.getElementById('game-username').textContent = user.username;
+            document.getElementById('game-coins').textContent = `${formatCoins(user.coins)} coins`;
+            document.getElementById('inventory-value').textContent = `Inventory Value: ${formatCoins(user.inventoryValue)} coins`;
+            document.getElementById('inventory-count').textContent = user.inventoryTotal || 0;
+            document.getElementById('inventory-rolls').textContent = user.spins || 0;
+            document.getElementById('stat-rolls').textContent = user.spins || 0;
+            document.getElementById('stat-coins').textContent = formatCoins(user.coins);
+            document.getElementById('stat-age').textContent = user.accountAge || '-';
+            renderInventoryGrid(user.inventory || {});
+            renderRarityChances();
+            updateAchievementStatus(user.spins || 0);
+            renderAchievementPanels(user.spins || 0);
+        }
+
+        function renderInventoryGrid(inventory) {
+            const grid = document.getElementById('inventory-grid');
+            grid.innerHTML = '';
+            const rarities = inventory.rarities || {};
+            const items = Object.keys(rarities).map(key => {
+                const rarity = rarityOptions.find(r => r.key === key);
+                if (!rarity) return null;
+                return {
+                    name: rarity.name,
+                    count: rarities[key],
+                    value: rarity.reward
+                };
+            }).filter(Boolean);
+
+            if (!items.length) {
+                grid.innerHTML = '<div class="inventory-item" style="justify-content:center;">No rare rolls yet. Start rolling!</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'inventory-item';
+                card.innerHTML = `
+                    <div>
+                        <h4>${item.name}</h4>
+                        <span>${item.count} owned</span>
+                    </div>
+                    <div>
+                        <span>${formatCoins(item.value)} each</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderRarityChances() {
+            const container = document.getElementById('rarity-chances');
+            container.innerHTML = '';
+            rarityOptions.forEach(rarity => {
+                const row = document.createElement('div');
+                row.className = 'rarity-chance-item';
+                row.innerHTML = `
+                    <span class="rarity-label">${rarity.name}</span>
+                    <span class="rarity-chance">${rarity.chance}% • ${formatCoins(rarity.reward)} coins</span>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function updateAchievementStatus(spins) {
+            const status = spins > 0 ? 'Unlocked' : 'Locked';
+            const statusColor = spins > 0 ? '#10b981' : '#f59e0b';
+            document.getElementById('achievement-status').textContent = status;
+            document.getElementById('achievement-status').style.color = statusColor;
+            document.getElementById('achievement-status-large').textContent = status;
+            document.getElementById('achievement-status-large').style.color = statusColor;
+        }
+
+        function renderAchievementPanels(spins) {
+            const card = document.getElementById('achievement-card-large');
+            card.style.borderColor = spins > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(96, 165, 250, 0.2)';
+        }
+
+        async function loadSession() {
+            const response = await handleAPI('/api/session');
+            if (response.success && response.user) {
+                currentUser = response.user;
+                showGamePage();
+                updateUI(response.user);
+            }
+        }
+
+        document.getElementById('login-btn').addEventListener('click', () => showPage('login'));
+        document.getElementById('register-btn').addEventListener('click', () => showPage('register'));
+        document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); showPage('register'); });
+        document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); showPage('login'); });
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errorBox = document.getElementById('login-error');
+            const button = e.target.querySelector('button');
+            button.dataset.defaultText = 'Login';
+            setLoading(button, true, 'Logging in...');
+            errorBox.classList.add('hidden');
+
+            const response = await handleAPI('/api/login', { method: 'POST', body: { username, password } });
+            setLoading(button, false);
+            if (!response.success) {
+                errorBox.textContent = response.error || 'Login failed';
+                errorBox.classList.remove('hidden');
+                return;
+            }
+            currentUser = response.user;
+            showGamePage();
+            updateUI(response.user);
+            showPopup(`Welcome back, ${response.user.username}!`);
         });
 
-        // Logout functionality
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            document.getElementById('game-page').classList.add('hidden');
-            document.getElementById('admin-panel').classList.add('hidden');
-            
-            // Remove admin button if exists
-            const adminBtn = document.getElementById('admin-btn');
-            if (adminBtn) {
-                adminBtn.remove();
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('register-username').value.trim();
+            const password = document.getElementById('register-password').value;
+            const errorBox = document.getElementById('register-error');
+            const button = e.target.querySelector('button');
+            button.dataset.defaultText = 'Create Account';
+            setLoading(button, true, 'Creating account...');
+            errorBox.classList.add('hidden');
+
+            const response = await handleAPI('/api/register', { method: 'POST', body: { username, password } });
+            setLoading(button, false);
+            if (!response.success) {
+                errorBox.textContent = response.error || 'Registration failed';
+                errorBox.classList.remove('hidden');
+                return;
+            }
+            currentUser = response.user;
+            showGamePage();
+            updateUI(response.user);
+            showPopup(`Account created for ${response.user.username}!`);
+        });
+
+        document.getElementById('roll-btn').addEventListener('click', async () => {
+            if (!currentUser) {
+                showPopup('Login first to roll', 'error');
+                return;
+            }
+            const rollBtn = document.getElementById('roll-btn');
+            const rollDisplay = document.getElementById('roll-display');
+            const rewardDisplay = document.getElementById('reward-display');
+            rollBtn.dataset.defaultText = 'ROLL';
+            setLoading(rollBtn, true, 'ROLLING...');
+
+            const animationValues = rarityOptions.map(r => r.name);
+            let index = 0;
+            const spinner = setInterval(() => {
+                rollDisplay.textContent = animationValues[index % animationValues.length];
+                index += 1;
+            }, 120);
+
+            const response = await handleAPI('/api/spin', { method: 'POST' });
+            await new Promise((resolve) => setTimeout(resolve, 1600));
+            clearInterval(spinner);
+            setLoading(rollBtn, false);
+
+            if (!response.success) {
+                rollDisplay.textContent = 'Roll Failed';
+                showPopup(response.error || 'Roll failed', 'error');
+                return;
+            }
+
+            const result = response.result;
+            rollDisplay.textContent = result.name;
+            rewardDisplay.textContent = `Reward: ${formatCoins(result.reward)} coins`;
+            showRewardPopup(`+${formatCoins(result.reward)} coins!`);
+            currentUser = response.user;
+            updateUI(response.user);
+        });
+
+        document.getElementById('send-chat').addEventListener('click', () => {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            addChatMessage(currentUser ? currentUser.username : 'Guest', text);
+            input.value = '';
+        });
+
+        document.getElementById('chat-input').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.getElementById('send-chat').click();
             }
         });
 
-        // Back to game from admin
+        function addChatMessage(user, message) {
+            const container = document.getElementById('chat-messages');
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            bubble.innerHTML = `<strong>${user}</strong><span>${message}</span><time>${timestamp}</time>`;
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        document.querySelectorAll('.content-tab').forEach((tab) => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                document.querySelectorAll('.content-tab').forEach((btn) => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await handleAPI('/api/logout', { method: 'POST' });
+            currentUser = null;
+            hideGamePage();
+            showLanding();
+            const adminBtn = document.getElementById('admin-btn');
+            if (adminBtn) adminBtn.remove();
+            showPopup('Logged out successfully');
+        });
+
         document.getElementById('back-to-game').addEventListener('click', () => {
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('game-page').classList.remove('hidden');
         });
 
-        // Spin button
-        document.getElementById('spin-btn').addEventListener('click', () => {
-            const spinResult = document.getElementById('spin-result');
-            const button = document.getElementById('spin-btn');
-            
-            button.disabled = true;
-            button.textContent = 'SPINNING...';
-            
-            // Simulate spin animation
-            const results = ['17 News', '17 News Reborn', 'Hudson Walter', 'Baxter Walter', 'Stanley Bowden'];
-            let currentResult = 0;
-            
-            const spinInterval = setInterval(() => {
-                spinResult.textContent = results[currentResult % results.length];
-                currentResult++;
-            }, 100);
-            
-            setTimeout(() => {
-                clearInterval(spinInterval);
-                const finalResult = results[Math.floor(Math.random() * results.length)];
-                spinResult.textContent = `You got: ${finalResult}!`;
-                button.disabled = false;
-                button.textContent = 'SPIN';
-            }, 2000);
+        document.getElementById('login-page').addEventListener('click', (event) => {
+            if (event.target === event.currentTarget) showPage('');
         });
 
-        // Collection filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
+        document.getElementById('register-page').addEventListener('click', (event) => {
+            if (event.target === event.currentTarget) showPage('');
         });
 
-        // Chat functionality
-        document.getElementById('send-chat').addEventListener('click', () => {
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            
-            if (message) {
-                const chatMessages = document.getElementById('chat-messages');
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'chat-message';
-                messageDiv.innerHTML = `<strong>${document.getElementById('game-username').textContent}:</strong> ${message}`;
-                chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                input.value = '';
-            }
-        });
-
-        document.getElementById('chat-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('send-chat').click();
-            }
-        });
-
-        // Value check
-        document.getElementById('value-check').addEventListener('click', () => {
-            alert('Collection value calculation coming soon!');
-        });
-
-        // Secret vault
-        document.getElementById('vault-access').addEventListener('click', () => {
-            alert('🎁 Secret Vault: Use code "RNG3BETA" in the profile tab!');
-        });
-
-        // Admin panel events
-        document.getElementById('start-blue-storm')?.addEventListener('click', () => {
-            document.getElementById('blue-storm-status').textContent = 'Blue Storm Active!';
-            document.getElementById('blue-storm-status').style.color = '#10b981';
-        });
-
-        document.getElementById('stop-blue-storm')?.addEventListener('click', () => {
-            document.getElementById('blue-storm-status').textContent = '';
-        });
-
-        document.getElementById('start-quantum-boost')?.addEventListener('click', () => {
-            document.getElementById('quantum-status').textContent = 'Quantum Boost Active!';
-            document.getElementById('quantum-status').style.color = '#10b981';
-        });
-
-        document.getElementById('stop-quantum-boost')?.addEventListener('click', () => {
-            document.getElementById('quantum-status').textContent = '';
-        });
-
-        document.getElementById('start-geometric-cascade')?.addEventListener('click', () => {
-            alert('Geometric Cascade launched!');
-        });
-
-        document.getElementById('start-void-event')?.addEventListener('click', () => {
-            alert('Void Event initiated!');
-        });
-
-        document.getElementById('clear-chat')?.addEventListener('click', () => {
-            document.getElementById('chat-messages').innerHTML = '';
-            alert('Chat cleared!');
-        });
-
-        document.getElementById('announcement-form')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            alert('Announcement sent!');
-            e.target.reset();
-        });
-
-        // Close auth pages when clicking outside
-        document.getElementById('login-page').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                showPage('');
-            }
-        });
-
-        document.getElementById('register-page').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) {
-                showPage('');
-            }
-        });
-
-        // Add some interactive geometric effects
-        document.addEventListener('mousemove', (e) => {
+        document.addEventListener('mousemove', (event) => {
             const geometrics = document.querySelectorAll('.geometric');
             geometrics.forEach((geo, index) => {
                 const speed = (index % 3 + 1) * 0.3;
-                const x = (e.clientX * speed) / 100;
-                const y = (e.clientY * speed) / 100;
+                const x = (event.clientX * speed) / 100;
+                const y = (event.clientY * speed) / 100;
                 geo.style.transform = `translate(${x}px, ${y}px) rotate(${Date.now() * 0.001 + index}deg)`;
             });
+        });
+
+        // Initialize
+        loadSession().then(() => {
+            addChatMessage('System', 'Welcome to 17 News RNG 3!');
         });
     </script>
 </body>
