@@ -15,6 +15,7 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const app = express();
@@ -49,16 +50,112 @@ if (USE_POSTGRES) {
   console.log('✅ PostgreSQL initialized for RNG 3');
 }
 
-let kv;
-if (IS_VERCEL) {
-  try {
-    const { kv: vercelKv } = require('@vercel/kv');
-    kv = vercelKv;
-    console.log('✅ Vercel KV initialized for RNG 3');
-  } catch (error) {
-    console.error('❌ Vercel KV not available');
-  }
+const inMemoryStore = {
+  users: {},
+  chatMessages: []
+};
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
 }
+
+async function executeQuery(text, params = []) {
+  if (!pool) throw new Error('Database unavailable');
+  return pool.query(text, params);
+}
+
+async function findUser(username) {
+  if (!username) return null;
+  const normalized = username.trim();
+  if (pool) {
+    const result = await executeQuery('SELECT * FROM users WHERE username = $1', [normalized]);
+    if (!result.rows.length) return null;
+    const user = result.rows[0];
+    const inventory = typeof user.inventory === 'string' ? JSON.parse(user.inventory) : (user.inventory || { rarities: {} });
+    return {
+      username: user.username,
+      password: user.password,
+      coins: user.coins,
+      spins: user.spins,
+      inventory,
+      achievements: typeof user.achievements === 'string' ? JSON.parse(user.achievements) : (user.achievements || []),
+      created_at: user.created_at,
+      last_login: user.last_login,
+      is_admin: user.is_admin
+    };
+  }
+  const stored = inMemoryStore.users[normalized] || null;
+  if (!stored) return null;
+  return {
+    ...stored,
+    inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : (stored.inventory || { rarities: {} }),
+    achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : (stored.achievements || [])
+  };
+}
+
+async function saveUser(user) {
+  const normalized = user.username.trim();
+  if (pool) {
+    await executeQuery(
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, created_at, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        normalized,
+        user.password,
+        user.coins,
+        user.spins,
+        JSON.stringify(user.inventory),
+        JSON.stringify(user.achievements),
+        user.is_admin,
+        user.created_at || new Date().toISOString(),
+        user.last_login || new Date().toISOString()
+      ]
+    );
+    return;
+  }
+  inMemoryStore.users[normalized] = user;
+}
+
+async function updateUser(username, updates) {
+  const normalized = username.trim();
+  if (pool) {
+    const keys = Object.keys(updates);
+    const values = keys.map(key => updates[key]);
+    const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+    const query = `UPDATE users SET ${setClause} WHERE username = $${keys.length + 1}`;
+    await executeQuery(query, [...values, normalized]);
+    return;
+  }
+  const existing = inMemoryStore.users[normalized] || {};
+  inMemoryStore.users[normalized] = { ...existing, ...updates };
+}
+
+async function ensureDatabase() {
+  if (!pool) return;
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      password TEXT NOT NULL,
+      coins INTEGER NOT NULL DEFAULT 0,
+      spins INTEGER NOT NULL DEFAULT 0,
+      inventory JSONB NOT NULL DEFAULT '{}'::jsonb,
+      achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
+      is_admin BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id BIGSERIAL PRIMARY KEY,
+      username TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+let connectedUsers = 0;
 
 // Security middleware
 app.use(helmet({
@@ -159,25 +256,190 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes will be implemented in the next steps
-app.use('/api', (req, res) => {
-  res.json({
-    message: 'RNG 3 API - Coming Soon!',
-    version: '3.0.0',
-    endpoints: [
-      '/api/login',
-      '/api/register',
-      '/api/spin',
-      '/api/inventory',
-      '/api/trading'
-    ]
+function sanitizeUser(user) {
+  return {
+    username: user.username,
+    coins: user.coins,
+    spins: user.spins,
+    inventory: user.inventory || { rarities: {} },
+    achievements: user.achievements || [],
+    accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
+    inventoryValue: calculateInventoryValue(user.inventory || { rarities: {} }),
+    inventoryTotal: Object.values((user.inventory || {}).rarities || {}).reduce((sum, count) => sum + count, 0),
+    is_admin: user.is_admin || false
+  };
+}
+
+function calculateInventoryValue(inventory) {
+  const parsed = typeof inventory === 'string' ? JSON.parse(inventory) : inventory || {};
+  const rarities = (parsed || {}).rarities || {};
+  const valueMap = {
+    '17-news': 150,
+    '17-news-reborn': 300,
+    'delan-fernando': 1450
+  };
+  return Object.entries(rarities).reduce((sum, [key, count]) => sum + (valueMap[key] || 0) * count, 0);
+}
+
+app.post('/api/register', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password || username.trim().length < 3 || password.length < 6) {
+    return res.status(400).json({ success: false, error: 'Username must be at least 3 chars and password at least 6 chars.' });
+  }
+
+  const normalized = username.trim();
+  const existing = await findUser(normalized);
+  if (existing) {
+    return res.status(409).json({ success: false, error: 'Username already exists.' });
+  }
+
+  const user = {
+    username: normalized,
+    password: hashPassword(password),
+    coins: 0,
+    spins: 0,
+    inventory: { rarities: {} },
+    achievements: [],
+    is_admin: normalized.toLowerCase() === 'mr_fernanski',
+    created_at: new Date().toISOString(),
+    last_login: new Date().toISOString()
+  };
+
+  try {
+    await saveUser(user);
+    req.session.username = normalized;
+    res.json({ success: true, user: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ success: false, error: 'Registration failed.' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ success: false, error: 'Username and password are required.' });
+  }
+
+  const normalized = username.trim();
+  const user = await findUser(normalized);
+  if (!user || user.password !== hashPassword(password)) {
+    return res.status(401).json({ success: false, error: 'Invalid username or password.' });
+  }
+
+  await updateUser(normalized, { last_login: new Date().toISOString() });
+  req.session.username = normalized;
+  res.json({ success: true, user: sanitizeUser({ ...user, last_login: new Date().toISOString() }) });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.json({ success: true });
   });
+});
+
+app.get('/api/session', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.json({ success: false, user: null });
+  }
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.json({ success: false, user: null });
+  }
+  res.json({ success: true, user: sanitizeUser(user) });
+});
+
+app.get('/api/inventory', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+  res.json({ success: true, inventory: user.inventory || { rarities: {} }, inventoryValue: calculateInventoryValue(user.inventory), coins: user.coins });
+});
+
+app.get('/api/profile', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+  res.json({
+    success: true,
+    user: sanitizeUser(user)
+  });
+});
+
+app.post('/api/spin', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+
+  const roll = Math.random() * 100;
+  let cursor = 0;
+  let result = null;
+  const options = [
+    { key: '17-news', name: '17 News', chance: 68, reward: 150 },
+    { key: '17-news-reborn', name: '17 News Reborn', chance: 25, reward: 300 },
+    { key: 'delan-fernando', name: 'Delan Fernando', chance: 7, reward: 1450 }
+  ];
+
+  for (const rarity of options) {
+    cursor += rarity.chance;
+    if (roll <= cursor) {
+      result = rarity;
+      break;
+    }
+  }
+
+  if (!result) {
+    result = options[0];
+  }
+
+  const inventory = user.inventory || { rarities: {} };
+  inventory.rarities = inventory.rarities || {};
+  inventory.rarities[result.key] = (inventory.rarities[result.key] || 0) + 1;
+
+  const newSpins = (user.spins || 0) + 1;
+  const newCoins = (user.coins || 0) + result.reward;
+
+  try {
+    await updateUser(req.session.username, {
+      inventory: JSON.stringify(inventory),
+      spins: newSpins,
+      coins: newCoins
+    });
+
+    const updatedUser = await findUser(req.session.username);
+    res.json({
+      success: true,
+      result,
+      user: sanitizeUser(updatedUser)
+    });
+  } catch (error) {
+    console.error('Spin error:', error);
+    res.status(500).json({ success: false, error: 'Unable to complete roll.' });
+  }
+});
+
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, error: 'API endpoint not found.' });
 });
 
 // Socket.IO middleware
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
+
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -218,12 +480,22 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-  console.log(`🚀 RNG 3 Server running on port ${PORT}`);
-  console.log(`📅 Version: 3.0.0 - The Next Generation`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Ready for players!`);
-});
+async function startServer() {
+  try {
+    await ensureDatabase();
+    server.listen(PORT, () => {
+      console.log(`🚀 RNG 3 Server running on port ${PORT}`);
+      console.log(`📅 Version: 3.0.0 - The Next Generation`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Ready for players!`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
