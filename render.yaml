@@ -1,1 +1,11 @@
-
+services:
+  - type: web
+    name: 17-news-rng-3
+    env: node
+    plan: starter
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
