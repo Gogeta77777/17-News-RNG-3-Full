@@ -43,6 +43,12 @@ function initMultiplayer() {
     applyThemeEvent(data.eventName, data.initiatedBy || 'Admin');
   });
 
+  socket.on('announcement_popup', (data) => {
+    if (data && data.title && data.content) {
+      showPopup(`${data.title}: ${data.content}`, '#FFD700');
+    }
+  });
+
   socket.on('disconnect', () => {
     const onlineCount = document.getElementById('online-count');
     if (onlineCount) {
