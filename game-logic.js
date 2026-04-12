@@ -98,7 +98,13 @@ function showPopup(message, type = 'success') {
   const popup = document.createElement('div');
   popup.className = 'popup';
   popup.textContent = message;
-  popup.style.background = type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(14, 165, 233, 0.95)';
+  if (type === 'error') {
+    popup.style.background = 'rgba(239, 68, 68, 0.95)';
+  } else if (/^(#|rgb|hsl)/i.test(type)) {
+    popup.style.background = type;
+  } else {
+    popup.style.background = 'rgba(14, 165, 233, 0.95)';
+  }
   document.body.appendChild(popup);
   setTimeout(() => popup.remove(), 3000);
 }
@@ -646,12 +652,18 @@ function showPage(pageName) {
   const pages = ['landing-page', 'login-page', 'register-page', 'game-page'];
   pages.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('active');
+    }
   });
   
   const targetPage = document.getElementById(pageName + '-page') || document.getElementById(pageName);
   if (targetPage) {
     targetPage.classList.remove('hidden');
+    if (targetPage.classList.contains('auth-container')) {
+      targetPage.classList.add('active');
+    }
     if (pageName === 'landing') {
       initTagline();
     }
