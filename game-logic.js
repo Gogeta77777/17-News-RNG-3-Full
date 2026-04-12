@@ -245,20 +245,37 @@ function renderShop() {
 }
 
 function buyPotion(potionType) {
-  if (currentUser.coins < POTIONS[potionType].cost) {
+  if (!currentUser || currentUser.coins < POTIONS[potionType].cost) {
     showPopup('Not enough coins!', 'error');
     return;
   }
-  
-  // Call backend to buy potion
+
   handleAPI('/api/buy-potion', { method: 'POST', body: { potionType } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      applyPotion(potionType);
+      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
       updateUI(currentUser);
-      showPopup(`Purchased ${POTIONS[potionType].name}!`);
+      showPopup(`Purchased ${POTIONS[potionType].name}! Added to inventory.`);
     } else {
       showPopup(response.error || 'Purchase failed', 'error');
+    }
+  });
+}
+
+function usePotion(potionType) {
+  if (!currentUser || (currentUser.potions?.[potionType] || 0) <= 0) {
+    showPopup('No potion available to use.', 'error');
+    return;
+  }
+
+  handleAPI('/api/use-potion', { method: 'POST', body: { potionType } }).then(response => {
+    if (response.success) {
+      currentUser = response.user;
+      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
+      updateUI(currentUser);
+      showPopup(`${POTIONS[potionType].name} activated!`);
+    } else {
+      showPopup(response.error || 'Unable to use potion', 'error');
     }
   });
 }
@@ -323,24 +340,37 @@ function renderTitles() {
   }
 }
 
-function setActiveTitle(titleId) {
-  gameState.activeTitle = titleId;
-  renderTitles();
-  showPopup(`Active title changed to ${TITLES.find(t => t.id === titleId).name}`);
+async function setActiveTitle(titleId) {
+  const title = TITLES.find(t => t.id === titleId);
+  if (!title) {
+    showPopup('Unable to activate title.', 'error');
+    return;
+  }
+  const response = await handleAPI('/api/set-active-title', { method: 'POST', body: { titleId } });
+  if (response.success && response.user) {
+    currentUser = response.user;
+    gameState.activeTitle = response.user.active_title;
+    renderTitles();
+    updateUI(currentUser);
+    showPopup(`Active title set to ${title.name}`);
+  } else {
+    showPopup(response.error || 'Unable to set active title', 'error');
+  }
 }
 
 function checkTitleUnlocks(user) {
-  // Owner title
-  if (user.is_admin && !gameState.userTitles.includes('owner')) {
-    gameState.userTitles.push('owner');
-    showPopup('Title Unlocked: Owner! 👑');
+  if (!user) return;
+  const existing = new Set(gameState.userTitles);
+  if (user.is_admin) {
+    existing.add('owner');
   }
-
-  // Millionaire title
-  if (user.coins >= 1000000 && !gameState.userTitles.includes('millionaire')) {
-    gameState.userTitles.push('millionaire');
-    showPopup('Title Unlocked: Millionaire! 💰');
+  if (user.coins >= 1000000) {
+    existing.add('millionaire');
   }
+  if (user.portal_unlocked) {
+    existing.add('portalmancer');
+  }
+  gameState.userTitles = Array.from(existing);
 }
 
 // ==================== PORTAL SYSTEM ====================
@@ -350,6 +380,16 @@ function setupPortalUI() {
     lockBtn.addEventListener('click', tryUnlockPortal);
   }
 
+  const portalBtn = document.querySelector('.portal-base');
+  if (portalBtn) {
+    portalBtn.addEventListener('click', showDimensions);
+  }
+
+  const unlockBtn = document.getElementById('unlock-portal-btn');
+  if (unlockBtn) {
+    unlockBtn.addEventListener('click', tryUnlockPortal);
+  }
+
   const redeemBtn = document.getElementById('redeem-btn');
   if (redeemBtn) {
     redeemBtn.addEventListener('click', redeemCode);
@@ -357,23 +397,20 @@ function setupPortalUI() {
 }
 
 function tryUnlockPortal() {
-  if (gameState.itemInventory.fragments < 10) {
-    showPopup(`Need ${10 - gameState.itemInventory.fragments} more Portal Fragments`, 'error');
+  const fragments = gameState.itemInventory.fragments || 0;
+  if (fragments < 10) {
+    showPopup(`Need ${10 - fragments} more Portal Fragments`, 'error');
     return;
   }
 
-  // Call backend to unlock portal
   handleAPI('/api/unlock-portal', { method: 'POST' }).then(response => {
     if (response.success) {
       currentUser = response.user;
       gameState.itemInventory = currentUser.items || {};
       gameState.userTitles = currentUser.titles || [];
       gameState.portalUnlocked = true;
-      
-      document.getElementById('portal-lock').style.display = 'none';
-      document.getElementById('unlock-portal-btn').style.display = 'none';
-      document.getElementById('portal-status').textContent = 'Portal Unlocked!';
-      
+      updatePortalUI();
+
       // Screen fade effect
       const fade = document.createElement('div');
       fade.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:10000;opacity:0;transition:opacity 2s';
@@ -383,19 +420,10 @@ function tryUnlockPortal() {
       setTimeout(() => fade.remove(), 4100);
 
       showPopup('Portal Unlocked! Explore the Deep Sea...');
-      setupPortalDimensions();
     } else {
       showPopup(response.error || 'Failed to unlock portal', 'error');
     }
   });
-}
-
-function setupPortalDimensions() {
-  // Shows available dimensions
-  const portalBtn = document.querySelector('.portal-base');
-  if (portalBtn) {
-    portalBtn.addEventListener('click', showDimensions);
-  }
 }
 
 function showDimensions() {
@@ -427,11 +455,8 @@ function enterDeepSea() {
   for (let i = 0; i < 20; i++) {
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    const size = 10 + Math.random() * 40;
-    bubble.style.width = size + 'px';
-    bubble.style.height = size + 'px';
     bubble.style.left = Math.random() * 100 + '%';
-    bubble.style.animationDuration = (4 + Math.random() * 6) + 's';
+    bubble.style.animationDuration = (Math.random() * 6) + 's';
     bubble.style.animationDelay = Math.random() * 2 + 's';
     bubbleContainer.appendChild(bubble);
   }
@@ -442,18 +467,42 @@ function enterDeepSea() {
   showPopup('Welcome to the Deep Sea! 🌊 (2x Luck Boost Active)');
 }
 
+async function rollInDeepSea() {
+  const rollBtn = document.getElementById('ds-roll-btn');
+  const rollDisplay = document.getElementById('ds-roll-display');
+  const rewardDisplay = document.getElementById('ds-reward-display');
+  if (!rollBtn || !rollDisplay || !rewardDisplay) return;
+
+  setLoading(rollBtn, true, 'ROLLING...');
+  rollDisplay.textContent = 'Diving...';
+
+  const spinner = setInterval(() => {
+    rollDisplay.textContent = ['Deep Sea', 'Current', 'Tide', 'Luck'][Math.floor(Math.random() * 4)];
+  }, 120);
+
+  const response = await handleAPI('/api/spin', { method: 'POST', body: { dimension: 'deep-sea' } });
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  clearInterval(spinner);
+  setLoading(rollBtn, false);
+
+  if (!response.success) {
+    rollDisplay.textContent = 'Roll Failed';
+    showPopup(response.error || 'Deep Sea roll failed', 'error');
+    return;
+  }
+
+  const result = response.result;
+  rollDisplay.textContent = `${result.name} • x${result.multiplier}`;
+  rewardDisplay.textContent = `Reward: ${formatCoins(result.reward)} coins`;
+  currentUser = response.user;
+  updateUI(currentUser);
+  showRewardPopup(`+${formatCoins(result.reward)} coins!`);
+}
+
 function exitDeepSea() {
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
-}
-
-function rollInDeepSea() {
-  // Roll with 2x luck multiplier
-  const baseMultiplier = getPotionMultiplier();
-  const totalMultiplier = baseMultiplier * 2; // Deep Sea bonus
-  showPopup(`Rolling with ${totalMultiplier}x multiplier! 🌊`);
-  // Would do actual roll here with enhanced rewards
 }
 
 // ==================== CODE REDEMPTION ====================
@@ -513,26 +562,25 @@ function renderInventory(user) {
   const potGrid = document.getElementById('inv-potions-grid');
   if (potGrid) {
     potGrid.innerHTML = '';
-    const hasPotions = gameState.potionInventory.luck > 0 || gameState.potionInventory.speed > 0;
+    const potions = currentUser?.potions || gameState.potionInventory;
+    const hasPotions = (potions.luck || 0) > 0 || (potions.speed || 0) > 0;
     if (!hasPotions) {
       potGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center;">No potions in inventory</div>';
     } else {
-      if (gameState.potionInventory.luck > 0) {
+      Object.entries({ luck: 'Luck Potion I', speed: 'Speed Potion I' }).forEach(([key, name]) => {
+        const count = potions[key] || 0;
+        if (count <= 0) return;
         const card = document.createElement('div');
         card.className = 'inventory-item';
         card.innerHTML = `
-          <div><h4>Luck Potion I</h4><span>${gameState.potionInventory.luck}x</span></div>
+          <div>
+            <h4>${name}</h4>
+            <span>${count}x</span>
+          </div>
+          <button class="btn" style="padding: 8px 12px; font-size: 0.85rem;" onclick="usePotion('${key}')">Use</button>
         `;
         potGrid.appendChild(card);
-      }
-      if (gameState.potionInventory.speed > 0) {
-        const card = document.createElement('div');
-        card.className = 'inventory-item';
-        card.innerHTML = `
-          <div><h4>Speed Potion I</h4><span>${gameState.potionInventory.speed}x</span></div>
-        `;
-        potGrid.appendChild(card);
-      }
+      });
     }
   }
 
@@ -588,45 +636,31 @@ function updateUI(user) {
   renderTitles();
   renderInventory(user);
   renderShop();
+  updatePortalUI();
+}
 
-  // Update portal UI
+function updatePortalUI() {
+  const lock = document.getElementById('portal-lock');
+  const unlockBtn = document.getElementById('unlock-portal-btn');
+  const status = document.getElementById('portal-status');
+  const fragmentsText = document.getElementById('portal-fragments-needed');
+
+  const fragments = gameState.itemInventory.fragments || 0;
   if (gameState.portalUnlocked) {
-    const lock = document.getElementById('portal-lock');
     if (lock) lock.style.display = 'none';
-    const unlockBtn = document.getElementById('unlock-portal-btn');
     if (unlockBtn) unlockBtn.style.display = 'none';
-    const status = document.getElementById('portal-status');
     if (status) status.textContent = 'Portal Unlocked!';
+    if (fragmentsText) fragmentsText.textContent = `Sea Essence needed to enter.`;
+  } else {
+    if (lock) lock.style.display = fragments < 10 ? 'block' : 'block';
+    if (unlockBtn) unlockBtn.style.display = fragments >= 10 ? 'inline-flex' : 'none';
+    if (status) status.textContent = fragments >= 10 ? 'Ready to unlock' : 'Locked';
+    if (fragmentsText) fragmentsText.textContent = `Requires: 10 Portal Fragments (${fragments}/10)`;
   }
-
-  // Tabs
-  document.querySelectorAll('.content-tab').forEach(tab => {
-    const clickHandler = () => {
-      document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      const tabPane = document.getElementById(tab.dataset.tab + '-tab');
-      if (tabPane) tabPane.classList.add('active');
-    };
-    tab.removeEventListener('click', clickHandler);
-    tab.addEventListener('click', clickHandler);
-  });
-
-  // Inventory subtabs
-  document.querySelectorAll('.inv-subtab').forEach(tab => {
-    tab.removeEventListener('click', null); // Remove old listeners
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.inv-subtab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.inventory-subtab-content').forEach(c => c.classList.add('hidden'));
-      tab.classList.add('active');
-      const content = document.getElementById('inv-' + tab.dataset.inv);
-      if (content) content.classList.remove('hidden');
-    });
-  });
 }
 
 // ==================== CHAT SYSTEM ====================
-function addChatMessage(username, message, timestamp, isSystem = false) {
+function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#ffd700') {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
   
@@ -642,8 +676,9 @@ function addChatMessage(username, message, timestamp, isSystem = false) {
       <br><small style="opacity: 0.7;">${time}</small>
     `;
   } else {
+    const titleLabel = title ? `<span style="color: ${titleColor}; font-weight: 700; margin-right: 6px;">[${escapeHtml(title)}]</span>` : '';
     msgEl.innerHTML = `
-      <span class="username" style="font-weight: bold;">${escapeHtml(username)}:</span>
+      <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
       <br><small style="opacity: 0.7;">${time}</small>
     `;
@@ -662,15 +697,15 @@ function escapeHtml(text) {
 // ==================== CHAT API ====================
 
 function showPage(pageName) {
-  const pages = ['landing-page', 'login-page', 'register-page', 'game-page'];
-  pages.forEach(id => {
+  const pageIds = ['landing-page', 'login-page', 'register-page', 'game-page', 'admin-panel'];
+  pageIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.classList.add('hidden');
       el.classList.remove('active');
     }
   });
-  
+
   const targetPage = document.getElementById(pageName + '-page') || document.getElementById(pageName);
   if (targetPage) {
     targetPage.classList.remove('hidden');
@@ -838,9 +873,9 @@ function setupRollButton() {
 
     const rollDisplay = document.getElementById('roll-display');
     const rewardDisplay = document.getElementById('reward-display');
-    rollBtn.dataset.defaultText = 'ROLL';
-    setLoading(rollBtn, true, 'ROLLING...');
+    if (!rollDisplay || !rewardDisplay) return;
 
+    setLoading(rollBtn, true, 'ROLLING...');
     const animationValues = rarityOptions.map(r => r.name);
     let index = 0;
     const spinner = setInterval(() => {
@@ -848,8 +883,12 @@ function setupRollButton() {
       index += 1;
     }, 120);
 
-    const response = await handleAPI('/api/spin', { method: 'POST' });
-    await new Promise(resolve => setTimeout(resolve, 1600));
+    const response = await handleAPI('/api/spin', {
+      method: 'POST',
+      body: { dimension: gameState.currentDimension || null }
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
     clearInterval(spinner);
     setLoading(rollBtn, false);
 
@@ -860,14 +899,11 @@ function setupRollButton() {
     }
 
     const result = response.result;
-    const mult = getPotionMultiplier();
-    const finalReward = result.reward * mult;
-
-    rollDisplay.textContent = result.name;
-    rewardDisplay.textContent = `Reward: ${formatCoins(finalReward)} coins`;
-    showRewardPopup(`+${formatCoins(finalReward)} coins!`);
+    rollDisplay.textContent = `${result.name} • x${result.multiplier || 1}`;
+    rewardDisplay.textContent = `Reward: ${formatCoins(result.reward)} coins`;
     currentUser = response.user;
     updateUI(response.user);
+    showRewardPopup(`+${formatCoins(result.reward)} coins!`);
   });
 }
 
@@ -909,6 +945,26 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       document.getElementById('send-chat')?.click();
     }
+  });
+
+  document.querySelectorAll('.content-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      const tabPane = document.getElementById(tab.dataset.tab + '-tab');
+      if (tabPane) tabPane.classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.inv-subtab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.inv-subtab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.inventory-subtab-content').forEach(c => c.classList.add('hidden'));
+      tab.classList.add('active');
+      const content = document.getElementById('inv-' + tab.dataset.inv);
+      if (content) content.classList.remove('hidden');
+    });
   });
   
   // Load session if already logged in
