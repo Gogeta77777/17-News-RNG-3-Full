@@ -446,9 +446,9 @@ app.post('/api/register', async (req, res) => {
     achievements: [],
     potions: { luck: 0, speed: 0 },
     items: { fragments: 0, clovers: 0, essence: 0 },
-    titles: normalized.toLowerCase() === 'mr_fernanski' ? ['owner'] : [],
+    titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
     portal_unlocked: false,
-    is_admin: normalized.toLowerCase() === 'mr_fernanski',
+    is_admin: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin',
     created_at: new Date().toISOString(),
     last_login: new Date().toISOString()
   };
@@ -730,8 +730,45 @@ app.post('/api/unlock-portal', async (req, res) => {
   }
 });
 
-app.use('/api', (req, res) => {
-  res.status(404).json({ success: false, error: 'API endpoint not found.' });
+app.post('/api/admin/announcement', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const user = await findUser(req.session.username);
+  if (!user || !user.is_admin) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
+  }
+
+  const { title, content } = req.body || {};
+  if (!title || !content) {
+    return res.status(400).json({ success: false, error: 'Title and content required.' });
+  }
+
+  const announcement = {
+    id: Date.now().toString(),
+    title: title.trim(),
+    content: content.trim(),
+    timestamp: new Date().toISOString(),
+    admin: user.username
+  };
+
+  // Emit to all connected clients
+  io.emit('announcement_popup', announcement);
+
+  // Also add to chat
+  const chatMsg = {
+    username: 'ANNOUNCEMENT',
+    message: `${title}: ${content}`,
+    timestamp: announcement.timestamp,
+    system: true,
+    isAnnouncement: true
+  };
+  await saveChatMessage(chatMsg.username, chatMsg.message, chatMsg.timestamp, chatMsg.system);
+
+  io.emit('chat-message', chatMsg);
+
+  res.json({ success: true, announcement });
 });
 
 // Socket.IO middleware
