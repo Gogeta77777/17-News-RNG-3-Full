@@ -507,6 +507,23 @@
             transform: translateY(-2px);
         }
 
+        .admin-btn {
+            border: none;
+            padding: 14px 24px;
+            border-radius: 14px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 12px 26px rgba(245, 158, 11, 0.24);
+            margin-right: 12px;
+        }
+
+        .admin-btn:hover {
+            transform: translateY(-2px);
+        }
+
         .game-main {
             flex: 1;
             display: grid;
@@ -2303,6 +2320,38 @@
 
     <!-- Game Page -->
     <div class="game-container hidden" id="game-page">
+        <!-- Background Elements -->
+        <div class="geometric-bg">
+            <div class="geometric square small rotate-clockwise" style="top: 10%; left: 10%;"></div>
+            <div class="geometric square medium rotate-counterclockwise" style="top: 15%; left: 25%;"></div>
+            <div class="geometric square medium rotate-reverse-fast" style="top: 12%; left: 80%;"></div>
+            <div class="geometric square large rotate-clockwise" style="top: 25%; left: 15%;"></div>
+            <div class="geometric square small rotate-counterclockwise" style="top: 60%; left: 15%;"></div>
+            <div class="geometric square large rotate-fast" style="top: 50%; left: 10%;"></div>
+            <div class="geometric square medium rotate-fast" style="top: 18%; left: 55%;"></div>
+            <div class="geometric square small rotate-reverse-fast" style="top: 70%; left: 75%;"></div>
+            <div class="star" style="top: 25%; left: 15%;"></div>
+            <div class="star" style="top: 45%; left: 85%;"></div>
+            <div class="star" style="top: 65%; left: 35%;"></div>
+            <div class="rising-star" style="left: 10%;"></div>
+            <div class="rising-star" style="left: 15%;"></div>
+            <div class="rising-star" style="left: 20%;"></div>
+            <div class="rising-star" style="left: 25%;"></div>
+            <div class="rising-star" style="left: 30%;"></div>
+            <div class="rising-star" style="left: 35%;"></div>
+            <div class="rising-star" style="left: 40%;"></div>
+            <div class="rising-star" style="left: 45%;"></div>
+            <div class="rising-star" style="left: 50%;"></div>
+            <div class="rising-star" style="left: 55%;"></div>
+            <div class="rising-star" style="left: 60%;"></div>
+            <div class="rising-star" style="left: 65%;"></div>
+            <div class="rising-star" style="left: 70%;"></div>
+            <div class="rising-star" style="left: 75%;"></div>
+            <div class="rising-star" style="left: 80%;"></div>
+            <div class="rising-star" style="left: 85%;"></div>
+            <div class="rising-star" style="left: 90%;"></div>
+            <div class="rising-star" style="left: 95%;"></div>
+        </div>
         <header class="game-header">
             <div class="header-left">
                 <h1 class="game-title">17 News RNG 3</h1>
@@ -2312,6 +2361,7 @@
                 </div>
             </div>
             <div class="header-right">
+                <button class="btn admin-btn hidden" id="admin-btn">Admin Panel</button>
                 <button class="btn logout-btn" id="logout-btn">Logout</button>
             </div>
         </header>
