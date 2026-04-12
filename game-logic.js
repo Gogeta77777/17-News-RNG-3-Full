@@ -119,11 +119,15 @@ function setLoading(button, isLoading, text = 'Loading...') {
 
 async function handleAPI(url, options = {}) {
   try {
+    const body = options.body !== undefined
+      ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body))
+      : undefined;
+
     const response = await fetch(url, {
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       ...options,
-      body: options.body ? JSON.stringify(options.body) : undefined
+      body
     });
     const data = await response.json();
     return data;
@@ -686,7 +690,7 @@ async function handleLogin(e) {
 
     const data = await handleAPI('/api/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: { username, password }
     });
 
     if (data.banned) {
@@ -750,7 +754,7 @@ async function handleRegister(e) {
 
     const data = await handleAPI('/api/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password })
+      body: { username, password }
     });
 
     if (data.success && data.user) {
