@@ -125,6 +125,51 @@ function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+const activeEffectsStore = {};
+
+function normalizeUsername(username) {
+  return username ? username.trim().toLowerCase() : '';
+}
+
+function removeExpiredEffects(username) {
+  const key = normalizeUsername(username);
+  const effects = activeEffectsStore[key] || {};
+  Object.entries(effects).forEach(([effectType, effect]) => {
+    if (Date.now() >= effect.endTime) {
+      delete effects[effectType];
+    }
+  });
+  activeEffectsStore[key] = effects;
+  return effects;
+}
+
+function getUserActiveEffects(username) {
+  const key = normalizeUsername(username);
+  return removeExpiredEffects(key);
+}
+
+function setUserActiveEffect(username, effectType, data) {
+  const key = normalizeUsername(username);
+  const existing = activeEffectsStore[key] || {};
+  existing[effectType] = data;
+  activeEffectsStore[key] = existing;
+  return existing[effectType];
+}
+
+function computeSpinMultiplier(username, dimension = null) {
+  let multiplier = 1;
+  const effects = getUserActiveEffects(username);
+  Object.values(effects).forEach(effect => {
+    if (effect && Date.now() < effect.endTime) {
+      multiplier *= effect.multiplier;
+    }
+  });
+  if (dimension === 'deep-sea') {
+    multiplier *= 2;
+  }
+  return multiplier;
+}
+
 async function executeQuery(text, params = []) {
   if (!pool) throw new Error('Database unavailable');
   return pool.query(text, params);
@@ -138,6 +183,9 @@ async function findUser(username) {
     if (!result.rows.length) return null;
     const user = result.rows[0];
     const inventory = typeof user.inventory === 'string' ? JSON.parse(user.inventory) : (user.inventory || { rarities: {} });
+    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || { luck: 0, speed: 0 });
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || { fragments: 0, clovers: 0, essence: 0 });
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
     return {
       username: user.username,
       password: user.password,
@@ -145,6 +193,11 @@ async function findUser(username) {
       spins: user.spins,
       inventory,
       achievements: typeof user.achievements === 'string' ? JSON.parse(user.achievements) : (user.achievements || []),
+      potions,
+      items,
+      titles,
+      portal_unlocked: user.portal_unlocked || false,
+      active_title: user.active_title || null,
       created_at: user.created_at,
       last_login: user.last_login,
       is_admin: user.is_admin
@@ -155,7 +208,12 @@ async function findUser(username) {
   return {
     ...stored,
     inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : (stored.inventory || { rarities: {} }),
-    achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : (stored.achievements || [])
+    achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : (stored.achievements || []),
+    potions: typeof stored.potions === 'string' ? JSON.parse(stored.potions) : (stored.potions || { luck: 0, speed: 0 }),
+    items: typeof stored.items === 'string' ? JSON.parse(stored.items) : (stored.items || { fragments: 0, clovers: 0, essence: 0 }),
+    titles: typeof stored.titles === 'string' ? JSON.parse(stored.titles) : (stored.titles || []),
+    portal_unlocked: stored.portal_unlocked || false,
+    active_title: stored.active_title || null
   };
 }
 
@@ -163,14 +221,19 @@ async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
     await executeQuery(
-      `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, created_at, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, is_admin, created_at, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        ON CONFLICT (username) DO UPDATE SET
          password = EXCLUDED.password,
          coins = EXCLUDED.coins,
          spins = EXCLUDED.spins,
          inventory = EXCLUDED.inventory,
          achievements = EXCLUDED.achievements,
+         potions = EXCLUDED.potions,
+         items = EXCLUDED.items,
+         titles = EXCLUDED.titles,
+         active_title = EXCLUDED.active_title,
+         portal_unlocked = EXCLUDED.portal_unlocked,
          is_admin = EXCLUDED.is_admin,
          last_login = EXCLUDED.last_login`,
       [
@@ -180,6 +243,11 @@ async function saveUser(user) {
         user.spins,
         JSON.stringify(user.inventory),
         JSON.stringify(user.achievements),
+        JSON.stringify(user.potions || { luck: 0, speed: 0 }),
+        JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0 }),
+        JSON.stringify(user.titles || []),
+        user.active_title || null,
+        user.portal_unlocked || false,
         user.is_admin,
         user.created_at || new Date().toISOString(),
         user.last_login || new Date().toISOString()
@@ -254,12 +322,13 @@ async function getRecentChatMessages(limit = 60) {
   return inMemoryStore.chatMessages.slice(-limit);
 }
 
-async function saveChatMessage(username, message) {
+async function saveChatMessage(username, message, title = null, system = false) {
   const record = {
     username: username || 'Guest',
     message,
+    title,
     timestamp: new Date().toISOString(),
-    system: false
+    system
   };
 
   if (pool) {
@@ -557,20 +626,35 @@ app.post('/api/spin', async (req, res) => {
   inventory.rarities = inventory.rarities || {};
   inventory.rarities[result.key] = (inventory.rarities[result.key] || 0) + 1;
 
+  const dimension = String(req.body?.dimension || '').toLowerCase();
+  const multiplier = computeSpinMultiplier(req.session.username, dimension === 'deep-sea' ? 'deep-sea' : null);
+  const rawReward = result.reward;
+  const finalReward = Math.round(rawReward * multiplier);
+
   const newSpins = (user.spins || 0) + 1;
-  const newCoins = (user.coins || 0) + result.reward;
+  const newCoins = (user.coins || 0) + finalReward;
+  const currentTitles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+  const updatedTitles = [...new Set(currentTitles)];
+  if (newCoins >= 1000000 && !updatedTitles.includes('millionaire')) {
+    updatedTitles.push('millionaire');
+  }
 
   try {
     await updateUser(req.session.username, {
       inventory: JSON.stringify(inventory),
       spins: newSpins,
-      coins: newCoins
+      coins: newCoins,
+      titles: JSON.stringify(updatedTitles)
     });
 
     const updatedUser = await findUser(req.session.username);
     res.json({
       success: true,
-      result,
+      result: {
+        ...result,
+        multiplier,
+        reward: finalReward
+      },
       user: sanitizeUser(updatedUser)
     });
   } catch (error) {
@@ -696,6 +780,130 @@ app.post('/api/buy-shop-item', async (req, res) => {
   }
 });
 
+app.post('/api/use-potion', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const { potionType } = req.body || {};
+  if (!['luck', 'speed'].includes(potionType)) {
+    return res.status(400).json({ success: false, error: 'Invalid potion.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || { luck: 0, speed: 0 });
+    if ((potions[potionType] || 0) <= 0) {
+      return res.json({ success: false, error: 'No potion available.' });
+    }
+
+    potions[potionType] -= 1;
+    const potionConfig = potionType === 'luck' ? { multiplier: 2, duration: 120 } : { multiplier: 2, duration: 90 };
+    setUserActiveEffect(req.session.username, potionType, {
+      multiplier: potionConfig.multiplier,
+      endTime: Date.now() + potionConfig.duration * 1000
+    });
+
+    await updateUser(req.session.username, {
+      potions: JSON.stringify(potions)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated), effect: potionConfig });
+  } catch (error) {
+    console.error('Use potion error:', error);
+    res.status(500).json({ success: false, error: 'Unable to use potion.' });
+  }
+});
+
+app.post('/api/set-active-title', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const { titleId } = req.body || {};
+  if (!titleId) {
+    return res.status(400).json({ success: false, error: 'Title ID required.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    if (!titles.includes(titleId)) {
+      return res.status(400).json({ success: false, error: 'Title not owned.' });
+    }
+    await updateUser(req.session.username, { active_title: titleId });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Set active title error:', error);
+    res.status(500).json({ success: false, error: 'Unable to set title.' });
+  }
+});
+
+app.post('/api/enter-dimension', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const { dimension } = req.body || {};
+  if (dimension !== 'deep-sea') {
+    return res.status(400).json({ success: false, error: 'Invalid dimension.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    if (!user.portal_unlocked) {
+      return res.status(400).json({ success: false, error: 'Portal is locked.' });
+    }
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+    if ((items.essence || 0) < 1) {
+      return res.json({ success: false, error: 'Need 1 Sea Essence.' });
+    }
+    items.essence -= 1;
+    await updateUser(req.session.username, { items: JSON.stringify(items) });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Enter dimension error:', error);
+    res.status(500).json({ success: false, error: 'Unable to enter dimension.' });
+  }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user || !user.is_admin) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
+  }
+
+  try {
+    if (pool) {
+      const result = await executeQuery('SELECT * FROM users ORDER BY username ASC');
+      const users = result.rows.map(row => sanitizeUser({
+        ...row,
+        inventory: typeof row.inventory === 'string' ? JSON.parse(row.inventory) : row.inventory,
+        achievements: typeof row.achievements === 'string' ? JSON.parse(row.achievements) : row.achievements,
+        potions: typeof row.potions === 'string' ? JSON.parse(row.potions) : row.potions,
+        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+        titles: typeof row.titles === 'string' ? JSON.parse(row.titles) : row.titles
+      }));
+      return res.json({ success: true, users });
+    }
+    const users = Object.values(inMemoryStore.users).map(stored => sanitizeUser({
+      ...stored,
+      inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : stored.inventory,
+      achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : stored.achievements,
+      potions: typeof stored.potions === 'string' ? JSON.parse(stored.potions) : stored.potions,
+      items: typeof stored.items === 'string' ? JSON.parse(stored.items) : stored.items,
+      titles: typeof stored.titles === 'string' ? JSON.parse(stored.titles) : stored.titles
+    }));
+    res.json({ success: true, users });
+  } catch (error) {
+    console.error('Admin users error:', error);
+    res.status(500).json({ success: false, error: 'Unable to load users.' });
+  }
+});
+
 // Unlock Portal
 app.post('/api/unlock-portal', async (req, res) => {
   if (!req.session || !req.session.username) {
@@ -810,7 +1018,9 @@ io.on('connection', async (socket) => {
     const text = String(data?.message || '').trim().slice(0, 500);
     if (!text) return;
     const username = socket.request?.session?.username || 'Guest';
-    const record = await saveChatMessage(username, text);
+    const user = username !== 'Guest' ? await findUser(username) : null;
+    const title = user?.active_title || null;
+    const record = await saveChatMessage(username, text, title, false);
     io.emit('chat-message', record);
   });
 
