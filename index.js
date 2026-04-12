@@ -217,6 +217,11 @@ async function ensureDatabase() {
       inventory JSONB NOT NULL DEFAULT '{}'::jsonb,
       achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       is_admin BOOLEAN NOT NULL DEFAULT false,
+      potions JSONB NOT NULL DEFAULT '{"luck":0,"speed":0}'::jsonb,
+      items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0}'::jsonb,
+      titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+      active_title TEXT,
+      portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -388,12 +393,20 @@ app.get('/health', (req, res) => {
 });
 
 function sanitizeUser(user) {
+  const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || {});
+  const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+  const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+  
   return {
     username: user.username,
     coins: user.coins,
     spins: user.spins,
     inventory: user.inventory || { rarities: {} },
     achievements: user.achievements || [],
+    potions: potions,
+    items: items,
+    titles: titles,
+    portal_unlocked: user.portal_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(user.inventory || { rarities: {} }),
     inventoryTotal: Object.values((user.inventory || {}).rarities || {}).reduce((sum, count) => sum + count, 0),
@@ -431,6 +444,10 @@ app.post('/api/register', async (req, res) => {
     spins: 0,
     inventory: { rarities: {} },
     achievements: [],
+    potions: { luck: 0, speed: 0 },
+    items: { fragments: 0, clovers: 0, essence: 0 },
+    titles: normalized.toLowerCase() === 'mr_fernanski' ? ['owner'] : [],
+    portal_unlocked: false,
     is_admin: normalized.toLowerCase() === 'mr_fernanski',
     created_at: new Date().toISOString(),
     last_login: new Date().toISOString()
@@ -559,6 +576,157 @@ app.post('/api/spin', async (req, res) => {
   } catch (error) {
     console.error('Spin error:', error);
     res.status(500).json({ success: false, error: 'Unable to complete roll.' });
+  }
+});
+
+// Code Redemption
+app.post('/api/redeem-code', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const { code } = req.body || {};
+  if (!code || !code.trim()) {
+    return res.status(400).json({ success: false, error: 'Code required.' });
+  }
+
+  const codeRewards = {
+    'THETHREEQUEL': { title: 'veteran' }
+  };
+
+  const reward = codeRewards[code.toUpperCase()];
+  if (!reward) {
+    return res.status(400).json({ success: false, error: 'Invalid code.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    
+    if (titles.includes(reward.title)) {
+      return res.json({ success: false, error: 'Already redeemed.' });
+    }
+
+    titles.push(reward.title);
+    await updateUser(req.session.username, { titles: JSON.stringify(titles) });
+    
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, title: reward.title, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Redeem error:', error);
+    res.status(500).json({ success: false, error: 'Redemption failed.' });
+  }
+});
+
+// Buy Potion
+app.post('/api/buy-potion', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const { potionType } = req.body || {};
+  const potionCosts = { luck: 5000, speed: 3500 };
+
+  if (!potionCosts[potionType]) {
+    return res.status(400).json({ success: false, error: 'Invalid potion.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    if (user.coins < potionCosts[potionType]) {
+      return res.json({ success: false, error: 'Not enough coins.' });
+    }
+
+    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || {});
+    potions[potionType] = (potions[potionType] || 0) + 1;
+
+    await updateUser(req.session.username, {
+      coins: user.coins - potionCosts[potionType],
+      potions: JSON.stringify(potions)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Buy potion error:', error);
+    res.status(500).json({ success: false, error: 'Purchase failed.' });
+  }
+});
+
+// Buy Shop Item
+app.post('/api/buy-shop-item', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const { itemName } = req.body || {};
+  const itemCosts = {
+    'Portal Fragment': 15000,
+    'Clover Leaf': 500,
+    'Sea Essence': 300000
+  };
+
+  const cost = itemCosts[itemName];
+  if (!cost) {
+    return res.status(400).json({ success: false, error: 'Invalid item.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    if (user.coins < cost) {
+      return res.json({ success: false, error: 'Not enough coins.' });
+    }
+
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+    
+    if (itemName === 'Portal Fragment') items.fragments = (items.fragments || 0) + 1;
+    else if (itemName === 'Clover Leaf') items.clovers = (items.clovers || 0) + 1;
+    else if (itemName === 'Sea Essence') items.essence = (items.essence || 0) + 1;
+
+    await updateUser(req.session.username, {
+      coins: user.coins - cost,
+      items: JSON.stringify(items)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Buy item error:', error);
+    res.status(500).json({ success: false, error: 'Purchase failed.' });
+  }
+});
+
+// Unlock Portal
+app.post('/api/unlock-portal', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+
+    if ((items.fragments || 0) < 10) {
+      return res.json({ success: false, error: 'Need 10 Portal Fragments.' });
+    }
+
+    items.fragments -= 10;
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    if (!titles.includes('portalmancer')) {
+      titles.push('portalmancer');
+    }
+
+    await updateUser(req.session.username, {
+      portal_unlocked: true,
+      items: JSON.stringify(items),
+      titles: JSON.stringify(titles)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Portal unlock error:', error);
+    res.status(500).json({ success: false, error: 'Failed.' });
   }
 });
 
