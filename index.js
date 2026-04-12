@@ -6,6 +6,7 @@
   - Community-driven development
 */
 
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -40,7 +41,8 @@ app.set('trust proxy', 1);
 let pool;
 const IS_VERCEL = process.env.VERCEL === '1';
 const IS_RENDER = process.env.RENDER === 'true';
-const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || process.env.POSTGRES_URL || process.env.PG_CONNECTION_STRING;
+// Neon/Postgres connection string: prefer NEON_DATABASE_URL or DATABASE_URL as a fallback
+const DATABASE_URL = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.PG_CONNECTION_STRING;
 const USE_POSTGRES = Boolean(DATABASE_URL);
 
 if (USE_POSTGRES) {
@@ -162,7 +164,15 @@ async function saveUser(user) {
   if (pool) {
     await executeQuery(
       `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, created_at, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (username) DO UPDATE SET
+         password = EXCLUDED.password,
+         coins = EXCLUDED.coins,
+         spins = EXCLUDED.spins,
+         inventory = EXCLUDED.inventory,
+         achievements = EXCLUDED.achievements,
+         is_admin = EXCLUDED.is_admin,
+         last_login = EXCLUDED.last_login`,
       [
         normalized,
         user.password,
