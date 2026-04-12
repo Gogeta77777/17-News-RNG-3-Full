@@ -1735,6 +1735,429 @@
         .welcome-section, .update-log {
             animation: fadeIn 1s ease-out;
         }
+
+        /* Inventory Subtabs */
+        .inventory-subtabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+            padding-bottom: 12px;
+        }
+
+        .inv-subtab {
+            padding: 10px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 8px;
+            color: var(--light-blue);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .inv-subtab:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .inv-subtab.active {
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            color: white;
+            border-color: #60a5fa;
+        }
+
+        .inventory-subtab-content {
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Shop Styles */
+        .shop-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .rotating-shop {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .rotating-shop h3 {
+            color: var(--light-blue);
+            margin: 0 0 16px 0;
+        }
+
+        .rotating-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .shop-item {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .shop-item:hover {
+            transform: translateY(-4px);
+            border-color: rgba(96, 165, 250, 0.6);
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(59, 130, 246, 0.2));
+        }
+
+        .shop-item-name {
+            color: var(--light-blue);
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+
+        .shop-item-price {
+            color: var(--accent-blue);
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .potion-shop {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .potion-shop h3 {
+            color: var(--light-blue);
+            margin: 0 0 16px 0;
+        }
+
+        .potions-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .potion-card {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .potion-card:hover {
+            border-color: rgba(96, 165, 250, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .potion-card h4 {
+            color: var(--light-blue);
+            margin: 0 0 8px 0;
+        }
+
+        .potion-card p {
+            color: rgba(241, 245, 249, 0.8);
+            font-size: 0.9rem;
+            margin: 0 0 12px 0;
+        }
+
+        .potion-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            color: var(--accent-blue);
+        }
+
+        .potion-cost {
+            color: var(--accent-blue);
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .potion-buy-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #22d3ee, #2563eb);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .potion-buy-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .potion-effects {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #86efac;
+        }
+
+        /* Titles Styles */
+        .titles-container {
+            padding: 16px;
+        }
+
+        .titles-list, .titles-available {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .title-card {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.1));
+            border: 2px solid rgba(96, 165, 250, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .title-card.active {
+            border-color: rgba(96, 165, 250, 0.8);
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(59, 130, 246, 0.2));
+        }
+
+        .title-name {
+            font-weight: 700;
+            margin: 8px 0;
+            font-size: 1.1rem;
+        }
+
+        .title-status {
+            font-size: 0.85rem;
+            color: rgba(241, 245, 249, 0.7);
+            margin: 8px 0;
+        }
+
+        /* Portal Styles */
+        .settings-container {
+            padding: 20px;
+        }
+
+        .settings-section {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .settings-section h3 {
+            color: var(--light-blue);
+            margin: 0 0 16px 0;
+        }
+
+        .code-input-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .code-input-group input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 8px;
+            color: var(--text-light);
+        }
+
+        .code-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
+        }
+
+        .portal-container {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.6), rgba(15, 23, 42, 0.8));
+            border-radius: 12px;
+        }
+
+        .portal-base {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle at center, rgba(59, 130, 246, 0.3), transparent);
+            border: 3px solid #1e40af;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .portal-orb {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle at 30% 30%, rgba(96, 165, 250, 0.8), #1e40af);
+            border-radius: 50%;
+            animation: portalPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes portalPulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .portal-lock {
+            position: absolute;
+            font-size: 2rem;
+            cursor: pointer;
+            animation: portalLockShake 0.5s ease-in-out;
+        }
+
+        @keyframes portalLockShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+
+        .portal-info {
+            flex: 1;
+        }
+
+        .portal-info p {
+            color: var(--light-blue);
+            margin: 8px 0;
+        }
+
+        #portal-status {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+        }
+
+        /* Deep Sea Dimension */
+        .dimension-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: var(--z-overlay);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .dimension-container.hidden {
+            display: none;
+        }
+
+        .dimension-header {
+            background: linear-gradient(135deg, rgba(15, 100, 150, 0.9), rgba(10, 50, 100, 0.9));
+            border-bottom: 2px solid rgba(34, 211, 238, 0.5);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--light-blue);
+        }
+
+        .dimension-header h1 {
+            margin: 0;
+        }
+
+        .dimension-main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .deep-sea-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(15, 100, 150, 0.6) 0%, rgba(10, 50, 100, 0.8) 50%, rgba(5, 20, 60, 0.9) 100%);
+            overflow: hidden;
+        }
+
+        .bubbles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .bubble {
+            position: absolute;
+            background: radial-gradient(circle at 30% 30%, rgba(96, 165, 250, 0.4), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            border-radius: 50%;
+            animation: rise 8s infinite ease-in;
+        }
+
+        @keyframes rise {
+            0% {
+                bottom: -50px;
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                bottom: 100%;
+                opacity: 0;
+            }
+        }
+
+        .dimension-content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .dimension-roll-panel {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .game-main {
+                grid-template-columns: 1fr;
+            }
+
+            .rotating-items {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+
+            .potions-list {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1897,171 +2320,123 @@
         </header>
 
         <div class="game-main">
+            <!-- Roll Panel (Left) -->
             <div class="left-panel">
-                <div class="inventory-panel">
-                    <div class="section-header">
-                        <h2>Inventory</h2>
-                        <div class="inventory-value" id="inventory-value">Inventory Value: 0 coins</div>
-                    </div>
-                    <div class="inventory-summary">
-                        <div class="inventory-card">
-                            <span>Total Rarities</span>
-                            <strong id="inventory-count">0</strong>
-                        </div>
-                        <div class="inventory-card">
-                            <span>Total Rolls</span>
-                            <strong id="inventory-rolls">0</strong>
-                        </div>
-                    </div>
-                    <div class="inventory-grid" id="inventory-grid"></div>
-                </div>
-                <div class="achievement-panel">
-                    <h2>Achievement</h2>
-                    <div class="achievement-card" id="achievement-card">
-                        <div class="achievement-icon">🏅</div>
-                        <div>
-                            <h3>First Roll</h3>
-                            <p>Roll once to unlock your first achievement and claim RNG fame.</p>
-                        </div>
-                        <span class="achievement-status" id="achievement-status">Locked</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="right-panel">
                 <div class="roll-panel">
                     <div class="roll-status">
-                        <div class="roll-label">Roll Hub</div>
+                        <div class="roll-label">ROLL HUB</div>
                         <div class="roll-display" id="roll-display">Ready to roll</div>
+                        <div class="potion-effects" id="potion-effects"></div>
                     </div>
                     <div class="roll-footer">
                         <div class="reward-display" id="reward-display">Reward: 0 coins</div>
                         <button class="roll-btn" id="roll-btn">ROLL</button>
                     </div>
                 </div>
+            </div>
 
-                <div class="tabbed-content">
-                    <div class="content-tabs">
-                        <button class="content-tab active" data-tab="inventory">Inventory</button>
-                        <button class="content-tab" data-tab="market">Market</button>
-                        <button class="content-tab" data-tab="chat">Chat</button>
-                        <button class="content-tab" data-tab="achievements">Achievements</button>
-                        <button class="content-tab" data-tab="profile">Profile</button>
-                        <button class="content-tab" data-tab="crafting">Crafting</button>
-                        <button class="content-tab" data-tab="titles">Titles</button>
-                        <button class="content-tab" data-tab="trading">Trading</button>
-                        <button class="content-tab" data-tab="codes">Codes</button>
-                        <button class="content-tab" data-tab="events">Events</button>
-                        <button class="content-tab" data-tab="settings">Settings</button>
+            <!-- Main Content (Right) -->
+            <div class="right-panel">
+                <div class="content-tabs">
+                    <button class="content-tab active" data-tab="inventory">Inventory</button>
+                    <button class="content-tab" data-tab="shop">Shop</button>
+                    <button class="content-tab" data-tab="titles">Titles</button>
+                    <button class="content-tab" data-tab="settings">Settings</button>
+                </div>
+                <div class="tab-content">
+                    <!-- Inventory Tab -->
+                    <div class="tab-pane active" id="inventory-tab">
+                        <div class="inventory-subtabs">
+                            <button class="inv-subtab active" data-inv="rarities">Rarities</button>
+                            <button class="inv-subtab" data-inv="potions">Potions</button>
+                            <button class="inv-subtab" data-inv="items">Items</button>
+                        </div>
+                        <div class="inventory-subtab-content" id="inv-rarities">
+                            <div class="inventory-grid" id="inv-rarities-grid"></div>
+                        </div>
+                        <div class="inventory-subtab-content hidden" id="inv-potions">
+                            <div class="inventory-grid" id="inv-potions-grid"></div>
+                        </div>
+                        <div class="inventory-subtab-content hidden" id="inv-items">
+                            <div class="inventory-grid" id="inv-items-grid"></div>
+                        </div>
                     </div>
-                    <div class="tab-content">
-                        <div class="tab-pane active" id="inventory-tab">
-                            <div class="collection-header">
-                                <h2>Inventory Dashboard</h2>
-                                <div class="collection-actions">
-                                    <button class="btn" id="refresh-inventory">Refresh</button>
+
+                    <!-- Shop Tab -->
+                    <div class="tab-pane hidden" id="shop-tab">
+                        <div class="shop-container">
+                            <div class="rotating-shop">
+                                <h3>⭐ Rotating Shop (Restocks in <span id="shop-timer">10:00</span>)</h3>
+                                <div class="rotating-items" id="rotating-items"></div>
+                            </div>
+                            <div class="potion-shop">
+                                <h3>🧪 Potions</h3>
+                                <div class="potions-list" id="potions-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Titles Tab -->
+                    <div class="tab-pane hidden" id="titles-tab">
+                        <div class="titles-container">
+                            <h3>Your Titles</h3>
+                            <div class="titles-list" id="titles-list"></div>
+                            <h3 style="margin-top: 30px;">Available Titles</h3>
+                            <div class="titles-available" id="titles-available"></div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div class="tab-pane hidden" id="settings-tab">
+                        <div class="settings-container">
+                            <div class="settings-section">
+                                <h3>Redeem Code</h3>
+                                <div class="code-input-group">
+                                    <input type="text" id="code-input" placeholder="Enter code..." maxlength="50">
+                                    <button class="btn" id="redeem-btn">Redeem</button>
                                 </div>
                             </div>
-                            <div class="inventory-grid" id="inventory-tab-grid"></div>
-                        </div>
-                        <div class="tab-pane" id="market-tab">
-                            <div class="collection-header">
-                                <h2>Market</h2>
-                                <div class="collection-actions">
-                                    <button class="btn" id="buy-lucky-pack">Lucky Pack</button>
-                                </div>
-                            </div>
-                            <div class="collection-grid" id="market-grid"></div>
-                        </div>
-                        <div class="tab-pane" id="chat-tab">
-                            <div class="chat-container">
-                                <div class="chat-header">
-                                    <div>
-                                        <h2>Global Chat</h2>
-                                        <p class="chat-subtitle">Community chat for RNG 3 players.</p>
+
+                            <div class="settings-section">
+                                <h3>Portal Gateway</h3>
+                                <div class="portal-container" id="portal-container">
+                                    <div class="portal-base">
+                                        <div class="portal-lock" id="portal-lock">🔒</div>
+                                        <div class="portal-orb"></div>
                                     </div>
-                                    <div class="chat-status">🟢 Online</div>
-                                </div>
-                                <div class="chat-messages" id="chat-messages"></div>
-                                <div class="chat-input-area">
-                                    <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
-                                    <button class="btn" id="send-chat">Send</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="achievements-tab">
-                            <div class="achievement-panel-large">
-                                <div class="achievement-card-large" id="achievement-card-large">
-                                    <div class="achievement-icon-large">🏆</div>
-                                    <div>
-                                        <h3>First Roll</h3>
-                                        <p>Complete your first roll and unlock the new age of RNG 3.</p>
-                                    </div>
-                                    <div class="achievement-status-large" id="achievement-status-large">Locked</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="profile-tab">
-                            <div class="profile-sections">
-                                <div class="profile-section">
-                                    <h3>Statistics</h3>
-                                    <div class="stats-grid">
-                                        <div class="stat-item">
-                                            <span class="stat-label">Total Rolls</span>
-                                            <span class="stat-value" id="stat-rolls">0</span>
-                                        </div>
-                                        <div class="stat-item">
-                                            <span class="stat-label">Account Age</span>
-                                            <span class="stat-value" id="stat-age">-</span>
-                                        </div>
-                                        <div class="stat-item">
-                                            <span class="stat-label">Current Coins</span>
-                                            <span class="stat-value" id="stat-coins">0</span>
-                                        </div>
+                                    <div class="portal-info">
+                                        <p id="portal-status">Portal Locked</p>
+                                        <p id="portal-fragments-needed">Requires: 10 Portal Fragments</p>
+                                        <button class="btn" id="unlock-portal-btn" style="display: none;">Unlock Portal</button>
                                     </div>
                                 </div>
-                                <div class="profile-section">
-                                    <h3>Rarity Chances</h3>
-                                    <div class="rarity-chances" id="rarity-chances"></div>
-                                </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="crafting-tab">
-                            <div class="placeholder-card">
-                                <h3>Crafting Lab</h3>
-                                <p>Combine rare items, discover hidden upgrades, and boost your RNG luck.</p>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="titles-tab">
-                            <div class="placeholder-card">
-                                <h3>Titles</h3>
-                                <p>Collect prestige titles and show off your RNG rank to the community.</p>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="trading-tab">
-                            <div class="placeholder-card">
-                                <h3>Trading Hub</h3>
-                                <p>Trade with players, swap rare rewards, and upgrade your collection.</p>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="codes-tab">
-                            <div class="placeholder-card">
-                                <h3>Redeem Codes</h3>
-                                <p>Enter special codes for bonus coins, rewards, and rare items.</p>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="events-tab">
-                            <div class="placeholder-card">
-                                <h3>Live Events</h3>
-                                <p>Unlock limited-time events and join the RNG 3 community challenges.</p>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="settings-tab">
-                            <div class="placeholder-card">
-                                <h3>Settings</h3>
-                                <p>Customize your HUD, animations, and theme effects for a cleaner play experience.</p>
-                            </div>
-                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deep Sea Dimension -->
+    <div class="dimension-container hidden" id="deep-sea-dimension">
+        <div class="dimension-header">
+            <h1>Deep Sea Realm 🌊</h1>
+            <button class="btn" id="exit-dimension">Exit Realm</button>
+        </div>
+        <div class="dimension-main">
+            <div class="deep-sea-background">
+                <div class="bubbles"></div>
+            </div>
+            <div class="dimension-content">
+                <div class="dimension-roll-panel">
+                    <div class="roll-status">
+                        <div class="roll-label">DEEP SEA ROLL (2x Luck)</div>
+                        <div class="roll-display" id="ds-roll-display">Ready to roll</div>
+                    </div>
+                    <div class="roll-footer">
+                        <div class="reward-display" id="ds-reward-display">Reward: 0 coins</div>
+                        <button class="roll-btn" id="ds-roll-btn">ROLL</button>
                     </div>
                 </div>
             </div>
@@ -2151,583 +2526,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/multiplayer.js"></script>
-    <script>
-        // Tagline cycling
-        const taglines = [
-            'The third installment',
-            'Back for more',
-            'For the community',
-            'For Ellerslie School',
-            'For 17 News',
-            'The Threequel'
-        ];
-
-        const rarityOptions = [
-            { key: '17-news', name: '17 News', reward: 150, chance: 68, color: '#60a5fa' },
-            { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 25, color: '#3b82f6' },
-            { key: 'delan-fernando', name: 'Delan Fernando', reward: 1450, chance: 7, color: '#0f172a' }
-        ];
-
-        const marketOptions = [
-            { name: 'Lucky Pack', description: 'Guaranteed rare item chance boost.', price: 500, badge: 'NEW' },
-            { name: 'Spin Accelerator', description: 'Roll faster with glowing reels.', price: 250, badge: 'HOT' },
-            { name: 'Collector Bundle', description: 'Grab bonus inventory value with every spin.', price: 1200, badge: 'EPIC' }
-        ];
-
-        let currentTaglineIndex = 0;
-        let currentUser = null;
-        const taglineElement = document.getElementById('tagline');
-
-        function typeText(text, element, speed = 45) {
-            element.classList.add('typing');
-            element.textContent = '';
-            let i = 0;
-            const timer = setInterval(() => {
-                if (i < text.length) {
-                    element.textContent += text.charAt(i);
-                    i += 1;
-                } else {
-                    clearInterval(timer);
-                    setTimeout(() => {
-                        element.classList.remove('typing');
-                        setTimeout(nextTagline, 2200);
-                    }, 1200);
-                }
-            }, speed);
-        }
-
-        function nextTagline() {
-            currentTaglineIndex = (currentTaglineIndex + 1) % taglines.length;
-            typeText(taglines[currentTaglineIndex], taglineElement);
-        }
-
-        typeText(taglines[0], taglineElement);
-
-        function formatCoins(amount) {
-            return Number(amount).toLocaleString();
-        }
-
-        function showPopup(message, type = 'success') {
-            const popup = document.createElement('div');
-            popup.className = 'popup';
-            popup.textContent = message;
-            popup.style.background = type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(14, 165, 233, 0.95)';
-            document.body.appendChild(popup);
-            setTimeout(() => popup.remove(), 3000);
-        }
-
-        function showRewardPopup(message) {
-            const reward = document.createElement('div');
-            reward.className = 'reward-pop';
-            reward.textContent = message;
-            document.body.appendChild(reward);
-            setTimeout(() => reward.remove(), 1100);
-        }
-
-        function setLoading(button, isLoading, text = 'Loading...') {
-            if (!button) return;
-            button.disabled = isLoading;
-            button.textContent = isLoading ? text : button.dataset.defaultText || button.textContent;
-        }
-
-        async function handleAPI(url, options = {}) {
-            try {
-                const response = await fetch(url, {
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    ...options,
-                    body: options.body ? JSON.stringify(options.body) : undefined
-                });
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('API error:', error);
-                return { success: false, error: 'Unable to contact server' };
-            }
-        }
-
-        function showPage(page) {
-            document.getElementById('login-page').classList.remove('active');
-            document.getElementById('register-page').classList.remove('active');
-            if (page === 'login') {
-                document.getElementById('login-page').classList.add('active');
-            } else if (page === 'register') {
-                document.getElementById('register-page').classList.add('active');
-            }
-        }
-
-        function hideLanding() {
-            document.getElementById('landing-page').classList.add('hidden');
-        }
-
-        function showLanding() {
-            document.getElementById('landing-page').classList.remove('hidden');
-        }
-
-        function showGamePage() {
-            hideLanding();
-            document.getElementById('login-page').classList.remove('active');
-            document.getElementById('register-page').classList.remove('active');
-            document.getElementById('game-page').classList.remove('hidden');
-            if (currentUser && currentUser.is_admin) {
-                ensureAdminButton();
-            }
-        }
-
-        function hideGamePage() {
-            document.getElementById('game-page').classList.add('hidden');
-        }
-
-        function ensureAdminButton() {
-            if (document.getElementById('admin-btn')) return;
-            const headerRight = document.querySelector('.header-right');
-            const adminBtn = document.createElement('button');
-            adminBtn.className = 'btn';
-            adminBtn.id = 'admin-btn';
-            adminBtn.textContent = 'Admin Panel';
-            adminBtn.style.background = 'linear-gradient(135deg, #9b59b6, #8e44ad)';
-            adminBtn.style.marginRight = '10px';
-            headerRight.insertBefore(adminBtn, headerRight.firstChild);
-            adminBtn.addEventListener('click', () => {
-                hideGamePage();
-                document.getElementById('admin-panel').classList.remove('hidden');
-            });
-        }
-
-        function updateUI(user) {
-            currentUser = user;
-            document.getElementById('game-username').textContent = user.username;
-            document.getElementById('game-coins').textContent = `${formatCoins(user.coins)} coins`;
-            document.getElementById('inventory-value').textContent = `Inventory Value: ${formatCoins(user.inventoryValue)} coins`;
-            document.getElementById('inventory-count').textContent = user.inventoryTotal || 0;
-            document.getElementById('inventory-rolls').textContent = user.spins || 0;
-            document.getElementById('stat-rolls').textContent = user.spins || 0;
-            document.getElementById('stat-coins').textContent = formatCoins(user.coins);
-            document.getElementById('stat-age').textContent = user.accountAge || '-';
-            renderInventoryGrid(user.inventory || {});
-            renderInventoryTab(user.inventory || {});
-            renderMarketGrid();
-            renderRarityChances();
-            updateAchievementStatus(user.spins || 0);
-            renderAchievementPanels(user.spins || 0);
-        }
-
-        function renderInventoryTab(inventory) {
-            const grid = document.getElementById('inventory-tab-grid');
-            grid.innerHTML = '';
-            const rarities = inventory.rarities || {};
-            const items = Object.keys(rarities).map(key => {
-                const rarity = rarityOptions.find(r => r.key === key);
-                if (!rarity) return null;
-                return {
-                    name: rarity.name,
-                    count: rarities[key],
-                    value: rarity.reward
-                };
-            }).filter(Boolean);
-
-            if (!items.length) {
-                grid.innerHTML = '<div class="inventory-item" style="justify-content:center;">Your inventory is empty — every roll counts!</div>';
-                return;
-            }
-
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'inventory-item';
-                const rarity = rarityOptions.find(r => r.name === item.name);
-                if (rarity) {
-                    card.style.borderLeft = `4px solid ${rarity.color}`;
-                    card.style.background = 'rgba(15, 23, 42, 0.85)';
-                }
-                card.innerHTML = `
-                    <div>
-                        <h4>${item.name}</h4>
-                        <span>${item.count} owned</span>
-                    </div>
-                    <div>
-                        <span>${formatCoins(item.value)} each</span>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function renderInventoryGrid(inventory) {
-            const grid = document.getElementById('inventory-grid');
-            grid.innerHTML = '';
-            const rarities = inventory.rarities || {};
-            const items = Object.keys(rarities).map(key => {
-                const rarity = rarityOptions.find(r => r.key === key);
-                if (!rarity) return null;
-                return {
-                    name: rarity.name,
-                    count: rarities[key],
-                    value: rarity.reward,
-                    color: rarity.color
-                };
-            }).filter(Boolean);
-
-            if (!items.length) {
-                grid.innerHTML = '<div class="inventory-item" style="justify-content:center;">No items yet. Each roll builds your collection.</div>';
-                return;
-            }
-
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'inventory-item';
-                card.style.borderLeft = `4px solid ${item.color}`;
-                card.style.background = 'rgba(15, 23, 42, 0.85)';
-                card.innerHTML = `
-                    <div>
-                        <h4>${item.name}</h4>
-                        <span>${item.count} owned</span>
-                    </div>
-                    <div>
-                        <span>${formatCoins(item.value)} each</span>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function renderMarketGrid() {
-            const marketGrid = document.getElementById('market-grid');
-            if (!marketGrid) return;
-            marketGrid.innerHTML = '';
-            marketOptions.forEach(option => {
-                const card = document.createElement('div');
-                card.className = 'potion-item';
-                card.innerHTML = `
-                    <div class="potion-info">
-                        <h4>${option.name}</h4>
-                        <p>${option.description}</p>
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="potion-price">${formatCoins(option.price)}</div>
-                        <small style="color: rgba(241,245,249,0.75);">${option.badge}</small>
-                    </div>
-                `;
-                marketGrid.appendChild(card);
-            });
-        }
-
-        function renderRarityChances() {
-            const grid = document.getElementById('inventory-grid');
-            grid.innerHTML = '';
-            const rarities = inventory.rarities || {};
-            const items = Object.keys(rarities).map(key => {
-                const rarity = rarityOptions.find(r => r.key === key);
-                if (!rarity) return null;
-                return {
-                    name: rarity.name,
-                    count: rarities[key],
-                    value: rarity.reward
-                };
-            }).filter(Boolean);
-
-            if (!items.length) {
-                grid.innerHTML = '<div class="inventory-item" style="justify-content:center;">No rare rolls yet. Start rolling!</div>';
-                return;
-            }
-
-            items.forEach(item => {
-                const rarity = rarityOptions.find(r => r.name === item.name);
-                const card = document.createElement('div');
-                card.className = 'inventory-item';
-                if (rarity) {
-                    card.style.borderLeft = `4px solid ${rarity.color}`;
-                    card.style.background = 'rgba(15, 23, 42, 0.85)';
-                }
-                card.innerHTML = `
-                    <div>
-                        <h4>${item.name}</h4>
-                        <span>${item.count} owned</span>
-                    </div>
-                    <div>
-                        <span>${formatCoins(item.value)} each</span>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function renderRarityChances() {
-            const container = document.getElementById('rarity-chances');
-            container.innerHTML = '';
-            rarityOptions.forEach(rarity => {
-                const row = document.createElement('div');
-                row.className = 'rarity-chance-item';
-                row.innerHTML = `
-                    <span class="rarity-label">${rarity.name}</span>
-                    <span class="rarity-chance">${rarity.chance}% • ${formatCoins(rarity.reward)} coins</span>
-                `;
-                row.style.borderLeft = `4px solid ${rarity.color}`;
-                container.appendChild(row);
-            });
-        }
-
-        function updateAchievementStatus(spins) {
-            const status = spins > 0 ? 'Unlocked' : 'Locked';
-            const statusColor = spins > 0 ? '#10b981' : '#f59e0b';
-            document.getElementById('achievement-status').textContent = status;
-            document.getElementById('achievement-status').style.color = statusColor;
-            document.getElementById('achievement-status-large').textContent = status;
-            document.getElementById('achievement-status-large').style.color = statusColor;
-        }
-
-        function renderAchievementPanels(spins) {
-            const card = document.getElementById('achievement-card-large');
-            card.style.borderColor = spins > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(96, 165, 250, 0.2)';
-        }
-
-        async function loadSession() {
-            const response = await handleAPI('/api/session');
-            if (response.success && response.user) {
-                currentUser = response.user;
-                showGamePage();
-                updateUI(response.user);
-            }
-        }
-
-        document.getElementById('login-btn').addEventListener('click', () => showPage('login'));
-        document.getElementById('register-btn').addEventListener('click', () => showPage('register'));
-        document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); showPage('register'); });
-        document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); showPage('login'); });
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('login-username').value.trim();
-            const password = document.getElementById('login-password').value;
-            const errorBox = document.getElementById('login-error');
-            const button = e.target.querySelector('button');
-            button.dataset.defaultText = 'Login';
-            setLoading(button, true, 'Logging in...');
-            errorBox.classList.add('hidden');
-
-            const response = await handleAPI('/api/login', { method: 'POST', body: { username, password } });
-            setLoading(button, false);
-            if (!response.success) {
-                errorBox.textContent = response.error || 'Login failed';
-                errorBox.classList.remove('hidden');
-                return;
-            }
-            currentUser = response.user;
-            showGamePage();
-            updateUI(response.user);
-            showPopup(`Welcome back, ${response.user.username}!`);
-        });
-
-        document.getElementById('register-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('register-username').value.trim();
-            const password = document.getElementById('register-password').value;
-            const errorBox = document.getElementById('register-error');
-            const button = e.target.querySelector('button');
-            button.dataset.defaultText = 'Create Account';
-            setLoading(button, true, 'Creating account...');
-            errorBox.classList.add('hidden');
-
-            const response = await handleAPI('/api/register', { method: 'POST', body: { username, password } });
-            setLoading(button, false);
-            if (!response.success) {
-                errorBox.textContent = response.error || 'Registration failed';
-                errorBox.classList.remove('hidden');
-                return;
-            }
-            currentUser = response.user;
-            showGamePage();
-            updateUI(response.user);
-            showPopup(`Account created for ${response.user.username}!`);
-        });
-
-        document.getElementById('roll-btn').addEventListener('click', async () => {
-            if (!currentUser) {
-                showPopup('Login first to roll', 'error');
-                return;
-            }
-            const rollBtn = document.getElementById('roll-btn');
-            const rollDisplay = document.getElementById('roll-display');
-            const rewardDisplay = document.getElementById('reward-display');
-            rollBtn.dataset.defaultText = 'ROLL';
-            setLoading(rollBtn, true, 'ROLLING...');
-
-            const animationValues = rarityOptions.map(r => r.name);
-            let index = 0;
-            const spinner = setInterval(() => {
-                rollDisplay.textContent = animationValues[index % animationValues.length];
-                index += 1;
-            }, 120);
-
-            const response = await handleAPI('/api/spin', { method: 'POST' });
-            await new Promise((resolve) => setTimeout(resolve, 1600));
-            clearInterval(spinner);
-            setLoading(rollBtn, false);
-
-            if (!response.success) {
-                rollDisplay.textContent = 'Roll Failed';
-                showPopup(response.error || 'Roll failed', 'error');
-                return;
-            }
-
-            const result = response.result;
-            rollDisplay.textContent = result.name;
-            rewardDisplay.textContent = `Reward: ${formatCoins(result.reward)} coins`;
-            showRewardPopup(`+${formatCoins(result.reward)} coins!`);
-            currentUser = response.user;
-            updateUI(response.user);
-        });
-
-        document.getElementById('send-chat').addEventListener('click', () => {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if (!text) return;
-            sendChatToServer(text);
-            input.value = '';
-        });
-
-        document.getElementById('chat-input').addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                document.getElementById('send-chat').click();
-            }
-        });
-
-        document.getElementById('refresh-inventory').addEventListener('click', () => {
-            if (!currentUser) {
-                showPopup('Login first to refresh inventory', 'error');
-                return;
-            }
-            renderInventoryTab(currentUser.inventory || {});
-            showPopup('Inventory refreshed');
-        });
-
-        document.getElementById('buy-lucky-pack').addEventListener('click', () => {
-            showPopup('Lucky Pack is ready — coming soon with a cosmic upgrade!', 'success');
-        });
-
-        function applyThemeEvent(eventName, initiatedBy) {
-            document.body.classList.remove('hollow-square-rally', 'upside-down-mode');
-            const statusMap = {
-                'hollow-square': { bodyClass: 'hollow-square-rally', statusId: 'hollow-rally-status', label: 'Hollow Square Rally active' },
-                'upside-down': { bodyClass: 'upside-down-mode', statusId: 'upside-down-status', label: 'Upside Down theme active' }
-            };
-            const config = statusMap[eventName];
-            if (config) {
-                document.body.classList.add(config.bodyClass);
-                const statusElement = document.getElementById(config.statusId);
-                if (statusElement) {
-                    statusElement.textContent = `${config.label} • triggered by ${initiatedBy || 'Admin'}`;
-                    statusElement.style.color = '#60a5fa';
-                }
-                showPopup(`Event activated: ${config.label}`);
-                addChatMessage('System', `Event activated: ${config.label} by ${initiatedBy || 'Admin'}.`, new Date().toISOString(), true);
-                return;
-            }
-            showPopup('Unknown event triggered', 'error');
-        }
-
-        function addChatMessage(user, message, timestamp = null, system = false) {
-            const container = document.getElementById('chat-messages');
-            const bubble = document.createElement('div');
-            bubble.className = `chat-bubble${system ? ' system' : ''}`;
-            const author = document.createElement('strong');
-            author.textContent = user;
-            const text = document.createElement('span');
-            text.textContent = message;
-            const time = document.createElement('time');
-            const moment = timestamp ? new Date(timestamp) : new Date();
-            time.textContent = moment.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            bubble.appendChild(author);
-            bubble.appendChild(text);
-            bubble.appendChild(time);
-            container.appendChild(bubble);
-            container.scrollTop = container.scrollHeight;
-            setTimeout(() => bubble.classList.add('glitch'), 10);
-            setTimeout(() => bubble.classList.remove('glitch'), 900);
-        }
-
-        document.querySelectorAll('.content-tab').forEach((tab) => {
-            tab.addEventListener('click', () => {
-                const tabName = tab.dataset.tab;
-                document.querySelectorAll('.content-tab').forEach((btn) => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`${tabName}-tab`).classList.add('active');
-            });
-        });
-
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            await handleAPI('/api/logout', { method: 'POST' });
-            currentUser = null;
-            hideGamePage();
-            showLanding();
-            const adminBtn = document.getElementById('admin-btn');
-            if (adminBtn) adminBtn.remove();
-            showPopup('Logged out successfully');
-        });
-
-        document.getElementById('back-to-game').addEventListener('click', () => {
-            document.getElementById('admin-panel').classList.add('hidden');
-            document.getElementById('game-page').classList.remove('hidden');
-        });
-
-        document.getElementById('start-hollow-rally').addEventListener('click', () => {
-            triggerAdminEvent('hollow-square');
-        });
-        document.getElementById('stop-hollow-rally').addEventListener('click', () => {
-            document.body.classList.remove('hollow-square-rally');
-            const status = document.getElementById('hollow-rally-status');
-            if (status) status.textContent = 'Hollow Square Rally stopped';
-        });
-        document.getElementById('start-geometric-cascade').addEventListener('click', () => {
-            showPopup('Geometric Cascade launched — watch the shapes fall!', 'success');
-        });
-        document.getElementById('start-quantum-boost').addEventListener('click', () => {
-            const status = document.getElementById('quantum-status');
-            if (status) status.textContent = 'Quantum Boost active — 10x luck live';
-            showPopup('Quantum Boost activated!', 'success');
-        });
-        document.getElementById('stop-quantum-boost').addEventListener('click', () => {
-            const status = document.getElementById('quantum-status');
-            if (status) status.textContent = 'Quantum Boost paused';
-        });
-        document.getElementById('start-upside-down').addEventListener('click', () => {
-            triggerAdminEvent('upside-down');
-        });
-        document.getElementById('stop-upside-down').addEventListener('click', () => {
-            document.body.classList.remove('upside-down-mode');
-            const status = document.getElementById('upside-down-status');
-            if (status) status.textContent = 'Upside Down mode deactivated';
-        });
-        document.getElementById('clear-chat').addEventListener('click', () => {
-            requestClearChat();
-        });
-
-        document.getElementById('login-page').addEventListener('click', (event) => {
-            if (event.target === event.currentTarget) showPage('');
-        });
-
-        document.getElementById('register-page').addEventListener('click', (event) => {
-            if (event.target === event.currentTarget) showPage('');
-        });
-
-        document.addEventListener('mousemove', (event) => {
-            const geometrics = document.querySelectorAll('.geometric');
-            geometrics.forEach((geo, index) => {
-                const speed = (index % 3 + 1) * 0.3;
-                const x = (event.clientX * speed) / 100;
-                const y = (event.clientY * speed) / 100;
-                geo.style.transform = `translate(${x}px, ${y}px) rotate(${Date.now() * 0.001 + index}deg)`;
-            });
-        });
-
-        // Initialize
-        loadSession().then(() => {
-            addChatMessage('System', 'Welcome to 17 News RNG 3!');
-        });
-    </script>
+    <script src="/game-logic.js"></script>
 </body>
 </html></content>
 <parameter name="filePath">/workspaces/17-News-RNG-3-Full/index.html
