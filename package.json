@@ -1,0 +1,37 @@
+{
+  "name": "17-news-rng-3",
+  "version": "3.0.0",
+  "description": "17 News RNG 3 - The Next Generation - A modern multiplayer RNG game with enhanced features",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "build": "echo 'Ready for deployment'",
+    "vercel-build": "echo 'Vercel deployment ready'"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1",
+    "dotenv": "^16.1.4",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.0",
+    "express-session": "^1.17.3",
+    "helmet": "^7.0.0",
+    "memorystore": "^1.6.7",
+    "pg": "^8.11.3",
+    "socket.io": "^4.7.2"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "keywords": [
+    "rng",
+    "game",
+    "multiplayer",
+    "17-news",
+    "ellerslie-school",
+    "rng-3",
+    "gaming"
+  ],
+  "author": "17 News Development Team",
+  "license": "MIT"
+}
