@@ -399,6 +399,9 @@ const apiLimiter = rateLimit({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Middleware
+app.use(helmet());
+
 // Session configuration
 const sessionStore = new MemoryStore({
   checkPeriod: 86400000,
@@ -445,13 +448,6 @@ if (process.env.NODE_ENV !== 'production') {
     }
   });
 }
-
-// Routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
