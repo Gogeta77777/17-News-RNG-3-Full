@@ -214,10 +214,11 @@ function renderShop() {
     getRotatingShopItems().forEach(item => {
       const card = document.createElement('div');
       card.className = 'shop-item';
+      const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : '💧';
       card.innerHTML = `
-        <h4 class="shop-item-name">${item.name}</h4>
-        <p class="shop-item-price">${formatCoins(item.cost)} coins</p>
-        <button class="potion-buy-btn" onclick="buyShopItem('${item.name}')">Buy</button>
+        <h4 class="shop-item-name">${emoji} ${item.name}</h4>
+        <p class="shop-item-price">💎 ${formatCoins(item.cost)} coins</p>
+        <button class="potion-buy-btn" onclick="buyShopItem('${item.name}')">Purchase</button>
       `;
       rotatingDiv.appendChild(card);
     });
@@ -229,15 +230,16 @@ function renderShop() {
     Object.entries(POTIONS).forEach(([key, potion]) => {
       const card = document.createElement('div');
       card.className = 'potion-card';
+      const emoji = key === 'luck' ? '🍀' : '⚡';
       card.innerHTML = `
-        <h4>${potion.name}</h4>
-        <p>${potion.multiplier}x ${potion.effect} • ${potion.duration}s</p>
+        <h4>${emoji} ${potion.name}</h4>
+        <p>${potion.multiplier}x ${potion.effect} • ${potion.duration}s duration</p>
         <div class="potion-stats">
-          <span>Effect: +${potion.multiplier}x</span>
-          <span>Duration: ${potion.duration}s</span>
+          <span>⚡ +${potion.multiplier}x ${potion.effect}</span>
+          <span>⏱️ ${potion.duration}s active</span>
         </div>
-        <div class="potion-cost">${formatCoins(potion.cost)} coins</div>
-        <button class="potion-buy-btn" onclick="buyPotion('${key}')">Purchase</button>
+        <div class="potion-cost">💎 ${formatCoins(potion.cost)} coins</div>
+        <button class="potion-buy-btn" onclick="buyPotion('${key}')">Buy Now</button>
       `;
       potionsDiv.appendChild(card);
     });
@@ -307,17 +309,19 @@ function renderTitles() {
   const availDiv = document.getElementById('titles-available');
 
   if (listDiv) {
-    listDiv.innerHTML = gameState.userTitles.length ? '' : '<p style="color: rgba(241,245,249,0.7);">No titles yet. Complete requirements to unlock!</p>';
+    listDiv.innerHTML = gameState.userTitles.length ? '' : '<p style="color: rgba(241,245,249,0.7); text-align: center; padding: 20px;">🔒 No titles yet. Complete requirements to unlock!</p>';
     gameState.userTitles.forEach(titleId => {
       const title = TITLES.find(t => t.id === titleId);
       if (!title) return;
       const card = document.createElement('div');
       card.className = 'title-card active';
       card.style.borderColor = title.color;
+      card.style.animation = 'titleEntry 0.5s ease-out';
+      const emoji = titleId === 'owner' ? '👑' : titleId === 'veteran' ? '🎖️' : titleId === 'millionaire' ? '💰' : '✨';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color}">✨ ${title.name}</div>
-        <div class="title-status">Unlocked</div>
-        ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;">(Active)</button>' : `<button class="btn" onclick="setActiveTitle('${titleId}')" style="font-size:0.8rem; padding:6px;">Set Active</button>`}
+        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${emoji} ${title.name}</div>
+        <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
+        ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px; background: rgba(34,197,94,0.3);">(Active)</button>' : `<button class="btn" onclick="setActiveTitle('${titleId}')" style="font-size:0.8rem; padding:6px;">Equip</button>`}
       `;
       listDiv.appendChild(card);
     });
@@ -331,9 +335,10 @@ function renderTitles() {
       card.className = 'title-card';
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
+      const emoji = title.id === 'owner' ? '👑' : title.id === 'veteran' ? '🎖️' : title.id === 'millionaire' ? '💰' : '✨';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color}">🔒 ${title.name}</div>
-        <div class="title-status">${title.description}</div>
+        <div class="title-name" style="color: ${title.color};">🔒 ${emoji} ${title.name}</div>
+        <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
     });
@@ -473,30 +478,34 @@ async function rollInDeepSea() {
   const rewardDisplay = document.getElementById('ds-reward-display');
   if (!rollBtn || !rollDisplay || !rewardDisplay) return;
 
-  setLoading(rollBtn, true, 'ROLLING...');
-  rollDisplay.textContent = 'Diving...';
+  setLoading(rollBtn, true, 'DIVING...');
+  rollDisplay.textContent = '🌊 Diving...';
 
+  const deepSeaAnimations = ['🐠 Current', '🌊 Tide', '⭐ Luck', '🌀 Vortex', '🦑 Deep'];
+  let index = 0;
   const spinner = setInterval(() => {
-    rollDisplay.textContent = ['Deep Sea', 'Current', 'Tide', 'Luck'][Math.floor(Math.random() * 4)];
-  }, 120);
+    rollDisplay.textContent = deepSeaAnimations[index % deepSeaAnimations.length];
+    index += 1;
+  }, 90);
 
   const response = await handleAPI('/api/spin', { method: 'POST', body: { dimension: 'deep-sea' } });
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve, 1800));
   clearInterval(spinner);
   setLoading(rollBtn, false);
 
   if (!response.success) {
-    rollDisplay.textContent = 'Roll Failed';
+    rollDisplay.textContent = '❌ Dive Failed';
     showPopup(response.error || 'Deep Sea roll failed', 'error');
     return;
   }
 
   const result = response.result;
-  rollDisplay.textContent = `${result.name} • x${result.multiplier}`;
-  rewardDisplay.textContent = `Reward: ${formatCoins(result.reward)} coins`;
+  const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
+  rollDisplay.textContent = `🌊 ${result.name}${multiplierDisplay}`;
+  rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
   currentUser = response.user;
   updateUI(currentUser);
-  showRewardPopup(`+${formatCoins(result.reward)} coins!`);
+  showRewardPopup(`🌊 +${formatCoins(result.reward)} coins!`);
 }
 
 function exitDeepSea() {
@@ -541,7 +550,7 @@ function renderInventory(user) {
     const rarities = user.inventory?.rarities || {};
     const hasItems = Object.keys(rarities).length > 0;
     if (!hasItems) {
-      rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center;">No rare items yet</div>';
+      rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🎲 No rare items yet. Roll to collect!</div>';
     } else {
       Object.entries(rarities).forEach(([key, count]) => {
         const rarity = rarityOptions.find(r => r.key === key);
@@ -549,9 +558,13 @@ function renderInventory(user) {
         const card = document.createElement('div');
         card.className = 'inventory-item';
         card.style.borderLeft = `4px solid ${rarity.color}`;
+        const emoji = rarity.key === '17-news' ? '📺' : rarity.key === '17-news-reborn' ? '🔄' : '🌟';
         card.innerHTML = `
-          <div><h4>${rarity.name}</h4><span>${count} owned</span></div>
-          <div><span>${formatCoins(rarity.reward)} each</span></div>
+          <div>
+            <h4>${emoji} ${rarity.name}</h4>
+            <span>${count} owned</span>
+          </div>
+          <div><span style="color: ${rarity.color}; font-weight: 700;">💰 ${formatCoins(rarity.reward)} each</span></div>
         `;
         rarGrid.appendChild(card);
       });
@@ -565,19 +578,20 @@ function renderInventory(user) {
     const potions = currentUser?.potions || gameState.potionInventory;
     const hasPotions = (potions.luck || 0) > 0 || (potions.speed || 0) > 0;
     if (!hasPotions) {
-      potGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center;">No potions in inventory</div>';
+      potGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🧪 No potions. Buy some in the shop!</div>';
     } else {
       Object.entries({ luck: 'Luck Potion I', speed: 'Speed Potion I' }).forEach(([key, name]) => {
         const count = potions[key] || 0;
         if (count <= 0) return;
+        const emoji = key === 'luck' ? '🍀' : '⚡';
         const card = document.createElement('div');
         card.className = 'inventory-item';
         card.innerHTML = `
           <div>
-            <h4>${name}</h4>
-            <span>${count}x</span>
+            <h4>${emoji} ${name}</h4>
+            <span>x${count} available</span>
           </div>
-          <button class="btn" style="padding: 8px 12px; font-size: 0.85rem;" onclick="usePotion('${key}')">Use</button>
+          <button class="btn" style="padding: 8px 12px; font-size: 0.85rem;" onclick="usePotion('${key}')">Use Now</button>
         `;
         potGrid.appendChild(card);
       });
@@ -589,20 +603,20 @@ function renderInventory(user) {
   if (itemGrid) {
     itemGrid.innerHTML = '';
     const items = [
-      { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0 },
-      { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0 },
-      { name: 'Sea Essence', count: gameState.itemInventory.essence || 0 }
+      { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0, emoji: '🔮' },
+      { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0, emoji: '🍀' },
+      { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' }
     ];
     items.forEach(item => {
       if (item.count > 0) {
         const card = document.createElement('div');
         card.className = 'inventory-item';
-        card.innerHTML = `<div><h4>${item.name}</h4><span>${item.count}x</span></div>`;
+        card.innerHTML = `<div><h4>${item.emoji} ${item.name}</h4><span>${item.count}x available</span></div>`;
         itemGrid.appendChild(card);
       }
     });
     if (items.every(i => i.count === 0)) {
-      itemGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center;">No items in inventory</div>';
+      itemGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🛍️ No items yet. Purchase from the shop!</div>';
     }
   }
 }
@@ -878,32 +892,35 @@ function setupRollButton() {
     setLoading(rollBtn, true, 'ROLLING...');
     const animationValues = rarityOptions.map(r => r.name);
     let index = 0;
+    
+    // Enhanced spinning animation with faster speeds and color changes
     const spinner = setInterval(() => {
       rollDisplay.textContent = animationValues[index % animationValues.length];
       index += 1;
-    }, 120);
+    }, 85); // Faster spinning
 
     const response = await handleAPI('/api/spin', {
       method: 'POST',
       body: { dimension: gameState.currentDimension || null }
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1800)); // Longer animation duration for impact
     clearInterval(spinner);
     setLoading(rollBtn, false);
 
     if (!response.success) {
-      rollDisplay.textContent = 'Roll Failed';
+      rollDisplay.textContent = '❌ Roll Failed';
       showPopup(response.error || 'Roll failed', 'error');
       return;
     }
 
     const result = response.result;
-    rollDisplay.textContent = `${result.name} • x${result.multiplier || 1}`;
-    rewardDisplay.textContent = `Reward: ${formatCoins(result.reward)} coins`;
+    const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
+    rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}`;
+    rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
     currentUser = response.user;
     updateUI(response.user);
-    showRewardPopup(`+${formatCoins(result.reward)} coins!`);
+    showRewardPopup(`💎 +${formatCoins(result.reward)} coins!`);
   });
 }
 
