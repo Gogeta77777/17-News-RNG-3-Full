@@ -18,12 +18,12 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.forEach((message) => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#ffd700');
     });
   });
 
   socket.on('chat-message', (message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#ffd700');
   });
 
   socket.on('system-message', (message) => {
