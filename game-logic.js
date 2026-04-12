@@ -541,16 +541,17 @@ function renderInventory(user) {
   if (itemGrid) {
     itemGrid.innerHTML = '';
     const items = [
-      { name: 'Portal Fragments', count: gameState.itemInventory.fragments },
-      { name: 'Clover Leaves', count: gameState.itemInventory.clovers },
-      { name: 'Sea Essence', count: gameState.itemInventory.essence }
+      { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0 },
+      { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0 },
+      { name: 'Sea Essence', count: gameState.itemInventory.essence || 0 }
     ];
     items.forEach(item => {
-      if (item.count === 0) return;
-      const card = document.createElement('div');
-      card.className = 'inventory-item';
-      card.innerHTML = `<div><h4>${item.name}</h4><span>${item.count}x</span></div>`;
-      itemGrid.appendChild(card);
+      if (item.count > 0) {
+        const card = document.createElement('div');
+        card.className = 'inventory-item';
+        card.innerHTML = `<div><h4>${item.name}</h4><span>${item.count}x</span></div>`;
+        itemGrid.appendChild(card);
+      }
     });
     if (items.every(i => i.count === 0)) {
       itemGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center;">No items in inventory</div>';
@@ -570,6 +571,17 @@ function updateUI(user) {
   
   document.getElementById('game-username').textContent = user.username;
   document.getElementById('game-coins').textContent = `${formatCoins(user.coins)} coins`;
+
+  // Show admin button if user is admin
+  const adminBtn = document.getElementById('admin-btn');
+  if (adminBtn) {
+    if (user.is_admin) {
+      adminBtn.classList.remove('hidden');
+    } else {
+      adminBtn.classList.add('hidden');
+    }
+  }
+
   document.getElementById('reward-display').textContent = `Reward: 0 coins`;
 
   checkTitleUnlocks(user);
@@ -589,14 +601,15 @@ function updateUI(user) {
 
   // Tabs
   document.querySelectorAll('.content-tab').forEach(tab => {
-    tab.removeEventListener('click', null); // Remove old listeners
-    tab.addEventListener('click', () => {
+    const clickHandler = () => {
       document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       const tabPane = document.getElementById(tab.dataset.tab + '-tab');
       if (tabPane) tabPane.classList.add('active');
-    });
+    };
+    tab.removeEventListener('click', clickHandler);
+    tab.addEventListener('click', clickHandler);
   });
 
   // Inventory subtabs
@@ -900,6 +913,45 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Load session if already logged in
   loadSession();
+  
+  // Admin panel
+  document.getElementById('admin-btn')?.addEventListener('click', () => showPage('admin-panel'));
+  document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
+  
+  // Admin events
+  document.getElementById('start-hollow-rally')?.addEventListener('click', () => triggerAdminEvent('hollow-rally'));
+  document.getElementById('stop-hollow-rally')?.addEventListener('click', () => triggerAdminEvent('stop-hollow-rally'));
+  document.getElementById('start-geometric-cascade')?.addEventListener('click', () => triggerAdminEvent('geometric-cascade'));
+  document.getElementById('start-quantum-boost')?.addEventListener('click', () => triggerAdminEvent('quantum-boost'));
+  document.getElementById('stop-quantum-boost')?.addEventListener('click', () => triggerAdminEvent('stop-quantum-boost'));
+  document.getElementById('start-upside-down')?.addEventListener('click', () => triggerAdminEvent('upside-down'));
+  document.getElementById('stop-upside-down')?.addEventListener('click', () => triggerAdminEvent('stop-upside-down'));
+  
+  // Clear chat
+  document.getElementById('clear-chat')?.addEventListener('click', requestClearChat);
+  
+  // Announcement form
+  document.getElementById('announcement-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('announcement-title').value.trim();
+    const content = document.getElementById('announcement-content').value;
+    if (!title || !content) return;
+  
+    try {
+      const response = await handleAPI('/api/admin/announcement', {
+        method: 'POST',
+        body: { title, content }
+      });
+      if (response.success) {
+        showPopup('Announcement sent!', 'success');
+        e.target.reset();
+      } else {
+        showPopup(response.error || 'Failed to send announcement', 'error');
+      }
+    } catch (err) {
+      showPopup('Failed to send announcement', 'error');
+    }
+  });
   
   // Game loops
   setInterval(updatePotionDisplay, 100);
