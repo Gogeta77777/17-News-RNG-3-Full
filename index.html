@@ -331,10 +331,15 @@
 
         .action-buttons {
             display: flex;
-            gap: 20px;
+            gap: 16px;
             justify-content: center;
+            align-items: center;
             flex-wrap: wrap;
             margin-top: 30px;
+        }
+
+        .btn {
+            min-width: 160px;
         }
 
         .btn {
@@ -505,9 +510,9 @@
         .game-main {
             flex: 1;
             display: grid;
-            grid-template-columns: 420px minmax(0, 1fr);
+            grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
             gap: 24px;
-            padding: 28px;
+            padding: 28px 24px 32px;
             min-height: calc(100vh - 120px);
         }
 
@@ -515,7 +520,7 @@
         .right-panel {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 22px;
         }
 
         .left-panel {
@@ -693,11 +698,12 @@
             display: flex;
             gap: 18px;
             align-items: center;
+            justify-content: space-between;
             flex-wrap: wrap;
         }
 
         .reward-display {
-            flex: 1;
+            flex: 1 1 220px;
             color: #7dd3fc;
             font-weight: 700;
             font-size: 1rem;
@@ -710,9 +716,11 @@
         .roll-btn {
             flex: 0 0 auto;
             min-width: 180px;
-            padding: 22px 34px;
+            width: 100%;
+            max-width: 240px;
+            padding: 20px 30px;
             border-radius: 22px;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             letter-spacing: 1px;
             background: linear-gradient(135deg, #22d3ee, #2563eb);
             box-shadow: 0 18px 40px rgba(34, 147, 237, 0.35);
@@ -2333,6 +2341,44 @@
                     card.style.borderLeft = `4px solid ${rarity.color}`;
                     card.style.background = 'rgba(15, 23, 42, 0.85)';
                 }
+                card.innerHTML = `
+                    <div>
+                        <h4>${item.name}</h4>
+                        <span>${item.count} owned</span>
+                    </div>
+                    <div>
+                        <span>${formatCoins(item.value)} each</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderInventoryGrid(inventory) {
+            const grid = document.getElementById('inventory-grid');
+            grid.innerHTML = '';
+            const rarities = inventory.rarities || {};
+            const items = Object.keys(rarities).map(key => {
+                const rarity = rarityOptions.find(r => r.key === key);
+                if (!rarity) return null;
+                return {
+                    name: rarity.name,
+                    count: rarities[key],
+                    value: rarity.reward,
+                    color: rarity.color
+                };
+            }).filter(Boolean);
+
+            if (!items.length) {
+                grid.innerHTML = '<div class="inventory-item" style="justify-content:center;">No items yet. Each roll builds your collection.</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'inventory-item';
+                card.style.borderLeft = `4px solid ${item.color}`;
+                card.style.background = 'rgba(15, 23, 42, 0.85)';
                 card.innerHTML = `
                     <div>
                         <h4>${item.name}</h4>
