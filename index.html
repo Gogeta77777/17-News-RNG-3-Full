@@ -2255,7 +2255,7 @@
     </div>
 
     <!-- Login Page -->
-    <div class="auth-container" id="login-page">
+    <div class="auth-container hidden" id="login-page">
         <div class="auth-card">
             <h1>Login</h1>
             <p style="color: var(--light-blue); text-align: center; margin-bottom: 20px; font-size: 0.95rem;">
@@ -2280,7 +2280,7 @@
     </div>
 
     <!-- Register Page -->
-    <div class="auth-container" id="register-page">
+    <div class="auth-container hidden" id="register-page">
         <div class="auth-card">
             <h1>Create Account</h1>
             <p style="color: var(--light-blue); text-align: center; margin-bottom: 20px; font-size: 0.95rem;">
@@ -2341,6 +2341,7 @@
                     <button class="content-tab active" data-tab="inventory">Inventory</button>
                     <button class="content-tab" data-tab="shop">Shop</button>
                     <button class="content-tab" data-tab="titles">Titles</button>
+                    <button class="content-tab" data-tab="chat">Chat</button>
                     <button class="content-tab" data-tab="settings">Settings</button>
                 </div>
                 <div class="tab-content">
@@ -2383,6 +2384,24 @@
                             <div class="titles-list" id="titles-list"></div>
                             <h3 style="margin-top: 30px;">Available Titles</h3>
                             <div class="titles-available" id="titles-available"></div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Tab -->
+                    <div class="tab-pane hidden" id="chat-tab">
+                        <div class="chat-container">
+                            <div class="chat-header">
+                                <div>
+                                    <h2>Global Chat</h2>
+                                    <p class="chat-subtitle">Community chat for RNG 3 players.</p>
+                                </div>
+                                <div class="chat-status">🟢 Online</div>
+                            </div>
+                            <div class="chat-messages" id="chat-messages"></div>
+                            <div class="chat-input-area">
+                                <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
+                                <button class="btn" id="send-chat">Send</button>
+                            </div>
                         </div>
                     </div>
 
