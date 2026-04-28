@@ -11,9 +11,25 @@ const taglines = [
 let currentTaglineIndex = 0;
 
 const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 68, color: '#60a5fa' },
-  { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 25, color: '#3b82f6' },
-  { key: 'delan-fernando', name: 'Delan Fernando', reward: 1450, chance: 7, color: '#0f172a' }
+  { key: '17-news', name: '17 News', reward: 150, chance: 65.2, color: '#0f172a' },
+  { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
+  { key: 'daniel-poole', name: 'Daniel Poole', reward: 450, chance: 4, color: '#166534' },
+  { key: 'dominik-procter', name: 'Dominik Procter', reward: 450, chance: 3, color: '#0d9488' },
+  { key: 'gabe-muir', name: 'Gabe Muir', reward: 450, chance: 2, color: '#115e59' },
+  { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', reward: 550, chance: 1.5, color: '#7c3aed' },
+  { key: 'kayla-walters', name: 'Kayla Walters', reward: 550, chance: 1, color: '#ec4899' },
+  { key: 'leo-thacker', name: 'Leo Thacker', reward: 700, chance: 0.8, color: '#2dd4bf' },
+  { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 700, chance: 0.7, color: '#f97316' },
+  { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
+  { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
+  { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
+  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
+];
+
+const globalOptions = [
+  { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444' },
+  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8' },
+  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#f8fafc', glowColor: '#000000' }
 ];
 
 const POTIONS = {
@@ -553,18 +569,17 @@ function renderInventory(user) {
       rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🎲 No rare items yet. Roll to collect!</div>';
     } else {
       Object.entries(rarities).forEach(([key, count]) => {
-        const rarity = rarityOptions.find(r => r.key === key);
+        const rarity = [...rarityOptions, ...globalOptions].find(r => r.key === key);
         if (!rarity) return;
         const card = document.createElement('div');
         card.className = 'inventory-item';
         card.style.borderLeft = `4px solid ${rarity.color}`;
-        const emoji = rarity.key === '17-news' ? '📺' : rarity.key === '17-news-reborn' ? '🔄' : '🌟';
         card.innerHTML = `
           <div>
-            <h4>${emoji} ${rarity.name}</h4>
+            <h4 style="color: ${rarity.color};">${rarity.name}</h4>
             <span>${count} owned</span>
           </div>
-          <div><span style="color: ${rarity.color}; font-weight: 700;">💰 ${formatCoins(rarity.reward)} each</span></div>
+          <div><span style="color: ${rarity.color}; font-weight: 700;">${formatCoins(rarity.reward)} coins each</span></div>
         `;
         rarGrid.appendChild(card);
       });
@@ -690,7 +705,13 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       <br><small style="opacity: 0.7;">${time}</small>
     `;
   } else {
-    const titleLabel = title ? `<span style="color: ${titleColor}; font-weight: 700; margin-right: 6px;">[${escapeHtml(title)}]</span>` : '';
+    let displayColor = titleColor || '#ffd700';
+    let textShadow = `0 0 8px ${displayColor}`;
+    if (title === 'The CEO' || displayColor.toLowerCase() === '#000000') {
+      displayColor = '#ffffff';
+      textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
+    }
+    const titleLabel = title ? `<span style="color: ${displayColor}; font-weight: 700; margin-right: 6px; text-shadow: ${textShadow};">[${escapeHtml(title)}]</span>` : '';
     msgEl.innerHTML = `
       <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
@@ -890,7 +911,7 @@ function setupRollButton() {
     if (!rollDisplay || !rewardDisplay) return;
 
     setLoading(rollBtn, true, 'ROLLING...');
-    const animationValues = rarityOptions.map(r => r.name);
+    const animationValues = [...rarityOptions, ...globalOptions].map(r => r.name);
     let index = 0;
     
     // Enhanced spinning animation with faster speeds and color changes
@@ -964,6 +985,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  function activateDefaultTabs() {
+    const firstTab = document.querySelector('.content-tab');
+    if (firstTab) {
+      document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      firstTab.classList.add('active');
+      const tabPane = document.getElementById(firstTab.dataset.tab + '-tab');
+      if (tabPane) tabPane.classList.add('active');
+    }
+  }
+
   document.querySelectorAll('.content-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
@@ -973,6 +1005,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tabPane) tabPane.classList.add('active');
     });
   });
+
+  activateDefaultTabs();
 
   document.querySelectorAll('.inv-subtab').forEach(tab => {
     tab.addEventListener('click', () => {
