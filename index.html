@@ -837,22 +837,22 @@
         }
 
         .content-tabs {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 12px;
-            flex-wrap: wrap;
             margin-bottom: 20px;
             padding: 8px;
-            background: rgba(15, 23, 42, 0.5);
+            background: rgba(15, 23, 42, 0.6);
             border-radius: 16px;
-            border: 1px solid rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.15);
             backdrop-filter: blur(10px);
         }
 
         .content-tab {
-            flex: 1;
-            min-width: 120px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(96, 165, 250, 0.2);
+            min-width: 140px;
+            max-width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(96, 165, 250, 0.18);
             color: var(--light-blue);
             padding: 14px 20px;
             border-radius: 12px;
@@ -1215,8 +1215,9 @@
         }
 
         .content-tabs {
-            display: flex;
-            gap: 5px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
             margin-bottom: 25px;
             border-bottom: 1px solid var(--accent-blue);
             padding-bottom: 15px;
@@ -1231,6 +1232,8 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-weight: 700;
+            min-width: 140px;
+            max-width: 100%;
         }
 
         .content-tab:hover {
@@ -1737,12 +1740,13 @@
             }
             
             .content-tabs {
-                flex-wrap: wrap;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 10px;
             }
             
             .content-tab {
-                flex: 1;
-                min-width: 100px;
+                min-width: 120px;
             }
             
             .event-controls {
@@ -2447,10 +2451,11 @@
                 <h3>Latest Updates</h3>
                 <div class="log-entry">
                     <div class="date">20/4/26 - The Official Release</div>
-                    <p>🎉 <strong>RNG 3 is officially here!</strong> The next generation of our beloved RNG experience.</p>
-                    <p>🎨 <strong>Enhanced Visuals:</strong> Upgraded particle animations and geometric backgrounds.</p>
-                    <p>⚡ <strong>Performance Boost:</strong> Optimized for smoother gameplay and faster loading.</p>
-                    <p>🎯 <strong>Trading & More:</strong> New features coming soon to enhance your experience!</p>
+                    <p><strong>Released!</strong></p>
+                    <p>✨ <strong>Updated 28/4/26:</strong> New rarity overhaul, global rare drops, and UI revamp.</p>
+                    <p>🎨 <strong>Stronger visuals:</strong> improved button layout, glowing global text, and refreshed inventory cards.</p>
+                    <p>⚡ <strong>Better gameplay:</strong> new rare roll table and global roll announcements.</p>
+                    <p>🚀 <strong>Release Status:</strong> Released!</p>
                 </div>
             </div>
         </div>
