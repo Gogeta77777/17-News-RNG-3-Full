@@ -322,11 +322,12 @@ async function getRecentChatMessages(limit = 60) {
   return inMemoryStore.chatMessages.slice(-limit);
 }
 
-async function saveChatMessage(username, message, title = null, system = false) {
+async function saveChatMessage(username, message, title = null, titleColor = '#ffd700', system = false) {
   const record = {
     username: username || 'Guest',
     message,
     title,
+    titleColor,
     timestamp: new Date().toISOString(),
     system
   };
@@ -485,7 +486,20 @@ function calculateInventoryValue(inventory) {
   const valueMap = {
     '17-news': 150,
     '17-news-reborn': 300,
-    'delan-fernando': 1450
+    'daniel-poole': 450,
+    'dominik-procter': 450,
+    'gabe-muir': 450,
+    'inesh-jayasinghe': 550,
+    'kayla-walters': 550,
+    'leo-thacker': 700,
+    'sam-whitworth': 700,
+    'john-tan': 1050,
+    'rison-pandigama': 1250,
+    'atticus-lok': 1750,
+    'baxter-walter': 2250,
+    'mr-fermanski': 3333,
+    'ellerslie-schoolcast': 5000,
+    'the-ceo': 7000
   };
   return Object.entries(rarities).reduce((sum, [key, count]) => sum + (valueMap[key] || 0) * count, 0);
 }
@@ -601,9 +615,22 @@ app.post('/api/spin', async (req, res) => {
   let cursor = 0;
   let result = null;
   const options = [
-    { key: '17-news', name: '17 News', chance: 68, reward: 150 },
-    { key: '17-news-reborn', name: '17 News Reborn', chance: 25, reward: 300 },
-    { key: 'delan-fernando', name: 'Delan Fernando', chance: 7, reward: 1450 }
+    { key: '17-news', name: '17 News', chance: 65.2, reward: 150 },
+    { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300 },
+    { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450 },
+    { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450 },
+    { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450 },
+    { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550 },
+    { key: 'kayla-walters', name: 'Kayla Walters', chance: 1, reward: 550 },
+    { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700 },
+    { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700 },
+    { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050 },
+    { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 1250 },
+    { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 1750 },
+    { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 2250 },
+    { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 3333, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
+    { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 5000, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
+    { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' }
   ];
 
   for (const rarity of options) {
@@ -644,7 +671,7 @@ app.post('/api/spin', async (req, res) => {
     });
 
     const updatedUser = await findUser(req.session.username);
-    res.json({
+    const responsePayload = {
       success: true,
       result: {
         ...result,
@@ -652,7 +679,15 @@ app.post('/api/spin', async (req, res) => {
         reward: finalReward
       },
       user: sanitizeUser(updatedUser)
-    });
+    };
+
+    if (result.isGlobal) {
+      const globalMessage = `${user.username} activated global ${result.name}!`;
+      const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false);
+      io.emit('chat-message', chatRecord);
+    }
+
+    res.json(responsePayload);
   } catch (error) {
     console.error('Spin error:', error);
     res.status(500).json({ success: false, error: 'Unable to complete roll.' });
