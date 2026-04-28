@@ -895,6 +895,52 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 
 document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea);
 
+// ==================== ADVANCED SPIN ANIMATION ====================
+function createSpinWheel() {
+  const wheel = document.createElement('div');
+  wheel.className = 'spin-wheel';
+  wheel.innerHTML = `
+    <div class="wheel-container">
+      <div class="wheel-inner">
+        <div class="wheel-center"></div>
+        <div class="wheel-segment" style="--rotation: 0deg; --color: #0f172a;"><span>17 News</span></div>
+        <div class="wheel-segment" style="--rotation: 27deg; --color: #38bdf8;"><span>17 News Reborn</span></div>
+        <div class="wheel-segment" style="--rotation: 54deg; --color: #166534;"><span>Daniel Poole</span></div>
+        <div class="wheel-segment" style="--rotation: 81deg; --color: #0d9488;"><span>Dominik Procter</span></div>
+        <div class="wheel-segment" style="--rotation: 108deg; --color: #115e59;"><span>Gabe Muir</span></div>
+        <div class="wheel-segment" style="--rotation: 135deg; --color: #7c3aed;"><span>Inesh Jayasinghe</span></div>
+        <div class="wheel-segment" style="--rotation: 162deg; --color: #ec4899;"><span>Kayla Walters</span></div>
+        <div class="wheel-segment" style="--rotation: 189deg; --color: #2dd4bf;"><span>Leo Thacker</span></div>
+        <div class="wheel-segment" style="--rotation: 216deg; --color: #f97316;"><span>Sam Whitworth</span></div>
+        <div class="wheel-segment" style="--rotation: 243deg; --color: #f87171;"><span>John Tan</span></div>
+        <div class="wheel-segment" style="--rotation: 270deg; --color: #c084fc;"><span>Rison Pandigama</span></div>
+        <div class="wheel-segment" style="--rotation: 297deg; --color: #ddd6fe;"><span>Atticus Lok</span></div>
+        <div class="wheel-segment" style="--rotation: 324deg; --color: #facc15;"><span>Baxter Walter</span></div>
+        <div class="wheel-segment" style="--rotation: 351deg; --color: #f59e0b;"><span>Mr Fernanski</span></div>
+        <div class="wheel-segment" style="--rotation: 18deg; --color: #1e3a8a;"><span>Ellerslie Schoolcast</span></div>
+        <div class="wheel-segment" style="--rotation: 45deg; --color: #000000;"><span>The CEO</span></div>
+      </div>
+      <div class="wheel-pointer"></div>
+    </div>
+  `;
+  return wheel;
+}
+
+function animateSpinWheel(duration = 2000) {
+  return new Promise((resolve) => {
+    const wheel = createSpinWheel();
+    document.body.appendChild(wheel);
+    
+    // Trigger animation
+    setTimeout(() => wheel.classList.add('spin-active'), 10);
+    
+    setTimeout(() => {
+      wheel.remove();
+      resolve();
+    }, duration);
+  });
+}
+
 // ==================== ROLL BUTTON ====================
 function setupRollButton() {
   const rollBtn = document.getElementById('roll-btn');
@@ -911,34 +957,37 @@ function setupRollButton() {
     if (!rollDisplay || !rewardDisplay) return;
 
     setLoading(rollBtn, true, 'ROLLING...');
-    const animationValues = [...rarityOptions, ...globalOptions].map(r => r.name);
-    let index = 0;
-    
-    // Enhanced spinning animation with faster speeds and color changes
-    const spinner = setInterval(() => {
-      rollDisplay.textContent = animationValues[index % animationValues.length];
-      index += 1;
-    }, 85); // Faster spinning
+    rollDisplay.textContent = '🎰 Spinning...';
+    rollDisplay.style.opacity = '1';
 
+    // Show dramatic spin wheel animation
+    await animateSpinWheel(2000);
+    
     const response = await handleAPI('/api/spin', {
       method: 'POST',
       body: { dimension: gameState.currentDimension || null }
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1800)); // Longer animation duration for impact
-    clearInterval(spinner);
     setLoading(rollBtn, false);
 
     if (!response.success) {
       rollDisplay.textContent = '❌ Roll Failed';
       showPopup(response.error || 'Roll failed', 'error');
+      rollDisplay.style.opacity = '0.5';
       return;
     }
 
     const result = response.result;
     const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
+    
+    // Dramatic reveal with color animation
+    rollDisplay.style.color = result.color || '#ffffff';
+    rollDisplay.style.textShadow = `0 0 20px ${result.color || '#ffffff'}`;
     rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}`;
+    
     rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
+    rewardDisplay.style.color = result.color || '#60a5fa';
+    
     currentUser = response.user;
     updateUI(response.user);
     showRewardPopup(`💎 +${formatCoins(result.reward)} coins!`);
@@ -1021,18 +1070,84 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load session if already logged in
   loadSession();
   
-  // Admin panel
-  document.getElementById('admin-btn')?.addEventListener('click', () => showPage('admin-panel'));
+  // Admin panel controls
+  document.getElementById('admin-btn')?.addEventListener('click', () => {
+    if (currentUser && currentUser.is_admin) {
+      showPage('admin-panel');
+    } else {
+      showPopup('Admin access denied', 'error');
+    }
+  });
   document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
   
-  // Admin events
-  document.getElementById('start-hollow-rally')?.addEventListener('click', () => triggerAdminEvent('hollow-rally'));
-  document.getElementById('stop-hollow-rally')?.addEventListener('click', () => triggerAdminEvent('stop-hollow-rally'));
-  document.getElementById('start-geometric-cascade')?.addEventListener('click', () => triggerAdminEvent('geometric-cascade'));
-  document.getElementById('start-quantum-boost')?.addEventListener('click', () => triggerAdminEvent('quantum-boost'));
-  document.getElementById('stop-quantum-boost')?.addEventListener('click', () => triggerAdminEvent('stop-quantum-boost'));
-  document.getElementById('start-upside-down')?.addEventListener('click', () => triggerAdminEvent('upside-down'));
-  document.getElementById('stop-upside-down')?.addEventListener('click', () => triggerAdminEvent('stop-upside-down'));
+  // Admin event buttons with confirmation
+  document.getElementById('start-hollow-rally')?.addEventListener('click', () => {
+    if (confirm('Start Hollow Square Rally? This will boost all players.')) {
+      triggerAdminEvent('hollow-rally');
+      showPopup('🎆 Hollow Square Rally activated!', '#FFD700');
+    }
+  });
+  
+  document.getElementById('stop-hollow-rally')?.addEventListener('click', () => {
+    triggerAdminEvent('stop-hollow-rally');
+    showPopup('Hollow Square Rally stopped', '#0ea5e9');
+  });
+  
+  document.getElementById('start-geometric-cascade')?.addEventListener('click', () => {
+    if (confirm('Launch Geometric Cascade? Shapes will fall!')) {
+      triggerAdminEvent('geometric-cascade');
+      showPopup('✨ Geometric Cascade launched!', '#FFD700');
+    }
+  });
+  
+  document.getElementById('start-quantum-boost')?.addEventListener('click', () => {
+    if (confirm('Activate Quantum Boost? 10x luck for all players!')) {
+      triggerAdminEvent('quantum-boost');
+      showPopup('⚛️ Quantum Boost activated! 10x luck incoming!', '#FFD700');
+    }
+  });
+  
+  document.getElementById('stop-quantum-boost')?.addEventListener('click', () => {
+    triggerAdminEvent('stop-quantum-boost');
+    showPopup('Quantum Boost deactivated', '#0ea5e9');
+  });
+  
+  document.getElementById('start-upside-down')?.addEventListener('click', () => {
+    if (confirm('Activate Upside Down theme?')) {
+      triggerAdminEvent('upside-down');
+      showPopup('🌀 Upside Down mode activated!', '#FFD700');
+    }
+  });
+  
+  document.getElementById('stop-upside-down')?.addEventListener('click', () => {
+    triggerAdminEvent('stop-upside-down');
+    showPopup('Upside Down mode deactivated', '#0ea5e9');
+  });
+  
+  // Broadcast button
+  document.getElementById('broadcast-btn')?.addEventListener('click', () => {
+    const msg = prompt('Enter broadcast message:');
+    if (msg && msg.trim()) {
+      handleAPI('/api/broadcast', {
+        method: 'POST',
+        body: { message: msg.trim() }
+      }).then(response => {
+        if (response.success) {
+          showPopup('📢 Message broadcast to all players!', '#FFD700');
+        } else {
+          showPopup(response.error || 'Broadcast failed', 'error');
+        }
+      });
+    }
+  });
+  
+  // Clear chat button
+  document.getElementById('clear-chat-btn')?.addEventListener('click', () => {
+    if (confirm('Clear all chat messages? This cannot be undone.')) {
+      requestClearChat();
+      showPopup('💬 Chat cleared by admin', '#0ea5e9');
+    }
+  });
   
   // Clear chat
   document.getElementById('clear-chat')?.addEventListener('click', requestClearChat);
