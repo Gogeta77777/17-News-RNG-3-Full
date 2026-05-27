@@ -729,6 +729,63 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// ==================== THEME EVENTS ====================
+function applyThemeEvent(eventName, initiatedBy = 'Admin') {
+  const eventNameLower = String(eventName || '').toLowerCase();
+  
+  if (eventNameLower === 'hollow-rally' || eventNameLower === 'hollow-square-rally') {
+    document.body.classList.add('hollow-square-rally');
+    showPopup(`🎆 ${initiatedBy} activated Hollow Square Rally!`, '#FFD700');
+    setTimeout(() => {
+      document.body.classList.remove('hollow-square-rally');
+      showPopup('Hollow Square Rally ended', '#0ea5e9');
+    }, 300000); // 5 minutes
+  } else if (eventNameLower === 'stop-hollow-rally') {
+    document.body.classList.remove('hollow-square-rally');
+    showPopup('Hollow Square Rally stopped', '#0ea5e9');
+  } else if (eventNameLower === 'geometric-cascade') {
+    createGeometricCascade();
+    showPopup(`✨ ${initiatedBy} launched Geometric Cascade!`, '#FFD700');
+  } else if (eventNameLower === 'quantum-boost') {
+    showPopup(`⚛️ ${initiatedBy} activated Quantum Boost! 10x luck incoming!`, '#FFD700');
+  } else if (eventNameLower === 'stop-quantum-boost') {
+    showPopup('Quantum Boost deactivated', '#0ea5e9');
+  } else if (eventNameLower === 'upside-down') {
+    document.body.classList.add('upside-down-mode');
+    showPopup(`🌀 ${initiatedBy} activated Upside Down mode!`, '#FFD700');
+  } else if (eventNameLower === 'stop-upside-down') {
+    document.body.classList.remove('upside-down-mode');
+    showPopup('Upside Down mode deactivated', '#0ea5e9');
+  }
+}
+
+function createGeometricCascade() {
+  // Create falling geometric shapes animation
+  const shapes = ['square', 'circle', 'triangle'];
+  for (let i = 0; i < 15; i++) {
+    setTimeout(() => {
+      const shape = document.createElement('div');
+      shape.className = `geometric ${shapes[Math.floor(Math.random() * shapes.length)]}`;
+      shape.style.position = 'fixed';
+      shape.style.left = Math.random() * 100 + '%';
+      shape.style.top = '-30px';
+      shape.style.zIndex = 9999;
+      document.body.appendChild(shape);
+      
+      // Animate falling
+      let top = -30;
+      const fall = setInterval(() => {
+        top += 3;
+        shape.style.top = top + 'px';
+        if (top > window.innerHeight) {
+          clearInterval(fall);
+          shape.remove();
+        }
+      }, 30);
+    }, i * 150);
+  }
+}
+
 // ==================== CHAT API ====================
 
 function showPage(pageName) {
