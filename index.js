@@ -576,6 +576,10 @@ app.get('/api/session', async (req, res) => {
   res.json({ success: true, user: sanitizeUser(user) });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, status: 'ok', version: '3.0.0', uptime: process.uptime() });
+});
+
 app.get('/api/inventory', async (req, res) => {
   if (!req.session || !req.session.username) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
@@ -615,19 +619,19 @@ app.post('/api/spin', async (req, res) => {
   let cursor = 0;
   let result = null;
   const options = [
-    { key: '17-news', name: '17 News', chance: 65.2, reward: 150 },
-    { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300 },
-    { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450 },
-    { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450 },
-    { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450 },
-    { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550 },
-    { key: 'kayla-walters', name: 'Kayla Walters', chance: 1, reward: 550 },
-    { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700 },
-    { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700 },
-    { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050 },
-    { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 1250 },
-    { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 1750 },
-    { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 2250 },
+    { key: '17-news', name: '17 News', chance: 65.2, reward: 150, color: '#0f172a' },
+    { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
+    { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450, color: '#166534' },
+    { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450, color: '#0d9488' },
+    { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450, color: '#115e59' },
+    { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550, color: '#7c3aed' },
+    { key: 'kayla-walters', name: 'Kayla Walters', chance: 1, reward: 550, color: '#ec4899' },
+    { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700, color: '#2dd4bf' },
+    { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700, color: '#f97316' },
+    { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050, color: '#f87171' },
+    { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 1250, color: '#c084fc' },
+    { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 1750, color: '#ddd6fe' },
+    { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 2250, color: '#facc15' },
     { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 3333, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
     { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 5000, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
     { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' }
