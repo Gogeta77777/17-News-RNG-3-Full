@@ -385,7 +385,7 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many authentication attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: true }
+  // removed invalid 'validate' option which causes runtime errors
 });
 
 const apiLimiter = rateLimit({
@@ -1003,11 +1003,35 @@ app.post('/api/admin/announcement', async (req, res) => {
     system: true,
     isAnnouncement: true
   };
-  await saveChatMessage(chatMsg.username, chatMsg.message, chatMsg.timestamp, chatMsg.system);
+  // Persist announcement as a system chat message (title = announcement title)
+  await saveChatMessage(chatMsg.username, chatMsg.message, announcement.title, '#ffd700', true);
 
+  // Emit both the announcement popup and a chat message for clients
   io.emit('chat-message', chatMsg);
 
   res.json({ success: true, announcement });
+});
+
+// Admin broadcast message to all players (short chat message)
+app.post('/api/broadcast', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user || !user.is_admin) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
+  }
+
+  const { message } = req.body || {};
+  if (!message || !String(message).trim()) {
+    return res.status(400).json({ success: false, error: 'Message required.' });
+  }
+
+  const text = String(message).trim().slice(0, 500);
+  const chatRecord = await saveChatMessage('BROADCAST', text, 'Broadcast', '#ffd700', true);
+  io.emit('chat-message', chatRecord);
+  io.emit('system-message', { username: 'System', message: `Broadcast sent by ${req.session.username}`, timestamp: new Date().toISOString(), system: true });
+  res.json({ success: true });
 });
 
 // Socket.IO middleware
