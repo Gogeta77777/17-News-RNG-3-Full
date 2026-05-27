@@ -40,7 +40,12 @@ function initMultiplayer() {
 
   socket.on('theme-event', (data) => {
     if (!data || !data.eventName) return;
-    applyThemeEvent(data.eventName, data.initiatedBy || 'Admin');
+    // Ensure applyThemeEvent is available (defined in game-logic.js)
+    if (typeof applyThemeEvent === 'function') {
+      applyThemeEvent(data.eventName, data.initiatedBy || 'Admin');
+    } else {
+      showPopup(`Event: ${data.eventName} by ${data.initiatedBy || 'Admin'}`, '#FFD700');
+    }
   });
 
   socket.on('announcement_popup', (data) => {
