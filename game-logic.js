@@ -135,6 +135,9 @@ function showRewardPopup(message) {
 
 function setLoading(button, isLoading, text = 'Loading...') {
   if (!button) return;
+  if (isLoading && !button.dataset.defaultText) {
+    button.dataset.defaultText = button.textContent;
+  }
   button.disabled = isLoading;
   button.textContent = isLoading ? text : button.dataset.defaultText || button.textContent;
 }
@@ -956,26 +959,18 @@ document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea
 function createSpinWheel() {
   const wheel = document.createElement('div');
   wheel.className = 'spin-wheel';
+  const wheelOptions = [...rarityOptions, ...globalOptions];
+  const segments = wheelOptions.map((option, index) => `
+    <div class="wheel-segment" style="--rotation: ${index * (360 / wheelOptions.length)}deg; --color: ${option.color};">
+      <span>${option.name}</span>
+    </div>
+  `).join('');
   wheel.innerHTML = `
-    <div class="wheel-container">
+    <div class="wheel-container" aria-hidden="true">
+      <div class="wheel-kicker">17 NEWS / RNG 3</div>
       <div class="wheel-inner">
+        ${segments}
         <div class="wheel-center"></div>
-        <div class="wheel-segment" style="--rotation: 0deg; --color: #0f172a;"><span>17 News</span></div>
-        <div class="wheel-segment" style="--rotation: 27deg; --color: #38bdf8;"><span>17 News Reborn</span></div>
-        <div class="wheel-segment" style="--rotation: 54deg; --color: #166534;"><span>Daniel Poole</span></div>
-        <div class="wheel-segment" style="--rotation: 81deg; --color: #0d9488;"><span>Dominik Procter</span></div>
-        <div class="wheel-segment" style="--rotation: 108deg; --color: #115e59;"><span>Gabe Muir</span></div>
-        <div class="wheel-segment" style="--rotation: 135deg; --color: #7c3aed;"><span>Inesh Jayasinghe</span></div>
-        <div class="wheel-segment" style="--rotation: 162deg; --color: #ec4899;"><span>Kayla Walters</span></div>
-        <div class="wheel-segment" style="--rotation: 189deg; --color: #2dd4bf;"><span>Leo Thacker</span></div>
-        <div class="wheel-segment" style="--rotation: 216deg; --color: #f97316;"><span>Sam Whitworth</span></div>
-        <div class="wheel-segment" style="--rotation: 243deg; --color: #f87171;"><span>John Tan</span></div>
-        <div class="wheel-segment" style="--rotation: 270deg; --color: #c084fc;"><span>Rison Pandigama</span></div>
-        <div class="wheel-segment" style="--rotation: 297deg; --color: #ddd6fe;"><span>Atticus Lok</span></div>
-        <div class="wheel-segment" style="--rotation: 324deg; --color: #facc15;"><span>Baxter Walter</span></div>
-        <div class="wheel-segment" style="--rotation: 351deg; --color: #f59e0b;"><span>Mr Fernanski</span></div>
-        <div class="wheel-segment" style="--rotation: 18deg; --color: #1e3a8a;"><span>Ellerslie Schoolcast</span></div>
-        <div class="wheel-segment" style="--rotation: 45deg; --color: #000000;"><span>The CEO</span></div>
       </div>
       <div class="wheel-pointer"></div>
     </div>
@@ -983,9 +978,12 @@ function createSpinWheel() {
   return wheel;
 }
 
-function animateSpinWheel(duration = 2000) {
+function animateSpinWheel(duration = 2200, result = null) {
   return new Promise((resolve) => {
     const wheel = createSpinWheel();
+    if (result?.color) {
+      wheel.style.setProperty('--result-color', result.color);
+    }
     document.body.appendChild(wheel);
     
     // Trigger animation
@@ -1017,13 +1015,14 @@ function setupRollButton() {
     rollDisplay.textContent = '🎰 Spinning...';
     rollDisplay.style.opacity = '1';
 
-    // Show dramatic spin wheel animation
-    await animateSpinWheel(2000);
-    
     const response = await handleAPI('/api/spin', {
       method: 'POST',
       body: { dimension: gameState.currentDimension || null }
     });
+
+    if (response.success) {
+      await animateSpinWheel(2200, response.result);
+    }
 
     setLoading(rollBtn, false);
 
