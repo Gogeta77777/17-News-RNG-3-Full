@@ -2314,6 +2314,264 @@
             display: none !important;
         }
 
+        /* Unified dark-blue dashboard */
+        body {
+            background:
+                radial-gradient(circle at 15% 10%, rgba(37, 99, 235, 0.2), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.12), transparent 34%),
+                #050d1c;
+        }
+
+        .main-container {
+            background: linear-gradient(135deg, rgba(5, 13, 28, 0.72), rgba(8, 29, 58, 0.48));
+        }
+
+        .welcome-section,
+        .update-log {
+            border-color: rgba(96, 165, 250, 0.32);
+            background: linear-gradient(145deg, rgba(10, 28, 58, 0.96), rgba(5, 14, 31, 0.96));
+            box-shadow: 0 26px 70px rgba(0, 0, 0, 0.42), inset 0 1px rgba(147, 197, 253, 0.08);
+        }
+
+        .logo {
+            color: #dbeafe;
+            text-shadow: 0 0 28px rgba(96, 165, 250, 0.46);
+        }
+
+        .action-buttons .btn:first-child,
+        .action-buttons .btn:last-child {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            border: 1px solid rgba(147, 197, 253, 0.45);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+        }
+
+        .game-container {
+            background: linear-gradient(135deg, rgba(3, 10, 24, 0.98), rgba(7, 27, 55, 0.98));
+        }
+
+        .game-header {
+            min-height: 86px;
+            padding: 16px clamp(18px, 4vw, 42px);
+            background: rgba(4, 18, 42, 0.96);
+            border-bottom-color: rgba(96, 165, 250, 0.25);
+        }
+
+        .game-title {
+            font-size: clamp(1.15rem, 2.2vw, 2rem);
+            letter-spacing: 0.08em;
+        }
+
+        .game-main {
+            width: min(1480px, 100%);
+            margin: 0 auto;
+            padding: clamp(16px, 3vw, 34px);
+            gap: clamp(16px, 2.4vw, 30px);
+        }
+
+        .left-panel {
+            width: auto;
+        }
+
+        .roll-panel,
+        .inventory-panel,
+        .achievement-panel,
+        .tabbed-content,
+        .profile-sections {
+            border-radius: 14px;
+            border-color: rgba(96, 165, 250, 0.24);
+            background: linear-gradient(160deg, rgba(10, 31, 65, 0.95), rgba(5, 17, 38, 0.95));
+            box-shadow: 0 18px 46px rgba(0, 0, 0, 0.3);
+        }
+
+        .roll-panel {
+            padding: clamp(20px, 3vw, 30px);
+        }
+
+        .roll-display {
+            min-height: 150px;
+            border-radius: 12px;
+            background: rgba(2, 10, 25, 0.86);
+            border-color: rgba(96, 165, 250, 0.28);
+        }
+
+        .roll-btn {
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb, #1e40af);
+            animation: none;
+        }
+
+        .content-tabs {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            padding: 6px;
+            gap: 6px;
+            border-radius: 12px;
+            background: rgba(5, 17, 38, 0.9);
+        }
+
+        .content-tab {
+            min-width: 0;
+            padding: 12px 8px;
+            border-radius: 8px;
+            font-size: 0.86rem;
+        }
+
+        .content-tab.active {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+
+        .tab-content {
+            min-height: 420px;
+            padding: clamp(18px, 3vw, 28px);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 14px;
+            background: rgba(7, 24, 51, 0.78);
+        }
+
+        .tab-pane {
+            min-height: 360px;
+        }
+
+        .chat-container,
+        .settings-container,
+        .titles-container,
+        .shop-container {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+
+        .chat-messages {
+            min-height: 280px;
+            max-height: 440px;
+            border-radius: 10px;
+            background: rgba(2, 10, 25, 0.72);
+        }
+
+        .auth-container {
+            background: rgba(3, 12, 29, 0.97);
+        }
+
+        .auth-card {
+            border-radius: 14px;
+            border-color: rgba(96, 165, 250, 0.35);
+            background: linear-gradient(145deg, rgba(10, 31, 65, 0.98), rgba(5, 16, 36, 0.98));
+        }
+
+        .admin-panel {
+            background: linear-gradient(135deg, #030b19, #071d3c 60%, #0a2850);
+        }
+
+        .admin-header {
+            padding: 18px clamp(18px, 4vw, 42px);
+            background: rgba(4, 18, 42, 0.96);
+            border-bottom: 1px solid rgba(96, 165, 250, 0.28);
+        }
+
+        .admin-header h1 {
+            font-size: clamp(1.35rem, 3vw, 2rem);
+            color: #dbeafe;
+        }
+
+        .admin-content {
+            max-width: 1420px;
+            padding: clamp(18px, 3vw, 38px);
+        }
+
+        .admin-section {
+            margin-bottom: 20px;
+            padding: clamp(18px, 3vw, 28px);
+            border-radius: 14px;
+            background: rgba(7, 28, 59, 0.78);
+            border-color: rgba(96, 165, 250, 0.25);
+        }
+
+        .admin-section h2 {
+            color: #7dd3fc;
+            font-size: 1.25rem;
+        }
+
+        .user-list {
+            display: grid;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(2, 10, 25, 0.5);
+            border-color: rgba(96, 165, 250, 0.2);
+        }
+
+        .admin-user-row {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr 1fr;
+            gap: 16px;
+            padding: 14px 16px;
+            border: 1px solid rgba(96, 165, 250, 0.16);
+            border-radius: 9px;
+            background: rgba(10, 36, 74, 0.72);
+        }
+
+        .admin-user-row div {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .admin-user-row span,
+        .admin-empty-state {
+            color: rgba(219, 234, 254, 0.65);
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 620px) {
+            .admin-user-row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .game-header {
+                align-items: flex-start;
+            }
+
+            .header-left {
+                gap: 12px;
+            }
+
+            .header-right .btn {
+                padding: 10px 12px;
+                font-size: 0.8rem;
+            }
+
+            .content-tabs {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .game-header {
+                flex-direction: column;
+            }
+
+            .header-right {
+                width: 100%;
+                display: flex;
+            }
+
+            .header-right .btn {
+                flex: 1;
+            }
+
+            .content-tabs {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .roll-footer {
+                align-items: stretch;
+            }
+
+            .roll-btn {
+                max-width: none;
+            }
+        }
+
         /* Fade in animation */
         @keyframes fadeIn {
             from {
