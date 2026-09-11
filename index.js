@@ -426,8 +426,14 @@ const sessionMiddleware = session({
 
 app.use(sessionMiddleware);
 
-// Serve static files
-app.use(express.static(path.join(__dirname)));
+// Serve the game shell and client code fresh during active development/deploys.
+app.use(express.static(path.join(__dirname), {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|js|css)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
