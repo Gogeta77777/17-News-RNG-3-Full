@@ -1039,9 +1039,46 @@ app.post('/api/broadcast', async (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/chat', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Login required to view chat.' });
+  }
+  try {
+    res.json({ success: true, messages: await getRecentChatMessages(60) });
+  } catch (error) {
+    console.error('Chat history error:', error);
+    res.status(500).json({ success: false, error: 'Unable to load chat.' });
+  }
+});
+
+app.post('/api/chat', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Login required to chat.' });
+  }
+  const text = String(req.body?.message || '').trim().slice(0, 500);
+  if (!text) {
+    return res.status(400).json({ success: false, error: 'Message cannot be empty.' });
+  }
+  try {
+    const user = await findUser(req.session.username);
+    const title = user?.active_title || null;
+    const record = await saveChatMessage(req.session.username, text, title, '#ffd700', false);
+    io.emit('chat-message', record);
+    res.json({ success: true, message: record });
+  } catch (error) {
+    console.error('Chat message error:', error);
+    res.status(500).json({ success: false, error: 'Unable to send chat message.' });
+  }
+});
+
 // Socket.IO middleware
 io.use((socket, next) => {
-  sessionMiddleware(socket.request, {}, next);
+  const response = {
+    getHeader: () => undefined,
+    setHeader: () => {},
+    removeHeader: () => {}
+  };
+  sessionMiddleware(socket.request, response, next);
 });
 
 
