@@ -902,6 +902,7 @@ async function handleLogin(e) {
       currentUser = data.user;
       console.log('✅ Logged in as:', currentUser.username);
       window.refreshMultiplayerSession?.();
+      window.loadChatFallback?.();
       showPopup('Welcome back, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
@@ -958,6 +959,7 @@ async function handleRegister(e) {
     if (data.success && data.user) {
       currentUser = data.user;
       window.refreshMultiplayerSession?.();
+      window.loadChatFallback?.();
       showPopup('Account created! Welcome, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
@@ -983,6 +985,7 @@ async function loadSession() {
   if (response.success && response.user) {
     currentUser = response.user;
     window.refreshMultiplayerSession?.();
+    window.loadChatFallback?.();
     showGamePage();
     updateUI(response.user);
     setupPortalUI();
@@ -1196,6 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
+  document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
   
   // Admin event buttons with confirmation
   document.getElementById('start-hollow-rally')?.addEventListener('click', () => {
