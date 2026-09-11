@@ -2472,6 +2472,21 @@
             color: #dbeafe;
         }
 
+        .admin-eyebrow {
+            margin: 0 0 6px;
+            color: #5ee7d1;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.18em;
+        }
+
+        .admin-header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .admin-content {
             max-width: 1420px;
             padding: clamp(18px, 3vw, 38px);
@@ -3362,8 +3377,14 @@
     <!-- Admin Panel -->
     <div class="admin-panel hidden" id="admin-panel">
         <header class="admin-header">
-            <h1>Admin Control Center</h1>
-            <button class="btn" id="back-to-game">Back to Game</button>
+            <div>
+                <p class="admin-eyebrow">17 NEWS / OPERATIONS</p>
+                <h1>Admin Control Center</h1>
+            </div>
+            <div class="admin-header-actions">
+                <button class="btn" id="refresh-admin-users">Refresh Players</button>
+                <button class="btn" id="back-to-game">Back to Game</button>
+            </div>
         </header>
 
         <div class="admin-content">
