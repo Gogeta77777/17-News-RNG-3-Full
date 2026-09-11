@@ -1110,6 +1110,238 @@
             backdrop-filter: blur(10px);
         }
 
+        /* Signal desk refresh */
+        :root {
+            --ink: #07111f;
+            --ink-soft: #0d1b2d;
+            --signal: #f8c15c;
+            --signal-hot: #ff6b4a;
+            --cyan: #5ee7d1;
+            --line: rgba(94, 231, 209, 0.22);
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 12% 18%, rgba(94, 231, 209, 0.12), transparent 28%),
+                radial-gradient(circle at 88% 82%, rgba(255, 107, 74, 0.1), transparent 30%),
+                linear-gradient(135deg, #06101d 0%, #0b2130 54%, #142735 100%);
+        }
+
+        .main-container {
+            padding: clamp(22px, 5vw, 72px);
+        }
+
+        .content-wrapper {
+            max-width: 1180px;
+            grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+            gap: clamp(22px, 4vw, 54px);
+        }
+
+        .welcome-section,
+        .update-log {
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: linear-gradient(145deg, rgba(13, 27, 45, 0.92), rgba(7, 17, 31, 0.82));
+            box-shadow: 18px 18px 0 rgba(2, 8, 16, 0.22), 0 30px 80px rgba(0, 0, 0, 0.28);
+        }
+
+        .welcome-section {
+            padding: clamp(34px, 6vw, 72px);
+            text-align: left;
+        }
+
+        .welcome-section::after {
+            content: 'LIVE DROP SYSTEM / 003';
+            display: block;
+            margin-top: 42px;
+            color: rgba(94, 231, 209, 0.58);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.2em;
+        }
+
+        .logo {
+            max-width: 620px;
+            margin-bottom: 18px;
+            color: #f7fbff;
+            background: none;
+            -webkit-text-fill-color: initial;
+            font-size: clamp(2.6rem, 6vw, 5.7rem);
+            line-height: 0.94;
+            letter-spacing: -0.04em;
+            text-shadow: 5px 5px 0 rgba(255, 107, 74, 0.72);
+        }
+
+        .tagline {
+            justify-content: flex-start;
+            color: var(--cyan);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .action-buttons {
+            justify-content: flex-start;
+            margin-top: 40px;
+        }
+
+        .btn {
+            border-radius: 3px;
+            box-shadow: 5px 5px 0 rgba(255, 107, 74, 0.42);
+        }
+
+        .action-buttons .btn:first-child {
+            background: var(--signal);
+            color: var(--ink);
+        }
+
+        .action-buttons .btn:last-child {
+            background: transparent;
+            border: 1px solid var(--cyan);
+            box-shadow: none;
+        }
+
+        .update-log {
+            align-self: stretch;
+            padding: clamp(24px, 4vw, 38px);
+        }
+
+        .update-log h3 {
+            margin-bottom: 8px;
+            color: var(--signal);
+            font-family: 'Orbitron', monospace;
+            font-size: 1.05rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .update-log::before {
+            content: 'FIELD NOTES';
+            display: block;
+            margin-bottom: 32px;
+            color: rgba(247, 251, 255, 0.46);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+        }
+
+        .log-entry {
+            margin-bottom: 14px;
+            padding: 16px 0 18px;
+            border: 0;
+            border-top: 1px solid rgba(94, 231, 209, 0.18);
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .log-entry:first-of-type {
+            border-top-color: var(--cyan);
+        }
+
+        .log-entry:hover {
+            transform: none;
+            background: transparent;
+        }
+
+        .log-entry .date {
+            color: var(--cyan);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .log-entry p {
+            color: rgba(247, 251, 255, 0.78);
+            font-size: 0.96rem;
+        }
+
+        .spin-wheel {
+            inset: 0;
+            display: grid;
+            place-items: center;
+            transform: none;
+            background: rgba(3, 10, 18, 0.72);
+            backdrop-filter: blur(7px);
+        }
+
+        .wheel-container {
+            width: min(78vw, 430px);
+            height: min(78vw, 430px);
+            display: grid;
+            place-items: center;
+            opacity: 0;
+            position: relative;
+        }
+
+        .spin-wheel.spin-active .wheel-container {
+            animation: spinWheelActive 2.2s cubic-bezier(0.15, 0.75, 0.2, 1) forwards;
+        }
+
+        .wheel-kicker {
+            position: absolute;
+            z-index: 4;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--ink);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.56rem;
+            font-weight: 900;
+            letter-spacing: 0.18em;
+            text-align: center;
+        }
+
+        .wheel-inner {
+            width: 88%;
+            height: 88%;
+            border: 10px solid rgba(247, 251, 255, 0.92);
+            background: conic-gradient(
+                #07111f 0deg 22.5deg, #5ee7d1 22.5deg 45deg,
+                #ff6b4a 45deg 67.5deg, #f8c15c 67.5deg 90deg,
+                #1a7d78 90deg 112.5deg, #74b6d6 112.5deg 135deg,
+                #a9e5a0 135deg 157.5deg, #ef8a61 157.5deg 180deg,
+                #d7eef2 180deg 202.5deg, #e9b1ff 202.5deg 225deg,
+                #ff9e55 225deg 247.5deg, #9ba7ff 247.5deg 270deg,
+                #f4e7a1 270deg 292.5deg, #f8c15c 292.5deg 315deg,
+                #5ee7d1 315deg 337.5deg, #f7fbff 337.5deg 360deg
+            );
+            box-shadow: 0 0 0 2px var(--ink), 0 0 70px rgba(94, 231, 209, 0.45), 0 24px 80px rgba(0, 0, 0, 0.55);
+        }
+
+        .wheel-center {
+            width: 72px;
+            height: 72px;
+            background: radial-gradient(circle at 35% 30%, var(--signal), var(--signal-hot));
+            border: 5px solid var(--ink);
+            box-shadow: 0 0 0 3px rgba(247, 251, 255, 0.8), 0 0 30px rgba(248, 193, 92, 0.65);
+        }
+
+        .wheel-pointer {
+            top: 2%;
+            border-top: 0;
+            border-bottom: 30px solid var(--signal);
+            filter: drop-shadow(0 0 7px rgba(248, 193, 92, 0.9));
+        }
+
+        .wheel-segment {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .welcome-section {
+                text-align: left;
+            }
+
+            .action-buttons {
+                align-items: stretch;
+            }
+
+            .action-buttons .btn {
+                width: 100%;
+            }
+        }
+
         @keyframes rewardPop {
             0% { 
                 opacity: 0; 
@@ -2614,12 +2846,15 @@
             <div class="update-log">
                 <h3>Latest Updates</h3>
                 <div class="log-entry">
-                    <div class="date">20/4/26 - The Official Release</div>
-                    <p><strong>Released!</strong></p>
-                    <p>✨ <strong>Updated 28/4/26:</strong> New rarity overhaul, global rare drops, and UI revamp.</p>
-                    <p>🎨 <strong>Stronger visuals:</strong> improved button layout, glowing global text, and refreshed inventory cards.</p>
-                    <p>⚡ <strong>Better gameplay:</strong> new rare roll table and global roll announcements.</p>
-                    <p>🚀 <strong>Release Status:</strong> Released!</p>
+                    <div class="date">11 Sep 2026 / Release 3.1</div>
+                    <p><strong>The signal desk is live.</strong></p>
+                    <p>✦ The roll wheel now mirrors the complete rarity pool and reveals the server-selected drop cleanly.</p>
+                    <p>✦ Landing and game surfaces share a sharper broadcast-control-room theme with clearer hierarchy.</p>
+                    <p>✦ Global drops, inventory counts, potion effects, and Deep Sea rewards remain connected to the same roll system.</p>
+                </div>
+                <div class="log-entry">
+                    <div class="date">Previous / Release 3.0</div>
+                    <p>Added global rarities, rotating shop stock, potion boosts, titles, portal progression, and multiplayer chat.</p>
                 </div>
             </div>
         </div>
