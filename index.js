@@ -472,6 +472,7 @@ function sanitizeUser(user) {
     potions: potions,
     items: items,
     titles: titles,
+    active_title: user.active_title || null,
     portal_unlocked: user.portal_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(user.inventory || { rarities: {} }),
@@ -1079,7 +1080,7 @@ io.on('connection', async (socket) => {
     const username = socket.request?.session?.username || 'Guest';
     const user = username !== 'Guest' ? await findUser(username) : null;
     const title = user?.active_title || null;
-    const record = await saveChatMessage(username, text, title, false);
+    const record = await saveChatMessage(username, text, title, '#ffd700', false);
     io.emit('chat-message', record);
   });
 
