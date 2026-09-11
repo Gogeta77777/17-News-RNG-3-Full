@@ -70,6 +70,12 @@ function sendChatToServer(message) {
   socket.emit('chat-message', { message });
 }
 
+function refreshMultiplayerSession() {
+  if (!socket) return;
+  if (socket.connected) socket.disconnect();
+  socket.connect();
+}
+
 function triggerAdminEvent(eventName) {
   if (!socket || !socket.connected) {
     showPopup('Unable to trigger admin event while disconnected.', 'error');
@@ -88,6 +94,7 @@ function requestClearChat() {
 
 window.initMultiplayer = initMultiplayer;
 window.sendChatToServer = sendChatToServer;
+window.refreshMultiplayerSession = refreshMultiplayerSession;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
 
