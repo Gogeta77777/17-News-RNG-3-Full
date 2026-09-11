@@ -35,6 +35,35 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #38bdf8 #071a35;
+        }
+
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: #38bdf8 #071a35;
+        }
+
+        ::-webkit-scrollbar {
+            width: 11px;
+            height: 11px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #071a35;
+            border-left: 1px solid rgba(96, 165, 250, 0.16);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            min-height: 44px;
+            background: linear-gradient(180deg, #5ee7d1, #2563eb);
+            border: 2px solid #071a35;
+            border-radius: 999px;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #bae6fd, #38bdf8);
         }
 
         body {
@@ -3463,8 +3492,8 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/game-logic.js"></script>
-    <script src="/multiplayer.js"></script>
+    <script src="/game-logic.js?v=3.1.1"></script>
+    <script src="/multiplayer.js?v=3.1.1"></script>
 </body>
 </html></content>
 <parameter name="filePath">/workspaces/17-News-RNG-3-Full/index.html
