@@ -154,7 +154,14 @@ async function handleAPI(url, options = {}) {
       ...options,
       body
     });
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || data.message || `Request failed (${response.status})`,
+        status: response.status
+      };
+    }
     return data;
   } catch (error) {
     console.error('API error:', error);
@@ -400,23 +407,27 @@ function checkTitleUnlocks(user) {
 // ==================== PORTAL SYSTEM ====================
 function setupPortalUI() {
   const lockBtn = document.getElementById('portal-lock');
-  if (lockBtn) {
+  if (lockBtn && !lockBtn.dataset.bound) {
     lockBtn.addEventListener('click', tryUnlockPortal);
+    lockBtn.dataset.bound = 'true';
   }
 
   const portalBtn = document.querySelector('.portal-base');
-  if (portalBtn) {
+  if (portalBtn && !portalBtn.dataset.bound) {
     portalBtn.addEventListener('click', showDimensions);
+    portalBtn.dataset.bound = 'true';
   }
 
   const unlockBtn = document.getElementById('unlock-portal-btn');
-  if (unlockBtn) {
+  if (unlockBtn && !unlockBtn.dataset.bound) {
     unlockBtn.addEventListener('click', tryUnlockPortal);
+    unlockBtn.dataset.bound = 'true';
   }
 
   const redeemBtn = document.getElementById('redeem-btn');
-  if (redeemBtn) {
+  if (redeemBtn && !redeemBtn.dataset.bound) {
     redeemBtn.addEventListener('click', redeemCode);
+    redeemBtn.dataset.bound = 'true';
   }
 }
 
@@ -486,7 +497,11 @@ function enterDeepSea() {
   }
 
   // Setup Deep Sea roll
-  document.getElementById('ds-roll-btn').addEventListener('click', rollInDeepSea);
+  const deepSeaRollButton = document.getElementById('ds-roll-btn');
+  if (deepSeaRollButton && !deepSeaRollButton.dataset.bound) {
+    deepSeaRollButton.addEventListener('click', rollInDeepSea);
+    deepSeaRollButton.dataset.bound = 'true';
+  }
 
   showPopup('Welcome to the Deep Sea! 🌊 (2x Luck Boost Active)');
 }
@@ -732,6 +747,33 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+async function loadAdminUsers() {
+  const userList = document.getElementById('user-list');
+  if (!userList || !currentUser?.is_admin) return;
+
+  userList.innerHTML = '<p class="admin-empty-state">Loading player records...</p>';
+  const response = await handleAPI('/api/admin/users');
+  if (!response.success) {
+    userList.innerHTML = `<p class="admin-empty-state">${escapeHtml(response.error || 'Unable to load players.')}</p>`;
+    return;
+  }
+
+  userList.innerHTML = '';
+  response.users.forEach(user => {
+    const row = document.createElement('div');
+    row.className = 'admin-user-row';
+    row.innerHTML = `
+      <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_admin ? 'Administrator' : 'Player'}</span></div>
+      <div><strong>${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls</span></div>
+      <div><strong>${user.inventoryTotal || 0} drops</strong><span>${(user.titles || []).length} titles</span></div>
+    `;
+    userList.appendChild(row);
+  });
+  if (!response.users.length) {
+    userList.innerHTML = '<p class="admin-empty-state">No player records yet.</p>';
+  }
+}
+
 // ==================== THEME EVENTS ====================
 function applyThemeEvent(eventName, initiatedBy = 'Admin') {
   const eventNameLower = String(eventName || '').toLowerCase();
@@ -859,6 +901,7 @@ async function handleLogin(e) {
     if (data.success && data.user) {
       currentUser = data.user;
       console.log('✅ Logged in as:', currentUser.username);
+      window.refreshMultiplayerSession?.();
       showPopup('Welcome back, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
@@ -866,7 +909,7 @@ async function handleLogin(e) {
       updateUI(currentUser);
       e.target.reset();
     } else {
-      throw new Error(data.message || 'Login failed');
+      throw new Error(data.error || data.message || 'Login failed');
     }
   } catch (err) {
     errorDiv.textContent = err.message;
@@ -914,6 +957,7 @@ async function handleRegister(e) {
 
     if (data.success && data.user) {
       currentUser = data.user;
+      window.refreshMultiplayerSession?.();
       showPopup('Account created! Welcome, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
@@ -921,7 +965,7 @@ async function handleRegister(e) {
       updateUI(currentUser);
       e.target.reset();
     } else {
-      throw new Error(data.message || 'Registration failed');
+      throw new Error(data.error || data.message || 'Registration failed');
     }
   } catch (err) {
     errorDiv.textContent = err.message;
@@ -938,6 +982,7 @@ async function loadSession() {
   const response = await handleAPI('/api/session');
   if (response.success && response.user) {
     currentUser = response.user;
+    window.refreshMultiplayerSession?.();
     showGamePage();
     updateUI(response.user);
     setupPortalUI();
@@ -999,13 +1044,16 @@ function animateSpinWheel(duration = 2200, result = null) {
 // ==================== ROLL BUTTON ====================
 function setupRollButton() {
   const rollBtn = document.getElementById('roll-btn');
-  if (!rollBtn) return;
+  if (!rollBtn || rollBtn.dataset.bound) return;
+
+  rollBtn.dataset.bound = 'true';
 
   rollBtn.addEventListener('click', async () => {
     if (!currentUser) {
       showPopup('Login first to roll', 'error');
       return;
     }
+    if (rollBtn.disabled) return;
 
     const rollDisplay = document.getElementById('roll-display');
     const rewardDisplay = document.getElementById('reward-display');
@@ -1094,20 +1142,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const firstTab = document.querySelector('.content-tab');
     if (firstTab) {
       document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => {
+        p.classList.remove('active');
+        p.classList.add('hidden');
+      });
       firstTab.classList.add('active');
       const tabPane = document.getElementById(firstTab.dataset.tab + '-tab');
-      if (tabPane) tabPane.classList.add('active');
+      if (tabPane) {
+        tabPane.classList.remove('hidden');
+        tabPane.classList.add('active');
+      }
     }
   }
 
   document.querySelectorAll('.content-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => {
+        p.classList.remove('active');
+        p.classList.add('hidden');
+      });
       tab.classList.add('active');
       const tabPane = document.getElementById(tab.dataset.tab + '-tab');
-      if (tabPane) tabPane.classList.add('active');
+      if (tabPane) {
+        tabPane.classList.remove('hidden');
+        tabPane.classList.add('active');
+      }
     });
   });
 
@@ -1130,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('admin-btn')?.addEventListener('click', () => {
     if (currentUser && currentUser.is_admin) {
       showPage('admin-panel');
+      loadAdminUsers();
     } else {
       showPopup('Admin access denied', 'error');
     }
