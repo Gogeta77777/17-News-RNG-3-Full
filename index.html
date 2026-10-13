@@ -2955,7 +2955,225 @@
             75% { transform: rotate(5deg); }
         }
 
-        .portal-info {
+        .realm-selector {
+                        position: fixed;
+                        z-index: 1200;
+                        inset: 0;
+                        display: grid;
+                        place-items: center;
+                        padding: 20px;
+                        background: rgba(2, 8, 22, 0.82);
+                        backdrop-filter: blur(12px);
+                    }
+
+                    .realm-selector.hidden {
+                        display: none;
+                    }
+
+                    .realm-dialog {
+                        width: min(1040px, 100%);
+                        max-height: min(820px, 92vh);
+                        padding: clamp(18px, 3vw, 30px);
+                        overflow-y: auto;
+                        border: 1px solid rgba(125, 211, 252, 0.24);
+                        border-top: 3px solid #38bdf8;
+                        border-radius: 4px;
+                        background: linear-gradient(145deg, #0b1d3b, #061226 78%);
+                        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58);
+                    }
+
+                    .realm-dialog-header {
+                        display: flex;
+                        align-items: flex-start;
+                        justify-content: space-between;
+                        gap: 16px;
+                        margin-bottom: 22px;
+                    }
+
+                    .realm-dialog-header span,
+                    .realm-kicker {
+                        color: #7dd3fc;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                    }
+
+                    .realm-dialog-header h2 {
+                        margin: 5px 0 0;
+                        color: #eff6ff;
+                        font-family: 'Orbitron', sans-serif;
+                        font-size: clamp(1.3rem, 3vw, 2rem);
+                    }
+
+                    .realm-close {
+                        width: 38px;
+                        height: 38px;
+                        border: 1px solid rgba(191, 219, 254, 0.22);
+                        border-radius: 3px;
+                        background: rgba(191, 219, 254, 0.06);
+                        color: #eff6ff;
+                        font-size: 1.6rem;
+                        cursor: pointer;
+                    }
+
+                    .realm-list {
+                        display: grid;
+                        grid-template-columns: repeat(3, minmax(0, 1fr));
+                        gap: 14px;
+                    }
+
+                    .realm-card {
+                        min-width: 0;
+                        overflow: hidden;
+                        border: 1px solid rgba(125, 211, 252, 0.2);
+                        border-radius: 4px;
+                        background: #0b1b34;
+                    }
+
+                    .realm-coming {
+                        border-color: rgba(148, 163, 184, 0.13);
+                        background: #0a1427;
+                        filter: saturate(0.2);
+                    }
+
+                    .realm-art {
+                        position: relative;
+                        height: 144px;
+                        overflow: hidden;
+                        background: #061329;
+                    }
+
+                    .realm-art::before,
+                    .realm-art::after,
+                    .realm-art span,
+                    .realm-art i,
+                    .realm-art b {
+                        position: absolute;
+                        display: block;
+                        content: '';
+                    }
+
+                    .realm-art-sea {
+                        background: radial-gradient(ellipse at 50% 100%, #1d4ed8, transparent 55%), linear-gradient(180deg, #0b1b34, #0e7490 160%);
+                    }
+
+                    .realm-art-sea::before {
+                        right: -10%;
+                        bottom: -75%;
+                        left: -10%;
+                        height: 150%;
+                        border: 1px solid rgba(186, 230, 253, 0.56);
+                        border-radius: 50%;
+                        box-shadow: 0 -14px 0 -13px rgba(186, 230, 253, 0.6), 0 -30px 0 -29px rgba(186, 230, 253, 0.44);
+                    }
+
+                    .realm-art-sea span {
+                        top: 20%;
+                        left: 47%;
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 50%;
+                        background: #e0f2fe;
+                        box-shadow: 0 0 22px 10px rgba(56, 189, 248, 0.46);
+                    }
+
+                    .realm-art-sea i {
+                        right: 14%;
+                        bottom: 12%;
+                        width: 42px;
+                        height: 54px;
+                        border: 1px solid rgba(125, 211, 252, 0.4);
+                        border-radius: 50% 50% 10% 10%;
+                    }
+
+                    .realm-art-ember {
+                        background: radial-gradient(ellipse at 50% 100%, #7c2d12, transparent 60%), linear-gradient(160deg, #311522, #10152c);
+                    }
+
+                    .realm-art-ember span {
+                        right: 15%;
+                        bottom: -35px;
+                        left: 15%;
+                        height: 100px;
+                        border-radius: 50% 50% 0 0;
+                        background: linear-gradient(0deg, #f97316, #7c2d12 70%, transparent);
+                    }
+
+                    .realm-art-void {
+                        background: radial-gradient(circle at 52% 48%, #312e81, #111827 48%, #070d1c);
+                    }
+
+                    .realm-art-void span {
+                        top: 20%;
+                        left: 38%;
+                        width: 62px;
+                        height: 62px;
+                        border: 1px solid rgba(196, 181, 253, 0.58);
+                        border-radius: 50%;
+                        box-shadow: 0 0 30px rgba(129, 140, 248, 0.5), inset 0 0 20px rgba(129, 140, 248, 0.4);
+                    }
+
+                    .realm-copy {
+                        display: grid;
+                        gap: 8px;
+                        padding: 16px;
+                    }
+
+                    .realm-copy h3 {
+                        margin: 0;
+                        color: #eff6ff;
+                        font-family: 'Orbitron', sans-serif;
+                        font-size: 1rem;
+                    }
+
+                    .realm-copy p {
+                        min-height: 42px;
+                        margin: 0;
+                        color: #bfdbfe;
+                        font-size: 0.85rem;
+                    }
+
+                    .realm-status {
+                        min-height: 18px;
+                        color: #7dd3fc;
+                        font-size: 0.74rem;
+                    }
+
+                    .realm-copy .btn {
+                        width: 100%;
+                        padding: 10px 8px;
+                        font-size: 0.78rem;
+                    }
+
+                    .realm-copy .btn:disabled {
+                        cursor: not-allowed;
+                        opacity: 0.45;
+                    }
+
+                    .realm-soon {
+                        padding-top: 9px;
+                        border-top: 1px solid rgba(148, 163, 184, 0.16);
+                        color: #94a3b8;
+                        font-size: 0.72rem;
+                        font-weight: 700;
+                    }
+
+                    @media (max-width: 760px) {
+                        .realm-list {
+                            grid-template-columns: minmax(0, 1fr);
+                        }
+
+                        .realm-card:not(.realm-coming) {
+                            display: grid;
+                            grid-template-columns: minmax(100px, 0.65fr) minmax(0, 1.35fr);
+                        }
+
+                        .realm-art {
+                            height: 100%;
+                            min-height: 170px;
+                        }
+                    }
+
+                    .portal-info {
             flex: 1;
         }
 
@@ -3664,6 +3882,109 @@
             color: #bfdbfe;
         }
 
+        .inventory-grid {
+            grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+            gap: 12px;
+        }
+
+        .inventory-item.rarity-card {
+            position: relative;
+            display: flex;
+            min-height: 92px;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 14px;
+            padding: 15px;
+            overflow: hidden;
+            border: 1px solid color-mix(in srgb, var(--rarity-color), transparent 58%);
+            border-left: 4px solid var(--rarity-color);
+            background: linear-gradient(135deg, color-mix(in srgb, var(--rarity-color), #0b1b34 88%), #111c2d 72%);
+        }
+
+        .rarity-card-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .rarity-card-head h4 {
+            min-width: 0;
+            color: var(--rarity-color);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.88rem;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+
+        .rarity-count {
+            flex: 0 0 auto;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: rgba(3, 8, 17, 0.84);
+            color: #f8fafc !important;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .rarity-reward {
+            color: #cbd5e1 !important;
+            font-size: 0.76rem;
+        }
+
+        .inventory-item.global-rarity-card {
+            border-color: color-mix(in srgb, var(--rarity-color), transparent 25%);
+            box-shadow: 0 0 18px color-mix(in srgb, var(--rarity-color), transparent 74%);
+        }
+
+        .rarity-catalog-section {
+            padding: 0 !important;
+        }
+
+        .rarity-catalog summary {
+            padding: 18px;
+            color: #eff6ff;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .rarity-catalog summary span {
+            margin-left: 8px;
+            color: #7dd3fc;
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+
+        .rarity-catalog-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 7px;
+            padding: 0 12px 14px;
+        }
+
+        .rarity-catalog-row {
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 8px;
+            padding: 9px;
+            border-left: 3px solid var(--rarity-color);
+            background: rgba(239, 246, 255, 0.035);
+        }
+
+        .rarity-catalog-row strong {
+            color: var(--rarity-color);
+            font-size: 0.8rem;
+            overflow-wrap: anywhere;
+        }
+
+        .rarity-rank,
+        .rarity-catalog-rate {
+            color: #94a3b8;
+            font-size: 0.7rem;
+        }
+
         .shop-item:hover,
         .potion-card:hover,
         .inventory-item:hover {
@@ -3703,6 +4024,91 @@
         .chat-message {
             border-bottom: 1px solid rgba(239, 246, 255, 0.08);
             color: #eff6ff;
+        }
+
+        .chat-title-badge {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 7px;
+            padding: 2px 6px;
+            border: 1px solid color-mix(in srgb, var(--title-color), transparent 46%);
+            border-radius: 3px;
+            color: var(--title-color);
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-shadow: var(--title-glow);
+            vertical-align: 1px;
+        }
+
+        .global-drop-message {
+            padding: 12px !important;
+            border: 1px solid rgba(125, 211, 252, 0.5) !important;
+            border-left: 4px solid #38bdf8 !important;
+            background: linear-gradient(100deg, rgba(14, 165, 233, 0.2), rgba(15, 23, 42, 0.86)) !important;
+            box-shadow: inset 0 0 24px rgba(56, 189, 248, 0.08);
+        }
+
+        .global-drop-kicker {
+            display: block;
+            margin-bottom: 5px;
+            color: #7dd3fc;
+            font-size: 0.66rem;
+            font-weight: 900;
+        }
+
+        .global-drop-banner {
+            position: fixed;
+            z-index: 1500;
+            top: 22px;
+            left: 50%;
+            width: min(580px, calc(100vw - 28px));
+            padding: 18px 52px 18px 20px;
+            transform: translateX(-50%);
+            border: 1px solid color-mix(in srgb, var(--drop-color), transparent 22%);
+            border-top: 3px solid var(--drop-color);
+            border-radius: 4px;
+            background: linear-gradient(115deg, #0b1b34, #111c31 70%, color-mix(in srgb, var(--drop-color), #0b1b34 82%));
+            box-shadow: 0 18px 58px rgba(0, 0, 0, 0.58), 0 0 28px color-mix(in srgb, var(--drop-color), transparent 72%);
+            animation: globalDropArrive 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        .global-drop-banner-kicker {
+            display: block;
+            color: var(--drop-color);
+            font-size: 0.7rem;
+            font-weight: 900;
+        }
+
+        .global-drop-banner strong {
+            display: block;
+            margin-top: 4px;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.15rem;
+        }
+
+        .global-drop-banner p {
+            margin: 5px 0 0;
+            color: #cbd5e1;
+            font-size: 0.88rem;
+        }
+
+        .global-drop-dismiss {
+            position: absolute;
+            top: 9px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(191, 219, 254, 0.18);
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #eff6ff;
+            cursor: pointer;
+        }
+
+        @keyframes globalDropArrive {
+            from { opacity: 0; transform: translate(-50%, -12px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
         }
 
         .chat-input-area {
@@ -3995,7 +4401,71 @@
         }
 
         .deep-sea-background {
-            background: repeating-linear-gradient(0deg, rgba(147, 197, 253, 0.035) 0 1px, transparent 1px 5px), linear-gradient(180deg, #0c4a6e, #0b1d3b 72%, #071225);
+            isolation: isolate;
+            background:
+                radial-gradient(ellipse at 52% 5%, rgba(125, 211, 252, 0.2), transparent 36%),
+                repeating-linear-gradient(0deg, rgba(147, 197, 253, 0.028) 0 1px, transparent 1px 6px),
+                linear-gradient(180deg, #0e4770 0%, #0b2549 44%, #071225 100%);
+        }
+
+        .deep-sea-background::before {
+            position: absolute;
+            top: -18%;
+            left: 22%;
+            width: 56%;
+            height: 78%;
+            transform: skewX(-16deg);
+            background: linear-gradient(180deg, rgba(186, 230, 253, 0.12), rgba(56, 189, 248, 0.035) 48%, transparent);
+            filter: blur(18px);
+            content: '';
+            animation: seaLightDrift 12s ease-in-out infinite alternate;
+        }
+
+        .deep-sea-background::after {
+            position: absolute;
+            right: -8%;
+            bottom: -1px;
+            left: -8%;
+            height: 25%;
+            clip-path: polygon(0 54%, 10% 42%, 16% 64%, 26% 32%, 34% 57%, 43% 24%, 51% 60%, 62% 35%, 71% 58%, 82% 28%, 90% 56%, 100% 40%, 100% 100%, 0 100%);
+            background: linear-gradient(0deg, #040c1b, #0b1b34 82%, rgba(7, 18, 37, 0.2));
+            content: '';
+        }
+
+        .bubbles {
+            z-index: 2;
+        }
+
+        .bubble {
+            width: var(--bubble-size, 12px);
+            height: var(--bubble-size, 12px);
+            box-shadow: inset 1px 1px 3px rgba(255, 255, 255, 0.24), 0 0 10px rgba(56, 189, 248, 0.18);
+        }
+
+        .dimension-header {
+            position: relative;
+            z-index: 2;
+            background: linear-gradient(100deg, #081a34, #0e3154 52%, #0b1b34);
+        }
+
+        .dimension-header h1 {
+            color: #e0f2fe;
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.2rem, 3vw, 2rem);
+        }
+
+        .dimension-roll-panel {
+            padding: 26px;
+            border: 1px solid rgba(125, 211, 252, 0.28);
+            border-top: 3px solid #38bdf8;
+            background: rgba(5, 18, 40, 0.84);
+            box-shadow: 0 24px 72px rgba(0, 0, 0, 0.45), 0 0 44px rgba(14, 165, 233, 0.12);
+            backdrop-filter: blur(14px);
+        }
+
+        @keyframes seaLightDrift {
+            from { opacity: 0.35; transform: translateX(-5%) skewX(-16deg); }
+            to { opacity: 0.8; transform: translateX(7%) skewX(-16deg); }
         }
 
         .potion-effects > div {
@@ -4261,13 +4731,13 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">03.2</span></h3>
+                <h3>Latest Updates <span class="update-version">1.0</span></h3>
                 <div class="log-entry">
-                    <div class="date">13 Oct 2026 / Release 3.2</div>
-                    <p><strong>The draw console has a new signal.</strong></p>
-                    <p>✦ Roll results, rarity odds, and coin rewards now share one clearer panel.</p>
-                    <p>✦ Blue-night styling carries through the welcome, sign-in, and game screens.</p>
-                    <p>✦ Account inventory and global-drop announcements are protected against incomplete saved data.</p>
+                    <div class="date">13 Oct 2026 / Release 1.0</div>
+                    <p><strong>The release.</strong></p>
+                    <p>✦ 16 rarities, 2 potions, 9 titles, and 3 realms.</p>
+                    <p>✦ Permanent Sea Realm unlocks, global drops, and live events.</p>
+                    <p>✦ A rebuilt roll console, inventory, portal, chat, and admin desk.</p>
                 </div>
                 <div class="log-entry">
                     <div class="date">Previous / Release 3.0</div>
@@ -4381,8 +4851,8 @@
                 <div class="roll-panel">
                     <div class="roll-heading">
                         <div>
-                            <div class="roll-label">LIVE DRAW / RNG 03</div>
-                            <h2 class="roll-title">Signal draw</h2>
+                            <div class="roll-label">17 NEWS / RNG</div>
+                            <h2 class="roll-title">Roll</h2>
                         </div>
                         <div class="roll-state">READY</div>
                     </div>
@@ -4391,15 +4861,10 @@
                         <div class="roll-display" id="roll-display" role="status" aria-live="polite">READY TO DRAW</div>
                         <div class="roll-meter" aria-hidden="true"><i></i><i></i><i></i></div>
                     </div>
-                    <div class="roll-odds" aria-label="Rarity odds">
-                        <div><strong>65.2%</strong><span>COMMON</span></div>
-                        <div><strong>34.5%</strong><span>RARE</span></div>
-                        <div><strong>0.3%</strong><span>GLOBAL</span></div>
-                    </div>
                     <div class="potion-effects" id="potion-effects"></div>
                     <div class="roll-footer">
                         <div class="reward-display" id="reward-display">🪙 Reward: 0 coins</div>
-                        <button class="roll-btn" id="roll-btn">DRAW DROP</button>
+                        <button class="roll-btn" id="roll-btn">ROLL</button>
                     </div>
                 </div>
             </div>
@@ -4485,6 +4950,13 @@
                                 </div>
                             </div>
 
+                            <div class="settings-section rarity-catalog-section">
+                                <details class="rarity-catalog">
+                                    <summary>Rarity index <span>16 drops · rarest first</span></summary>
+                                    <div class="rarity-catalog-list" id="rarity-catalog-list"></div>
+                                </details>
+                            </div>
+
                             <div class="settings-section">
                                 <h3>Portal Gateway</h3>
                                 <div class="portal-container" id="portal-container">
@@ -4507,6 +4979,29 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="realm-selector hidden" id="realm-selector" role="dialog" aria-modal="true" aria-labelledby="realm-selector-title">
+        <section class="realm-dialog">
+            <header class="realm-dialog-header">
+                <div><span>17 NEWS / REALM NETWORK</span><h2 id="realm-selector-title">Choose a realm</h2></div>
+                <button class="realm-close" id="close-realm-selector" type="button" aria-label="Close realm selection">×</button>
+            </header>
+            <div class="realm-list">
+                <article class="realm-card realm-sea">
+                    <div class="realm-art realm-art-sea" aria-hidden="true"><span></span><i></i><b></b></div>
+                    <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Sea Realm</h3><p>Deep currents, rare finds, and double luck on every draw.</p><span class="realm-status" id="sea-realm-status"></span><button class="btn" id="sea-realm-action" type="button">UNLOCK &amp; ENTER · 1 ESSENCE</button></div>
+                </article>
+                <article class="realm-card realm-coming" aria-disabled="true">
+                    <div class="realm-art realm-art-ember" aria-hidden="true"><span></span><i></i><b></b></div>
+                    <div class="realm-copy"><span class="realm-kicker">COMING SOON</span><h3>Ember Realm</h3><p>A world still taking shape.</p><span class="realm-soon">COMING SOON</span></div>
+                </article>
+                <article class="realm-card realm-coming" aria-disabled="true">
+                    <div class="realm-art realm-art-void" aria-hidden="true"><span></span><i></i><b></b></div>
+                    <div class="realm-copy"><span class="realm-kicker">COMING SOON</span><h3>Sky Realm</h3><p>A world still taking shape.</p><span class="realm-soon">COMING SOON</span></div>
+                </article>
+            </div>
+        </section>
     </div>
 
     <!-- Deep Sea Dimension -->
