@@ -100,12 +100,12 @@ function refreshMultiplayerSession() {
   loadChatFallback();
 }
 
-function triggerAdminEvent(eventName) {
+function triggerAdminEvent(eventName, action = 'start') {
   if (!socket || !socket.connected) {
     showPopup('Unable to trigger admin event while disconnected.', 'error');
     return;
   }
-  socket.emit('admin-event', { eventName }, (response) => {
+  socket.emit('admin-event', { eventName, action }, (response) => {
     if (!response?.success) {
       showPopup(response?.error || 'Unable to start event.', 'error');
     }
