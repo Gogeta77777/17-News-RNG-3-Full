@@ -2155,6 +2155,21 @@
                 padding: 16px;
             }
 
+            .roll-machine {
+                grid-template-columns: 30px minmax(0, 1fr) 16px;
+                min-height: 150px;
+                padding: 8px;
+            }
+
+            .roll-display {
+                min-height: 120px;
+                font-size: 1rem;
+            }
+
+            .roll-odds div {
+                padding: 8px 6px;
+            }
+
             .left-panel,
             .right-panel {
                 width: 100%;
@@ -3064,27 +3079,27 @@
         }
 
         :root {
-            --primary-blue: #c9f06a;
-            --secondary-blue: #88ad4c;
-            --accent-blue: #f47c62;
-            --light-blue: #dce7c8;
-            --dark-blue: #182523;
-            --darker-blue: #101918;
-            --text-light: #f1f0e8;
-            --text-dark: #18211f;
-            --success: #c9f06a;
+            --primary-blue: #60a5fa;
+            --secondary-blue: #2563eb;
+            --accent-blue: #f59e0b;
+            --light-blue: #bfdbfe;
+            --dark-blue: #101d33;
+            --darker-blue: #071225;
+            --text-light: #eff6ff;
+            --text-dark: #061226;
+            --success: #60a5fa;
             --warning: #ffbd5c;
-            --error: #f47c62;
+            --error: #f59e0b;
         }
 
         body {
-            background-color: #101918;
+            background-color: #071225;
             background-image:
-                radial-gradient(ellipse at 80% 4%, rgba(89, 128, 79, 0.22), transparent 42%),
-                linear-gradient(rgba(241, 240, 232, 0.035) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(241, 240, 232, 0.035) 1px, transparent 1px);
+                radial-gradient(ellipse at 80% 4%, rgba(37, 99, 235, 0.22), transparent 42%),
+                linear-gradient(rgba(239, 246, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(239, 246, 255, 0.035) 1px, transparent 1px);
             background-size: auto, 32px 32px, 32px 32px;
-            color: #f1f0e8;
+            color: #eff6ff;
             font-family: 'Rajdhani', sans-serif;
         }
 
@@ -3103,7 +3118,7 @@
         a:focus-visible,
         input:focus-visible,
         textarea:focus-visible {
-            outline: 3px solid #c9f06a;
+            outline: 3px solid #60a5fa;
             outline-offset: 3px;
         }
 
@@ -3143,7 +3158,7 @@
         .logo {
             max-width: 720px;
             margin: 0 0 18px;
-            color: #f1f0e8;
+            color: #eff6ff;
             background: none;
             -webkit-text-fill-color: currentColor;
             font-size: clamp(3.1rem, 8vw, 6.6rem);
@@ -3155,9 +3170,20 @@
 
         .tagline {
             min-height: 36px;
-            color: #c9f06a;
+            color: #60a5fa;
             font-size: 1.35rem;
             font-weight: 600;
+        }
+
+        .tagline::after {
+            margin-left: 3px;
+            color: #38bdf8;
+            content: '_';
+            animation: taglineBlink 900ms steps(2, start) infinite;
+        }
+
+        @keyframes taglineBlink {
+            to { visibility: hidden; }
         }
 
         .action-buttons {
@@ -3169,10 +3195,10 @@
         .btn {
             min-height: 44px;
             padding: 10px 20px;
-            border: 1px solid rgba(201, 240, 106, 0.6);
+            border: 1px solid rgba(96, 165, 250, 0.6);
             border-radius: 3px;
-            background: #c9f06a;
-            color: #18211f;
+            background: #60a5fa;
+            color: #061226;
             box-shadow: none;
             font-weight: 700;
             transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
@@ -3180,54 +3206,70 @@
 
         .btn:hover {
             transform: translateY(-2px);
-            background: #d9ff83;
+            background: #93c5fd;
             box-shadow: none;
         }
 
         .action-buttons .btn + .btn,
         .logout-btn {
-            border-color: rgba(241, 240, 232, 0.26);
-            background: rgba(241, 240, 232, 0.07);
-            color: #f1f0e8;
+            border-color: rgba(239, 246, 255, 0.26);
+            background: rgba(239, 246, 255, 0.07);
+            color: #eff6ff;
         }
 
         .action-buttons .btn + .btn:hover,
         .logout-btn:hover {
-            background: rgba(241, 240, 232, 0.14);
+            background: rgba(239, 246, 255, 0.14);
         }
 
         .admin-btn {
             margin-right: 0;
             border-color: rgba(244, 124, 98, 0.55);
-            background: #f47c62;
-            color: #18211f;
+            background: #f59e0b;
+            color: #061226;
         }
 
         .update-log {
             align-self: center;
             padding: 28px;
-            border: 0;
-            border-top: 4px solid #f47c62;
+            border: 1px solid rgba(96, 165, 250, 0.24);
+            border-top: 4px solid #38bdf8;
             border-radius: 3px;
-            background: #e9e8dc;
-            color: #18211f;
-            box-shadow: 12px 12px 0 rgba(201, 240, 106, 0.16);
+            background: linear-gradient(145deg, #102343, #0a1730);
+            color: #eff6ff;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
         }
 
         .update-log h3 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
             margin-bottom: 18px;
-            color: #18211f;
+            color: #eff6ff;
             font-size: 1.4rem;
         }
 
+        .update-version {
+            padding: 4px 7px;
+            border: 1px solid rgba(56, 189, 248, 0.32);
+            color: #7dd3fc;
+            font-size: 0.7rem;
+        }
+
         .update-log .date {
-            color: #607450;
+            color: #7dd3fc;
+            font-weight: 700;
         }
 
         .update-log .log-entry + .log-entry {
             margin-top: 18px;
             padding-top: 18px;
-            border-top: 1px solid rgba(24, 33, 31, 0.16);
+            border-top: 1px solid rgba(191, 219, 254, 0.15);
+        }
+
+        .update-log .log-entry p {
+            color: #bfdbfe;
         }
 
         .auth-container {
@@ -3239,35 +3281,35 @@
         .auth-card {
             width: min(460px, 100%);
             padding: 36px;
-            border: 1px solid rgba(241, 240, 232, 0.16);
-            border-top: 4px solid #c9f06a;
+            border: 1px solid rgba(239, 246, 255, 0.16);
+            border-top: 4px solid #60a5fa;
             border-radius: 3px;
-            background: #182321;
-            box-shadow: 14px 14px 0 rgba(0, 0, 0, 0.16);
+            background: linear-gradient(145deg, #102343, #0a1730);
+            box-shadow: 0 20px 56px rgba(0, 0, 0, 0.32);
         }
 
         .auth-card h1 {
-            color: #f1f0e8;
+            color: #eff6ff;
             font-size: 2rem;
         }
 
         .auth-card p {
-            color: #c4cbb9 !important;
+            color: #bfdbfe !important;
         }
 
         .auth-card input,
         .code-input-group input,
         .chat-input-area input,
         .announcement-form textarea {
-            border: 1px solid rgba(241, 240, 232, 0.2);
+            border: 1px solid rgba(239, 246, 255, 0.2);
             border-radius: 3px;
-            background: #101918;
-            color: #f1f0e8;
+            background: #071225;
+            color: #eff6ff;
         }
 
         .auth-link,
         .auth-link a {
-            color: #c9f06a;
+            color: #60a5fa;
         }
 
         .game-container {
@@ -3282,13 +3324,13 @@
             z-index: 20;
             padding: 16px clamp(18px, 4vw, 48px);
             border: 0;
-            border-bottom: 1px solid rgba(241, 240, 232, 0.16);
-            background: rgba(16, 25, 24, 0.94);
+            border-bottom: 1px solid rgba(239, 246, 255, 0.16);
+            background: rgba(7, 18, 37, 0.96);
             backdrop-filter: blur(14px);
         }
 
         .game-title {
-            color: #f1f0e8;
+            color: #eff6ff;
             font-size: 1.4rem;
         }
 
@@ -3297,14 +3339,14 @@
         }
 
         .user-info .username {
-            color: #c9f06a;
+            color: #60a5fa;
         }
 
         .user-info .coins {
             padding: 5px 10px;
-            border: 1px solid rgba(201, 240, 106, 0.35);
+            border: 1px solid rgba(96, 165, 250, 0.35);
             border-radius: 2px;
-            color: #f1f0e8;
+            color: #eff6ff;
         }
 
         .game-main {
@@ -3324,7 +3366,6 @@
             min-height: 600px;
         }
 
-        .roll-panel,
         .tab-content,
         .admin-section,
         .chat-container,
@@ -3332,17 +3373,24 @@
         .rotating-shop,
         .potion-shop,
         .titles-container {
-            border: 1px solid rgba(241, 240, 232, 0.14);
+            border: 1px solid rgba(239, 246, 255, 0.14);
             border-radius: 3px;
-            background: rgba(24, 35, 33, 0.94);
+            background: rgba(13, 27, 50, 0.96);
             box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.13);
             backdrop-filter: blur(12px);
         }
 
         .roll-panel {
+            position: relative;
+            overflow: hidden;
             padding: 22px;
             gap: 18px;
-            border-top: 4px solid #c9f06a;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-left: 3px solid #38bdf8;
+            background:
+                radial-gradient(circle at 50% 10%, rgba(37, 99, 235, 0.17), transparent 55%),
+                linear-gradient(145deg, #102343, #09162d);
+            box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
             animation: deskRise 420ms ease-out both;
         }
 
@@ -3352,22 +3400,137 @@
             display: none;
         }
 
+        .roll-heading {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
         .roll-label {
-            color: #c9f06a;
+            color: #7dd3fc;
             font-size: 0.8rem;
             letter-spacing: 0;
         }
 
-        .roll-display {
-            min-height: 170px;
-            padding: 24px 16px;
-            border: 1px solid rgba(241, 240, 232, 0.12);
+        .roll-title {
+            margin-top: 5px;
+            color: #eff6ff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.15rem;
+        }
+
+        .roll-state {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 9px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
             border-radius: 2px;
-            background: repeating-linear-gradient(0deg, rgba(241, 240, 232, 0.025) 0 1px, transparent 1px 4px), #101918;
-            color: #f1f0e8;
+            color: #bae6fd;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .roll-state::before {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+            content: '';
+        }
+
+        .roll-machine {
+            position: relative;
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr) 24px;
+            align-items: center;
+            min-height: 176px;
+            padding: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            background:
+                linear-gradient(90deg, transparent 49.8%, rgba(56, 189, 248, 0.06) 50%, transparent 50.2%),
+                repeating-linear-gradient(0deg, rgba(191, 219, 254, 0.025) 0 1px, transparent 1px 4px),
+                #061329;
+            box-shadow: inset 0 0 38px rgba(37, 99, 235, 0.12);
+        }
+
+        .roll-machine-mark {
+            display: grid;
+            gap: 4px;
+            justify-items: center;
+            color: #60a5fa;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.55rem;
+        }
+
+        .roll-machine-mark strong {
+            color: #eff6ff;
+            font-size: 1.1rem;
+        }
+
+        .roll-meter {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .roll-meter i {
+            width: 5px;
+            height: 18px;
+            background: #1e3a5f;
+        }
+
+        .roll-meter i:nth-child(2) {
+            background: #38bdf8;
+            box-shadow: 0 0 9px rgba(56, 189, 248, 0.55);
+        }
+
+        .roll-display {
+            position: relative;
+            z-index: 1;
+            min-height: 132px;
+            padding: 22px 12px;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: #f8fafc;
             box-shadow: none;
-            font-size: clamp(1.25rem, 2vw, 1.8rem);
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.05rem, 2vw, 1.5rem);
             overflow-wrap: anywhere;
+        }
+
+        .roll-odds {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            border: 1px solid rgba(96, 165, 250, 0.18);
+            background: rgba(4, 14, 31, 0.5);
+        }
+
+        .roll-odds div {
+            display: grid;
+            gap: 2px;
+            padding: 9px 10px;
+        }
+
+        .roll-odds div + div {
+            border-left: 1px solid rgba(96, 165, 250, 0.18);
+        }
+
+        .roll-odds strong {
+            color: #eff6ff;
+            font-size: 0.95rem;
+        }
+
+        .roll-odds span {
+            color: #7dd3fc;
+            font-size: 0.62rem;
+            font-weight: 700;
         }
 
         .roll-footer {
@@ -3378,10 +3541,10 @@
         .reward-display {
             flex-basis: 100%;
             padding: 12px 14px;
-            border: 1px solid rgba(241, 240, 232, 0.14);
+            border: 1px solid rgba(239, 246, 255, 0.14);
             border-radius: 2px;
-            background: rgba(241, 240, 232, 0.04);
-            color: #f1f0e8;
+            background: rgba(239, 246, 255, 0.04);
+            color: #eff6ff;
         }
 
         .roll-btn {
@@ -3391,22 +3554,30 @@
             padding: 14px 20px;
             border: 0;
             border-radius: 2px;
-            background: #c9f06a;
-            color: #18211f;
+            background: linear-gradient(110deg, #2563eb, #0ea5e9);
+            color: #fff;
             box-shadow: none;
             font-size: 1.1rem;
             letter-spacing: 0;
             animation: none;
+            text-transform: uppercase;
+        }
+
+        .roll-btn::before {
+            margin-right: 10px;
+            color: #bae6fd;
+            content: '\21bb';
+            font-size: 1.25rem;
         }
 
         .roll-btn:hover {
-            background: #d9ff83;
-            box-shadow: 0 8px 24px rgba(201, 240, 106, 0.15);
+            background: linear-gradient(110deg, #1d4ed8, #0284c7);
+            box-shadow: 0 8px 24px rgba(14, 165, 233, 0.22);
         }
 
         .roll-btn.loading {
-            background: #758654;
-            color: #f1f0e8;
+            background: #1e3a8a;
+            color: #eff6ff;
         }
 
         .content-tabs {
@@ -3414,9 +3585,9 @@
             gap: 4px;
             margin-bottom: 14px;
             padding: 5px;
-            border: 1px solid rgba(241, 240, 232, 0.13);
+            border: 1px solid rgba(239, 246, 255, 0.13);
             border-radius: 3px;
-            background: #182321;
+            background: #0b1b34;
             backdrop-filter: none;
         }
 
@@ -3425,18 +3596,18 @@
             padding: 12px 8px;
             border: 0;
             border-radius: 2px;
-            color: #c4cbb9;
+            color: #bfdbfe;
             font-size: 1rem;
         }
 
         .content-tab:hover {
-            background: rgba(241, 240, 232, 0.07);
-            color: #f1f0e8;
+            background: rgba(239, 246, 255, 0.07);
+            color: #eff6ff;
         }
 
         .content-tab.active {
-            background: #c9f06a;
-            color: #18211f;
+            background: #60a5fa;
+            color: #061226;
             box-shadow: none;
         }
 
@@ -3451,17 +3622,17 @@
 
         .inventory-subtabs {
             margin-bottom: 18px;
-            border-bottom: 1px solid rgba(241, 240, 232, 0.14);
+            border-bottom: 1px solid rgba(239, 246, 255, 0.14);
         }
 
         .inv-subtab {
             border-radius: 0;
-            color: #c4cbb9;
+            color: #bfdbfe;
         }
 
         .inv-subtab.active {
-            border-color: #c9f06a;
-            color: #c9f06a;
+            border-color: #60a5fa;
+            color: #60a5fa;
         }
 
         .inventory-item,
@@ -3470,9 +3641,9 @@
         .title-card,
         .admin-user-row,
         .event-item {
-            border: 1px solid rgba(241, 240, 232, 0.12);
+            border: 1px solid rgba(239, 246, 255, 0.12);
             border-radius: 3px;
-            background: rgba(241, 240, 232, 0.045);
+            background: rgba(239, 246, 255, 0.045);
             box-shadow: none;
         }
 
@@ -3483,31 +3654,31 @@
         .settings-section h3,
         .rotating-shop h3,
         .potion-shop h3 {
-            color: #f1f0e8;
+            color: #eff6ff;
         }
 
         .inventory-item span,
         .shop-item-price,
         .potion-card p,
         .title-status {
-            color: #c4cbb9;
+            color: #bfdbfe;
         }
 
         .shop-item:hover,
         .potion-card:hover,
         .inventory-item:hover {
             transform: translateY(-2px);
-            border-color: rgba(201, 240, 106, 0.45);
+            border-color: rgba(96, 165, 250, 0.45);
             box-shadow: none;
         }
 
         .potion-buy-btn,
         .code-input-group .btn,
         .chat-input-area .btn {
-            border: 1px solid rgba(201, 240, 106, 0.5);
+            border: 1px solid rgba(96, 165, 250, 0.5);
             border-radius: 2px;
-            background: rgba(201, 240, 106, 0.12);
-            color: #d8f59e;
+            background: rgba(96, 165, 250, 0.12);
+            color: #bfdbfe;
         }
 
         .chat-container {
@@ -3517,61 +3688,61 @@
         }
 
         .chat-header {
-            border-bottom: 1px solid rgba(241, 240, 232, 0.13);
+            border-bottom: 1px solid rgba(239, 246, 255, 0.13);
             background: transparent;
         }
 
         .chat-header h2 {
-            color: #f1f0e8;
+            color: #eff6ff;
         }
 
         .chat-messages {
-            background: #101918;
+            background: #071225;
         }
 
         .chat-message {
-            border-bottom: 1px solid rgba(241, 240, 232, 0.08);
-            color: #f1f0e8;
+            border-bottom: 1px solid rgba(239, 246, 255, 0.08);
+            color: #eff6ff;
         }
 
         .chat-input-area {
-            border-top: 1px solid rgba(241, 240, 232, 0.13);
-            background: #182321;
+            border-top: 1px solid rgba(239, 246, 255, 0.13);
+            background: #0b1b34;
         }
 
         .portal-container {
-            border: 1px solid rgba(241, 240, 232, 0.12);
+            border: 1px solid rgba(239, 246, 255, 0.12);
             border-radius: 3px;
-            background: #101918;
+            background: #071225;
         }
 
         .portal-base {
-            border-color: #c9f06a;
-            background: radial-gradient(circle, rgba(201, 240, 106, 0.15), transparent 70%);
+            border-color: #60a5fa;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.15), transparent 70%);
         }
 
         .portal-orb {
-            background: radial-gradient(circle at 30% 30%, #f47c62, #384f40);
+            background: radial-gradient(circle at 30% 30%, #f59e0b, #0e7490);
         }
 
         .portal-info p,
         #portal-status {
-            color: #dce7c8;
+            color: #bfdbfe;
         }
 
         .admin-panel {
-            background: #101918;
+            background: #071225;
         }
 
         .admin-header {
-            border-color: rgba(241, 240, 232, 0.14);
-            background: #182321;
+            border-color: rgba(239, 246, 255, 0.14);
+            background: #0b1b34;
         }
 
         .admin-header h1,
         .admin-section h2,
         .admin-section h3 {
-            color: #f1f0e8;
+            color: #eff6ff;
         }
 
         .admin-section {
@@ -3584,28 +3755,28 @@
 
         .admin-empty-state,
         .event-item p {
-            color: #c4cbb9;
+            color: #bfdbfe;
         }
 
         .dimension-header {
-            background: #142522;
-            border-color: rgba(111, 220, 190, 0.3);
-            color: #b8f2df;
+            background: #0b1b34;
+            border-color: rgba(56, 189, 248, 0.3);
+            color: #bfdbfe;
         }
 
         .deep-sea-background {
-            background: repeating-linear-gradient(0deg, rgba(184, 242, 223, 0.035) 0 1px, transparent 1px 5px), linear-gradient(180deg, #1c5547, #102b2b 72%, #101918);
+            background: repeating-linear-gradient(0deg, rgba(147, 197, 253, 0.035) 0 1px, transparent 1px 5px), linear-gradient(180deg, #0c4a6e, #0b1d3b 72%, #071225);
         }
 
         .potion-effects > div {
-            border: 1px solid rgba(201, 240, 106, 0.32);
+            border: 1px solid rgba(96, 165, 250, 0.32);
             border-radius: 2px;
-            background: rgba(201, 240, 106, 0.08);
-            color: #d8f59e;
+            background: rgba(96, 165, 250, 0.08);
+            color: #bfdbfe;
         }
 
         .popup {
-            border: 1px solid rgba(241, 240, 232, 0.2);
+            border: 1px solid rgba(239, 246, 255, 0.2);
             border-radius: 3px;
             box-shadow: 0 10px 36px rgba(0, 0, 0, 0.35);
         }
@@ -3832,7 +4003,7 @@
             <!-- Welcome Section -->
             <div class="welcome-section">
                 <div class="logo">17 News RNG 3</div>
-                <div class="tagline" id="tagline"></div>
+                <div class="tagline" id="tagline" aria-live="polite" aria-label="17 News RNG 3 welcome message"></div>
                 <div class="action-buttons">
                     <button class="btn" id="login-btn">Login</button>
                     <button class="btn" id="register-btn">Register</button>
@@ -3841,13 +4012,13 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates</h3>
+                <h3>Latest Updates <span class="update-version">03.2</span></h3>
                 <div class="log-entry">
-                    <div class="date">11 Sep 2026 / Release 3.1</div>
-                    <p><strong>The signal desk is live.</strong></p>
-                    <p>✦ The roll wheel now mirrors the complete rarity pool and reveals the server-selected drop cleanly.</p>
-                    <p>✦ Landing and game surfaces share a sharper broadcast-control-room theme with clearer hierarchy.</p>
-                    <p>✦ Global drops, inventory counts, potion effects, and Deep Sea rewards remain connected to the same roll system.</p>
+                    <div class="date">13 Oct 2026 / Release 3.2</div>
+                    <p><strong>The draw console has a new signal.</strong></p>
+                    <p>✦ Roll results, rarity odds, and coin rewards now share one clearer panel.</p>
+                    <p>✦ Blue-night styling carries through the welcome, sign-in, and game screens.</p>
+                    <p>✦ Account inventory and global-drop announcements are protected against incomplete saved data.</p>
                 </div>
                 <div class="log-entry">
                     <div class="date">Previous / Release 3.0</div>
@@ -3946,7 +4117,7 @@
                 <h1 class="game-title">17 News RNG 3</h1>
                 <div class="user-info">
                     <span class="username" id="game-username">Player</span>
-                    <span class="coins" id="game-coins">0 coins</span>
+                    <span class="coins" id="game-coins">🪙 0 coins</span>
                 </div>
             </div>
             <div class="header-right">
@@ -3959,14 +4130,27 @@
             <!-- Roll Panel (Left) -->
             <div class="left-panel">
                 <div class="roll-panel">
-                    <div class="roll-status">
-                        <div class="roll-label">ROLL HUB</div>
-                        <div class="roll-display" id="roll-display">Ready to roll</div>
-                        <div class="potion-effects" id="potion-effects"></div>
+                    <div class="roll-heading">
+                        <div>
+                            <div class="roll-label">LIVE DRAW / RNG 03</div>
+                            <h2 class="roll-title">Signal draw</h2>
+                        </div>
+                        <div class="roll-state">READY</div>
                     </div>
+                    <div class="roll-machine">
+                        <div class="roll-machine-mark" aria-hidden="true"><span>17 NEWS</span><strong>03</strong></div>
+                        <div class="roll-display" id="roll-display" role="status" aria-live="polite">READY TO DRAW</div>
+                        <div class="roll-meter" aria-hidden="true"><i></i><i></i><i></i></div>
+                    </div>
+                    <div class="roll-odds" aria-label="Rarity odds">
+                        <div><strong>65.2%</strong><span>COMMON</span></div>
+                        <div><strong>34.5%</strong><span>RARE</span></div>
+                        <div><strong>0.3%</strong><span>GLOBAL</span></div>
+                    </div>
+                    <div class="potion-effects" id="potion-effects"></div>
                     <div class="roll-footer">
-                        <div class="reward-display" id="reward-display">Reward: 0 coins</div>
-                        <button class="roll-btn" id="roll-btn">ROLL</button>
+                        <div class="reward-display" id="reward-display">🪙 Reward: 0 coins</div>
+                        <button class="roll-btn" id="roll-btn">DRAW DROP</button>
                     </div>
                 </div>
             </div>
@@ -4090,7 +4274,7 @@
                         <div class="roll-display" id="ds-roll-display">Ready to roll</div>
                     </div>
                     <div class="roll-footer">
-                        <div class="reward-display" id="ds-reward-display">Reward: 0 coins</div>
+                        <div class="reward-display" id="ds-reward-display">🪙 Reward: 0 coins</div>
                         <button class="roll-btn" id="ds-roll-btn">ROLL</button>
                     </div>
                 </div>
