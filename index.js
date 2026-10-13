@@ -1,1324 +1,1223 @@
-// ==================== GAME CONSTANTS ====================
-const taglines = [
-  'The third installment',
-  'Back for more',
-  'For the community',
-  'For Ellerslie School',
-  'For 17 News',
-  'The Threequel'
-];
+/*
+  17 News RNG 3 - The Next Generation
+  - Modern multiplayer RNG game
+  - Enhanced security and performance
+  - New features and mechanics
+  - Community-driven development
+*/
 
-let currentTaglineIndex = 0;
+require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const session = require('express-session');
+const MemoryStore = require('memorystore')(session);
+const path = require('path');
+const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const crypto = require('crypto');
+const { Pool } = require('pg');
 
-const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 65.2, color: '#0f172a' },
-  { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
-  { key: 'daniel-poole', name: 'Daniel Poole', reward: 450, chance: 4, color: '#166534' },
-  { key: 'dominik-procter', name: 'Dominik Procter', reward: 450, chance: 3, color: '#0d9488' },
-  { key: 'gabe-muir', name: 'Gabe Muir', reward: 450, chance: 2, color: '#115e59' },
-  { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', reward: 550, chance: 1.5, color: '#7c3aed' },
-  { key: 'kayla-walters', name: 'Kayla Walters', reward: 550, chance: 1, color: '#ec4899' },
-  { key: 'leo-thacker', name: 'Leo Thacker', reward: 700, chance: 0.8, color: '#2dd4bf' },
-  { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 700, chance: 0.7, color: '#f97316' },
-  { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
-  { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
-  { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
-];
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production' ? false : '*',
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['polling', 'websocket'],
+  pingTimeout: 20000,
+  pingInterval: 10000,
+  maxHttpBufferSize: 1e6,
+  serveClient: true,
+  allowEIO3: true
+});
 
-const globalOptions = [
-  { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444' },
-  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8' },
-  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#f8fafc', glowColor: '#000000' }
-];
+app.set('trust proxy', 1);
 
-const POTIONS = {
-  luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck' },
-  speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed' }
-};
+// Database Setup
+let pool;
+const IS_VERCEL = process.env.VERCEL === '1';
+const IS_RENDER = process.env.RENDER === 'true';
+// Neon/Postgres connection string: prefer NEON_DATABASE_URL or DATABASE_URL as a fallback
+const DATABASE_URL = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.PG_CONNECTION_STRING;
+const USE_POSTGRES = Boolean(DATABASE_URL);
 
-const ROTATING_SHOP_ITEMS = [
-  { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
-  { name: 'Clover Leaf', cost: 500, rarity: 'common' },
-  { name: 'Sea Essence', cost: 300000, rarity: 'legendary' }
-];
-
-const TITLES = [
-  { id: 'owner', name: 'Owner', color: '#FFD700', requirement: 'admin', description: 'Only for Mr_Fernanski' },
-  { id: 'veteran', name: 'Veteran', color: '#CD853F', requirement: 'code:THETHREEQUEL', description: 'Redeem code THETHREEQUEL' },
-  { id: 'millionaire', name: 'Millionaire', color: '#90EE90', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
-  { id: 'portalmancer', name: 'Portalmancer', color: '#87CEEB', requirement: 'portal', description: 'Open the Deep Sea portal' }
-];
-
-const CODE_REWARDS = {
-  'THETHREEQUEL': { title: 'veteran', coins: 0 }
-};
-
-// ==================== GAME STATE ====================
-let currentUser = null;
-let isEnteringDimension = false;
-let gameState = {
-  activeEffects: {},
-  currentDimension: null,
-  rotatingShopIndex: 0,
-  shopLastRestock: Date.now(),
-  deathSeaUnlocked: false,
-  portalFragments: 0,
-  seaEssence: 0,
-  portalUnlocked: false,
-  userTitles: [],
-  activeTitle: null,
-  potionInventory: { luck: 0, speed: 0 },
-  itemInventory: { fragments: 0, clovers: 0, essence: 0 }
-};
-
-// ==================== TAGLINE CYCLING ====================
-function typeText(text, element, speed = 45) {
-  element.classList.add('typing');
-  element.textContent = '';
-  let i = 0;
-  const timer = setInterval(() => {
-    if (i < text.length) {
-      element.textContent += text.charAt(i);
-      i += 1;
-    } else {
-      clearInterval(timer);
-      setTimeout(() => {
-        element.classList.remove('typing');
-        setTimeout(nextTagline, 2200);
-      }, 1200);
-    }
-  }, speed);
-}
-
-function nextTagline() {
-  currentTaglineIndex = (currentTaglineIndex + 1) % taglines.length;
-  const taglineElement = document.getElementById('tagline');
-  if (taglineElement) {
-    typeText(taglines[currentTaglineIndex], taglineElement);
-  }
-}
-
-function initTagline() {
-  const taglineElement = document.getElementById('tagline');
-  if (taglineElement) {
-    typeText(taglines[0], taglineElement);
-  }
-}
-
-// ==================== UTILITY FUNCTIONS ====================
-function formatCoins(amount) {
-  return Number(amount).toLocaleString();
-}
-
-function showPopup(message, type = 'success') {
-  const popup = document.createElement('div');
-  popup.className = 'popup';
-  popup.textContent = message;
-  if (type === 'error') {
-    popup.style.background = 'rgba(239, 68, 68, 0.95)';
-  } else if (/^(#|rgb|hsl)/i.test(type)) {
-    popup.style.background = type;
-  } else {
-    popup.style.background = 'rgba(14, 165, 233, 0.95)';
-  }
-  document.body.appendChild(popup);
-  setTimeout(() => popup.remove(), 3000);
-}
-
-function showRewardPopup(message) {
-  const reward = document.createElement('div');
-  reward.className = 'reward-pop';
-  reward.textContent = message;
-  document.body.appendChild(reward);
-  setTimeout(() => reward.remove(), 1100);
-}
-
-function setLoading(button, isLoading, text = 'Loading...') {
-  if (!button) return;
-  if (isLoading && !button.dataset.defaultText) {
-    button.dataset.defaultText = button.textContent;
-  }
-  button.disabled = isLoading;
-  button.textContent = isLoading ? text : button.dataset.defaultText || button.textContent;
-}
-
-async function handleAPI(url, options = {}) {
+if (USE_POSTGRES) {
   try {
-    const body = options.body !== undefined
-      ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body))
-      : undefined;
-
-    const response = await fetch(url, {
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-      body
+    pool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: (process.env.NODE_ENV === 'production' || DATABASE_URL.includes('sslmode=require') || process.env.PGSSLMODE === 'require')
+        ? { rejectUnauthorized: false }
+        : false
     });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.error || data.message || `Request failed (${response.status})`,
-        status: response.status
-      };
-    }
-    return data;
+    console.log('✅ PostgreSQL/Neon initialized for RNG 3');
   } catch (error) {
-    console.error('API error:', error);
-    return { success: false, error: 'Unable to contact server' };
+    console.error('⚠️ PostgreSQL initialization failed, falling back to local storage:', error.message || error);
+    pool = null;
   }
 }
 
-// ==================== POTION SYSTEM ====================
-function applyPotion(potionType) {
-  const potion = POTIONS[potionType];
-  if (!potion) return;
+const inMemoryStore = {
+  users: {},
+  chatMessages: []
+};
 
-  gameState.activeEffects[potionType] = {
-    multiplier: potion.multiplier,
-    duration: potion.duration,
-    endTime: Date.now() + potion.duration * 1000,
-    started: Date.now()
+const STORAGE_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(STORAGE_DIR, 'users.json');
+const CHAT_FILE = path.join(STORAGE_DIR, 'chat.json');
+const JSON_ENCODING = 'utf8';
+
+function ensureStorageFiles() {
+  try {
+    if (!fs.existsSync(STORAGE_DIR)) {
+      fs.mkdirSync(STORAGE_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(USERS_FILE)) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify({}, null, 2), JSON_ENCODING);
+    }
+    if (!fs.existsSync(CHAT_FILE)) {
+      fs.writeFileSync(CHAT_FILE, JSON.stringify([], null, 2), JSON_ENCODING);
+    }
+  } catch (error) {
+    console.error('Storage initialization failed:', error);
+  }
+}
+
+function loadStorageFiles() {
+  try {
+    const usersRaw = fs.readFileSync(USERS_FILE, JSON_ENCODING);
+    inMemoryStore.users = JSON.parse(usersRaw) || {};
+  } catch (error) {
+    inMemoryStore.users = {};
+  }
+
+  try {
+    const chatRaw = fs.readFileSync(CHAT_FILE, JSON_ENCODING);
+    inMemoryStore.chatMessages = JSON.parse(chatRaw) || [];
+  } catch (error) {
+    inMemoryStore.chatMessages = [];
+  }
+}
+
+ensureStorageFiles();
+loadStorageFiles();
+
+function persistUsers() {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(inMemoryStore.users, null, 2), JSON_ENCODING);
+  } catch (error) {
+    console.error('Unable to persist users:', error);
+  }
+}
+
+function persistChatMessages() {
+  try {
+    fs.writeFileSync(CHAT_FILE, JSON.stringify(inMemoryStore.chatMessages, null, 2), JSON_ENCODING);
+  } catch (error) {
+    console.error('Unable to persist chat messages:', error);
+  }
+}
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+const activeEffectsStore = {};
+
+function normalizeUsername(username) {
+  return username ? username.trim().toLowerCase() : '';
+}
+
+function removeExpiredEffects(username) {
+  const key = normalizeUsername(username);
+  const effects = activeEffectsStore[key] || {};
+  Object.entries(effects).forEach(([effectType, effect]) => {
+    if (Date.now() >= effect.endTime) {
+      delete effects[effectType];
+    }
+  });
+  activeEffectsStore[key] = effects;
+  return effects;
+}
+
+function getUserActiveEffects(username) {
+  const key = normalizeUsername(username);
+  return removeExpiredEffects(key);
+}
+
+function setUserActiveEffect(username, effectType, data) {
+  const key = normalizeUsername(username);
+  const existing = activeEffectsStore[key] || {};
+  existing[effectType] = data;
+  activeEffectsStore[key] = existing;
+  return existing[effectType];
+}
+
+function computeSpinMultiplier(username, dimension = null) {
+  let multiplier = 1;
+  const effects = getUserActiveEffects(username);
+  Object.values(effects).forEach(effect => {
+    if (effect && Date.now() < effect.endTime) {
+      multiplier *= effect.multiplier;
+    }
+  });
+  if (dimension === 'deep-sea') {
+    multiplier *= 2;
+  }
+  return multiplier;
+}
+
+async function executeQuery(text, params = []) {
+  if (!pool) throw new Error('Database unavailable');
+  return pool.query(text, params);
+}
+
+async function findUser(username) {
+  if (!username) return null;
+  const normalized = username.trim();
+  if (pool) {
+    const result = await executeQuery('SELECT * FROM users WHERE username = $1', [normalized]);
+    if (!result.rows.length) return null;
+    const user = result.rows[0];
+    const inventory = typeof user.inventory === 'string' ? JSON.parse(user.inventory) : (user.inventory || { rarities: {} });
+    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || { luck: 0, speed: 0 });
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || { fragments: 0, clovers: 0, essence: 0 });
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    return {
+      username: user.username,
+      password: user.password,
+      coins: user.coins,
+      spins: user.spins,
+      inventory,
+      achievements: typeof user.achievements === 'string' ? JSON.parse(user.achievements) : (user.achievements || []),
+      potions,
+      items,
+      titles,
+      portal_unlocked: user.portal_unlocked || false,
+      active_title: user.active_title || null,
+      created_at: user.created_at,
+      last_login: user.last_login,
+      is_admin: user.is_admin
+    };
+  }
+  const stored = inMemoryStore.users[normalized] || null;
+  if (!stored) return null;
+  return {
+    ...stored,
+    inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : (stored.inventory || { rarities: {} }),
+    achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : (stored.achievements || []),
+    potions: typeof stored.potions === 'string' ? JSON.parse(stored.potions) : (stored.potions || { luck: 0, speed: 0 }),
+    items: typeof stored.items === 'string' ? JSON.parse(stored.items) : (stored.items || { fragments: 0, clovers: 0, essence: 0 }),
+    titles: typeof stored.titles === 'string' ? JSON.parse(stored.titles) : (stored.titles || []),
+    portal_unlocked: stored.portal_unlocked || false,
+    active_title: stored.active_title || null
+  };
+}
+
+async function saveUser(user) {
+  const normalized = user.username.trim();
+  if (pool) {
+    await executeQuery(
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, is_admin, created_at, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       ON CONFLICT (username) DO UPDATE SET
+         password = EXCLUDED.password,
+         coins = EXCLUDED.coins,
+         spins = EXCLUDED.spins,
+         inventory = EXCLUDED.inventory,
+         achievements = EXCLUDED.achievements,
+         potions = EXCLUDED.potions,
+         items = EXCLUDED.items,
+         titles = EXCLUDED.titles,
+         active_title = EXCLUDED.active_title,
+         portal_unlocked = EXCLUDED.portal_unlocked,
+         is_admin = EXCLUDED.is_admin,
+         last_login = EXCLUDED.last_login`,
+      [
+        normalized,
+        user.password,
+        user.coins,
+        user.spins,
+        JSON.stringify(user.inventory),
+        JSON.stringify(user.achievements),
+        JSON.stringify(user.potions || { luck: 0, speed: 0 }),
+        JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0 }),
+        JSON.stringify(user.titles || []),
+        user.active_title || null,
+        user.portal_unlocked || false,
+        user.is_admin,
+        user.created_at || new Date().toISOString(),
+        user.last_login || new Date().toISOString()
+      ]
+    );
+    return;
+  }
+  inMemoryStore.users[normalized] = user;
+  persistUsers();
+}
+
+async function updateUser(username, updates) {
+  const normalized = username.trim();
+  if (pool) {
+    const keys = Object.keys(updates);
+    const values = keys.map(key => updates[key]);
+    const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+    const query = `UPDATE users SET ${setClause} WHERE username = $${keys.length + 1}`;
+    await executeQuery(query, [...values, normalized]);
+    return;
+  }
+  const existing = inMemoryStore.users[normalized] || {};
+  inMemoryStore.users[normalized] = { ...existing, ...updates };
+  persistUsers();
+}
+
+async function ensureDatabase() {
+  if (!pool) return;
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      password TEXT NOT NULL,
+      coins INTEGER NOT NULL DEFAULT 0,
+      spins INTEGER NOT NULL DEFAULT 0,
+      inventory JSONB NOT NULL DEFAULT '{}'::jsonb,
+      achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
+      is_admin BOOLEAN NOT NULL DEFAULT false,
+      potions JSONB NOT NULL DEFAULT '{"luck":0,"speed":0}'::jsonb,
+      items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0}'::jsonb,
+      titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+      active_title TEXT,
+      portal_unlocked BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id BIGSERIAL PRIMARY KEY,
+      username TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+let connectedUsers = 0;
+
+async function getRecentChatMessages(limit = 60) {
+  if (pool) {
+    const result = await executeQuery(
+      'SELECT username, message, created_at FROM chat_messages ORDER BY created_at DESC LIMIT $1',
+      [limit]
+    );
+    return result.rows.reverse().map(row => ({
+      username: row.username,
+      message: row.message,
+      timestamp: row.created_at,
+      system: false
+    }));
+  }
+  return inMemoryStore.chatMessages.slice(-limit);
+}
+
+async function saveChatMessage(username, message, title = null, titleColor = '#ffd700', system = false) {
+  const record = {
+    username: username || 'Guest',
+    message,
+    title,
+    titleColor,
+    timestamp: new Date().toISOString(),
+    system
   };
 
-  updatePotionDisplay();
-  showPopup(`${potion.name} activated! +${potion.multiplier}x ${potion.effect} for ${potion.duration}s`);
-}
-
-function updatePotionDisplay() {
-  const container = document.getElementById('potion-effects');
-  if (!container) return;
-
-  container.innerHTML = '';
-  Object.entries(gameState.activeEffects).forEach(([type, effect]) => {
-    const remaining = Math.max(0, Math.ceil((effect.endTime - Date.now()) / 1000));
-    if (remaining <= 0) {
-      delete gameState.activeEffects[type];
-      return;
-    }
-    const potion = POTIONS[type];
-    const div = document.createElement('div');
-    div.innerHTML = `✨ ${potion.name}: ${remaining}s`;
-    container.appendChild(div);
-  });
-}
-
-function getPotionMultiplier() {
-  let mult = 1;
-  Object.values(gameState.activeEffects).forEach(eff => {
-    if (Date.now() < eff.endTime) mult *= eff.multiplier;
-  });
-  return mult;
-}
-
-// ==================== SHOP SYSTEM ====================
-function getRotatingShopItems() {
-  const now = Date.now();
-  if (now - gameState.shopLastRestock > 600000) { // 10 minutes
-    gameState.shopLastRestock = now;
-    gameState.rotatingShopIndex = Math.floor(Math.random() * ROTATING_SHOP_ITEMS.length);
-  }
-  return [ROTATING_SHOP_ITEMS[gameState.rotatingShopIndex]];
-}
-
-function updateShopTimer() {
-  const timer = document.getElementById('shop-timer');
-  if (!timer) return;
-  const elapsed = Math.floor((Date.now() - gameState.shopLastRestock) / 1000);
-  const remaining = Math.max(0, 600 - elapsed);
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-function renderShop() {
-  updateShopTimer();
-  
-  const rotatingDiv = document.getElementById('rotating-items');
-  if (rotatingDiv) {
-    rotatingDiv.innerHTML = '';
-    getRotatingShopItems().forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'shop-item';
-      const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : '💧';
-      card.innerHTML = `
-        <h4 class="shop-item-name">${emoji} ${item.name}</h4>
-        <p class="shop-item-price">💎 ${formatCoins(item.cost)} coins</p>
-        <button class="potion-buy-btn shop-item-buy">Purchase</button>
-      `;
-      card.querySelector('.shop-item-buy')?.addEventListener('click', () => buyShopItem(item.name));
-      rotatingDiv.appendChild(card);
-    });
-  }
-
-  const potionsDiv = document.getElementById('potions-list');
-  if (potionsDiv) {
-    potionsDiv.innerHTML = '';
-    Object.entries(POTIONS).forEach(([key, potion]) => {
-      const card = document.createElement('div');
-      card.className = 'potion-card';
-      const emoji = key === 'luck' ? '🍀' : '⚡';
-      card.innerHTML = `
-        <h4>${emoji} ${potion.name}</h4>
-        <p>${potion.multiplier}x ${potion.effect} • ${potion.duration}s duration</p>
-        <div class="potion-stats">
-          <span>⚡ +${potion.multiplier}x ${potion.effect}</span>
-          <span>⏱️ ${potion.duration}s active</span>
-        </div>
-        <div class="potion-cost">💎 ${formatCoins(potion.cost)} coins</div>
-        <button class="potion-buy-btn potion-buy">Buy Now</button>
-      `;
-      card.querySelector('.potion-buy')?.addEventListener('click', () => buyPotion(key));
-      potionsDiv.appendChild(card);
-    });
-  }
-}
-
-function buyPotion(potionType) {
-  if (!currentUser || currentUser.coins < POTIONS[potionType].cost) {
-    showPopup('Not enough coins!', 'error');
-    return;
-  }
-
-  handleAPI('/api/buy-potion', { method: 'POST', body: { potionType } }).then(response => {
-    if (response.success) {
-      currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
-      updateUI(currentUser);
-      showPopup(`Purchased ${POTIONS[potionType].name}! Added to inventory.`);
-    } else {
-      showPopup(response.error || 'Purchase failed', 'error');
-    }
-  });
-}
-
-function usePotion(potionType) {
-  if (!currentUser || (currentUser.potions?.[potionType] || 0) <= 0) {
-    showPopup('No potion available to use.', 'error');
-    return;
-  }
-
-  handleAPI('/api/use-potion', { method: 'POST', body: { potionType } }).then(response => {
-    if (response.success) {
-      currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
-      updateUI(currentUser);
-      applyPotion(potionType);
-    } else {
-      showPopup(response.error || 'Unable to use potion', 'error');
-    }
-  });
-}
-
-function buyShopItem(itemName) {
-  const item = ROTATING_SHOP_ITEMS.find(i => i.name === itemName);
-  if (!item || !currentUser || currentUser.coins < item.cost) {
-    showPopup('Not enough coins!', 'error');
-    return;
-  }
-  
-  // Call backend to buy item
-  handleAPI('/api/buy-shop-item', { method: 'POST', body: { itemName } }).then(response => {
-    if (response.success) {
-      currentUser = response.user;
-      gameState.itemInventory = currentUser.items || {};
-      updateUI(currentUser);
-      renderShop();
-      showPopup(`Purchased ${itemName}!`);
-    } else {
-      showPopup(response.error || 'Purchase failed', 'error');
-    }
-  });
-}
-
-// ==================== TITLE SYSTEM ====================
-function renderTitles() {
-  const listDiv = document.getElementById('titles-list');
-  const availDiv = document.getElementById('titles-available');
-
-  if (listDiv) {
-    listDiv.innerHTML = gameState.userTitles.length ? '' : '<p style="color: rgba(241,245,249,0.7); text-align: center; padding: 20px;">🔒 No titles yet. Complete requirements to unlock!</p>';
-    gameState.userTitles.forEach(titleId => {
-      const title = TITLES.find(t => t.id === titleId);
-      if (!title) return;
-      const card = document.createElement('div');
-      card.className = 'title-card active';
-      card.style.borderColor = title.color;
-      card.style.animation = 'titleEntry 0.5s ease-out';
-      const emoji = titleId === 'owner' ? '👑' : titleId === 'veteran' ? '🎖️' : titleId === 'millionaire' ? '💰' : '✨';
-      card.innerHTML = `
-        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${emoji} ${title.name}</div>
-        <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
-        ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
-      `;
-      card.querySelector('.title-equip')?.addEventListener('click', () => setActiveTitle(titleId));
-      listDiv.appendChild(card);
-    });
-  }
-
-  if (availDiv) {
-    availDiv.innerHTML = '';
-    TITLES.forEach(title => {
-      if (gameState.userTitles.includes(title.id)) return;
-      const card = document.createElement('div');
-      card.className = 'title-card';
-      card.style.borderColor = title.color;
-      card.style.opacity = '0.6';
-      const emoji = title.id === 'owner' ? '👑' : title.id === 'veteran' ? '🎖️' : title.id === 'millionaire' ? '💰' : '✨';
-      card.innerHTML = `
-        <div class="title-name" style="color: ${title.color};">🔒 ${emoji} ${title.name}</div>
-        <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
-      `;
-      availDiv.appendChild(card);
-    });
-  }
-}
-
-async function setActiveTitle(titleId) {
-  const title = TITLES.find(t => t.id === titleId);
-  if (!title) {
-    showPopup('Unable to activate title.', 'error');
-    return;
-  }
-  const response = await handleAPI('/api/set-active-title', { method: 'POST', body: { titleId } });
-  if (response.success && response.user) {
-    currentUser = response.user;
-    gameState.activeTitle = response.user.active_title;
-    renderTitles();
-    updateUI(currentUser);
-    showPopup(`Active title set to ${title.name}`);
+  if (pool) {
+    await executeQuery(
+      'INSERT INTO chat_messages (username, message) VALUES ($1, $2)',
+      [record.username, record.message]
+    );
   } else {
-    showPopup(response.error || 'Unable to set active title', 'error');
+    inMemoryStore.chatMessages.push(record);
+    if (inMemoryStore.chatMessages.length > 200) {
+      inMemoryStore.chatMessages.shift();
+    }
+    persistChatMessages();
   }
+
+  return record;
 }
 
-function checkTitleUnlocks(user) {
-  if (!user) return;
-  const existing = new Set(gameState.userTitles);
-  if (user.is_admin) {
-    existing.add('owner');
+async function clearChatHistory() {
+  if (pool) {
+    await executeQuery('TRUNCATE chat_messages');
   }
-  if (user.coins >= 1000000) {
-    existing.add('millionaire');
-  }
-  if (user.portal_unlocked) {
-    existing.add('portalmancer');
-  }
-  gameState.userTitles = Array.from(existing);
+  inMemoryStore.chatMessages = [];
+  persistChatMessages();
 }
 
-// ==================== PORTAL SYSTEM ====================
-function setupPortalUI() {
-  const lockBtn = document.getElementById('portal-lock');
-  if (lockBtn && !lockBtn.dataset.bound) {
-    lockBtn.addEventListener('click', tryUnlockPortal);
-    lockBtn.dataset.bound = 'true';
-  }
-
-  const portalBtn = document.querySelector('.portal-base');
-  if (portalBtn && !portalBtn.dataset.bound) {
-    portalBtn.addEventListener('click', showDimensions);
-    portalBtn.dataset.bound = 'true';
-  }
-
-  const unlockBtn = document.getElementById('unlock-portal-btn');
-  if (unlockBtn && !unlockBtn.dataset.bound) {
-    unlockBtn.addEventListener('click', tryUnlockPortal);
-    unlockBtn.dataset.bound = 'true';
-  }
-
-  const redeemBtn = document.getElementById('redeem-btn');
-  if (redeemBtn && !redeemBtn.dataset.bound) {
-    redeemBtn.addEventListener('click', redeemCode);
-    redeemBtn.dataset.bound = 'true';
-  }
+async function isAdminSocket(socket) {
+  const username = socket.request?.session?.username;
+  if (!username) return false;
+  const user = await findUser(username);
+  return user && user.is_admin;
 }
 
-function tryUnlockPortal() {
-  const fragments = gameState.itemInventory.fragments || 0;
-  if (fragments < 10) {
-    showPopup(`Need ${10 - fragments} more Portal Fragments`, 'error');
-    return;
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "wss:", "ws:", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false
+}));
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many authentication attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // removed invalid 'validate' option which causes runtime errors
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Session configuration
+const sessionStore = new MemoryStore({
+  checkPeriod: 86400000,
+  ttl: 365 * 24 * 60 * 60 * 1000
+});
+
+const sessionMiddleware = session({
+  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'rng3-next-generation-secret-2026',
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  name: 'rng3.sid',
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   }
+});
 
-  handleAPI('/api/unlock-portal', { method: 'POST' }).then(response => {
-    if (response.success) {
-      currentUser = response.user;
-      gameState.itemInventory = currentUser.items || {};
-      gameState.userTitles = currentUser.titles || [];
-      gameState.portalUnlocked = true;
-      updatePortalUI();
+app.use(sessionMiddleware);
 
-      // Screen fade effect
-      const fade = document.createElement('div');
-      fade.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:10000;opacity:0;transition:opacity 2s';
-      document.body.appendChild(fade);
-      setTimeout(() => fade.style.opacity = '1', 100);
-      setTimeout(() => fade.style.opacity = '0', 2100);
-      setTimeout(() => fade.remove(), 4100);
+// Serve the game shell and client code fresh during active development/deploys.
+app.use(express.static(path.join(__dirname), {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|js|css)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
-      showPopup('Portal Unlocked! Explore the Deep Sea...');
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
+
+// Apply rate limiting
+app.use(['/api/login', '/api/register'], authLimiter);
+app.use('/api', apiLimiter);
+
+// CORS for development
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
     } else {
-      showPopup(response.error || 'Failed to unlock portal', 'error');
+      next();
     }
   });
 }
-
-async function showDimensions() {
-  if (isEnteringDimension) return;
-  if (!gameState.portalUnlocked) {
-    showPopup('Portal is locked. Get 10 Portal Fragments!', 'error');
-    return;
-  }
-
-  const choice = confirm('Enter Deep Sea Realm? (Requires 1 Sea Essence)');
-  if (choice) {
-    if (gameState.itemInventory.essence < 1) {
-      showPopup('Need 1 Sea Essence to enter!', 'error');
-      return;
-    }
-
-    isEnteringDimension = true;
-    const response = await handleAPI('/api/enter-dimension', {
-      method: 'POST',
-      body: { dimension: 'deep-sea' }
-    });
-    isEnteringDimension = false;
-
-    if (!response.success || !response.user) {
-      showPopup(response.error || 'Unable to enter Deep Sea.', 'error');
-      return;
-    }
-
-    currentUser = response.user;
-    updateUI(currentUser);
-    enterDeepSea();
-  }
-}
-
-function enterDeepSea() {
-  document.getElementById('game-page').classList.add('hidden');
-  const dsDiv = document.getElementById('deep-sea-dimension');
-  dsDiv.classList.remove('hidden');
-  gameState.currentDimension = 'deep-sea';
-
-  // Generate bubbles
-  const bubbleContainer = document.querySelector('.bubbles');
-  bubbleContainer.innerHTML = '';
-  for (let i = 0; i < 20; i++) {
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.style.left = Math.random() * 100 + '%';
-    bubble.style.animationDuration = (Math.random() * 6) + 's';
-    bubble.style.animationDelay = Math.random() * 2 + 's';
-    bubbleContainer.appendChild(bubble);
-  }
-
-  // Setup Deep Sea roll
-  const deepSeaRollButton = document.getElementById('ds-roll-btn');
-  if (deepSeaRollButton && !deepSeaRollButton.dataset.bound) {
-    deepSeaRollButton.addEventListener('click', rollInDeepSea);
-    deepSeaRollButton.dataset.bound = 'true';
-  }
-
-  showPopup('Welcome to the Deep Sea! 🌊 (2x Luck Boost Active)');
-}
-
-async function rollInDeepSea() {
-  const rollBtn = document.getElementById('ds-roll-btn');
-  const rollDisplay = document.getElementById('ds-roll-display');
-  const rewardDisplay = document.getElementById('ds-reward-display');
-  if (!rollBtn || !rollDisplay || !rewardDisplay) return;
-
-  setLoading(rollBtn, true, 'DIVING...');
-  rollDisplay.textContent = '🌊 Diving...';
-
-  const deepSeaAnimations = ['🐠 Current', '🌊 Tide', '⭐ Luck', '🌀 Vortex', '🦑 Deep'];
-  let index = 0;
-  const spinner = setInterval(() => {
-    rollDisplay.textContent = deepSeaAnimations[index % deepSeaAnimations.length];
-    index += 1;
-  }, 90);
-
-  const response = await handleAPI('/api/spin', { method: 'POST', body: { dimension: 'deep-sea' } });
-  await new Promise(resolve => setTimeout(resolve, 1800));
-  clearInterval(spinner);
-  setLoading(rollBtn, false);
-
-  if (!response.success) {
-    rollDisplay.textContent = '❌ Dive Failed';
-    showPopup(response.error || 'Deep Sea roll failed', 'error');
-    return;
-  }
-
-  const result = response.result;
-  const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
-  rollDisplay.textContent = `🌊 ${result.name}${multiplierDisplay}`;
-  rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
-  currentUser = response.user;
-  updateUI(currentUser);
-  showRewardPopup(`🌊 +${formatCoins(result.reward)} coins!`);
-}
-
-function exitDeepSea() {
-  document.getElementById('deep-sea-dimension').classList.add('hidden');
-  document.getElementById('game-page').classList.remove('hidden');
-  gameState.currentDimension = null;
-}
-
-// ==================== CODE REDEMPTION ====================
-function redeemCode() {
-  const input = document.getElementById('code-input');
-  const code = input.value.trim().toUpperCase();
-
-  if (!code) {
-    showPopup('Enter a code!', 'error');
-    return;
-  }
-
-  // Call backend to redeem code
-  handleAPI('/api/redeem-code', { method: 'POST', body: { code } }).then(response => {
-    if (response.success) {
-      currentUser = response.user;
-      gameState.userTitles = currentUser.titles || [];
-      const titleName = TITLES.find(t => t.id === response.title)?.name || 'Unknown';
-      showPopup(`Code redeemed! Title unlocked: ${titleName}`);
-      input.value = '';
-      renderTitles();
-      updateUI(currentUser);
-    } else {
-      showPopup(response.error || 'Invalid code', 'error');
-      input.value = '';
-    }
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    version: '3.0.0',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
-}
+});
 
-// ==================== INVENTORY RENDERING ====================
-function renderInventory(user) {
-  // Rarities sub-tab
-  const rarGrid = document.getElementById('inv-rarities-grid');
-  if (rarGrid) {
-    rarGrid.innerHTML = '';
-    const rarities = user.inventory?.rarities || {};
-    const hasItems = Object.keys(rarities).length > 0;
-    if (!hasItems) {
-      rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🎲 No rare items yet. Roll to collect!</div>';
-    } else {
-      Object.entries(rarities).forEach(([key, count]) => {
-        const rarity = [...rarityOptions, ...globalOptions].find(r => r.key === key);
-        if (!rarity) return;
-        const card = document.createElement('div');
-        card.className = 'inventory-item';
-        card.style.borderLeft = `4px solid ${rarity.color}`;
-        card.innerHTML = `
-          <div>
-            <h4 style="color: ${rarity.color};">${rarity.name}</h4>
-            <span>${count} owned</span>
-          </div>
-          <div><span style="color: ${rarity.color}; font-weight: 700;">${formatCoins(rarity.reward)} coins each</span></div>
-        `;
-        rarGrid.appendChild(card);
-      });
-    }
-  }
-
-  // Potions sub-tab
-  const potGrid = document.getElementById('inv-potions-grid');
-  if (potGrid) {
-    potGrid.innerHTML = '';
-    const potions = currentUser?.potions || gameState.potionInventory;
-    const hasPotions = (potions.luck || 0) > 0 || (potions.speed || 0) > 0;
-    if (!hasPotions) {
-      potGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🧪 No potions. Buy some in the shop!</div>';
-    } else {
-      Object.entries({ luck: 'Luck Potion I', speed: 'Speed Potion I' }).forEach(([key, name]) => {
-        const count = potions[key] || 0;
-        if (count <= 0) return;
-        const emoji = key === 'luck' ? '🍀' : '⚡';
-        const card = document.createElement('div');
-        card.className = 'inventory-item';
-        card.innerHTML = `
-          <div>
-            <h4>${emoji} ${name}</h4>
-            <span>x${count} available</span>
-          </div>
-          <button class="btn potion-use" style="padding: 8px 12px; font-size: 0.85rem;">Use Now</button>
-        `;
-        card.querySelector('.potion-use')?.addEventListener('click', () => usePotion(key));
-        potGrid.appendChild(card);
-      });
-    }
-  }
-
-  // Items sub-tab
-  const itemGrid = document.getElementById('inv-items-grid');
-  if (itemGrid) {
-    itemGrid.innerHTML = '';
-    const items = [
-      { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0, emoji: '🔮' },
-      { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0, emoji: '🍀' },
-      { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' }
-    ];
-    items.forEach(item => {
-      if (item.count > 0) {
-        const card = document.createElement('div');
-        card.className = 'inventory-item';
-        card.innerHTML = `<div><h4>${item.emoji} ${item.name}</h4><span>${item.count}x available</span></div>`;
-        itemGrid.appendChild(card);
-      }
-    });
-    if (items.every(i => i.count === 0)) {
-      itemGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🛍️ No items yet. Purchase from the shop!</div>';
-    }
-  }
-}
-
-// ==================== UI UPDATES ====================
-function updateUI(user) {
-  currentUser = user;
+function sanitizeUser(user) {
+  const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || {});
+  const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+  const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
   
-  // Load game state from user
-  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0 };
-  gameState.potionInventory = user.potions || { luck: 0, speed: 0 };
-  gameState.userTitles = user.titles || [];
-  gameState.activeTitle = user.active_title || null;
-  gameState.portalUnlocked = user.portal_unlocked || false;
-  
-  document.getElementById('game-username').textContent = user.username;
-  document.getElementById('game-coins').textContent = `${formatCoins(user.coins)} coins`;
+  return {
+    username: user.username,
+    coins: user.coins,
+    spins: user.spins,
+    inventory: user.inventory || { rarities: {} },
+    achievements: user.achievements || [],
+    potions: potions,
+    items: items,
+    titles: titles,
+    active_title: user.active_title || null,
+    portal_unlocked: user.portal_unlocked || false,
+    accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
+    inventoryValue: calculateInventoryValue(user.inventory || { rarities: {} }),
+    inventoryTotal: Object.values((user.inventory || {}).rarities || {}).reduce((sum, count) => sum + count, 0),
+    is_admin: user.is_admin || false
+  };
+}
 
-  // Show admin button if user is admin
-  const adminBtn = document.getElementById('admin-btn');
-  if (adminBtn) {
-    if (user.is_admin) {
-      adminBtn.classList.remove('hidden');
-    } else {
-      adminBtn.classList.add('hidden');
-    }
+function calculateInventoryValue(inventory) {
+  const parsed = typeof inventory === 'string' ? JSON.parse(inventory) : inventory || {};
+  const rarities = (parsed || {}).rarities || {};
+  const valueMap = {
+    '17-news': 150,
+    '17-news-reborn': 300,
+    'daniel-poole': 450,
+    'dominik-procter': 450,
+    'gabe-muir': 450,
+    'inesh-jayasinghe': 550,
+    'kayla-walters': 550,
+    'leo-thacker': 700,
+    'sam-whitworth': 700,
+    'john-tan': 1050,
+    'rison-pandigama': 1250,
+    'atticus-lok': 1750,
+    'baxter-walter': 2250,
+    'mr-fermanski': 3333,
+    'ellerslie-schoolcast': 5000,
+    'the-ceo': 7000
+  };
+  return Object.entries(rarities).reduce((sum, [key, count]) => sum + (valueMap[key] || 0) * count, 0);
+}
+
+app.post('/api/register', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password || username.trim().length < 3 || password.length < 6) {
+    return res.status(400).json({ success: false, error: 'Username must be at least 3 chars and password at least 6 chars.' });
   }
 
-  document.getElementById('reward-display').textContent = `Reward: 0 coins`;
-
-  checkTitleUnlocks(user);
-  renderTitles();
-  renderInventory(user);
-  renderShop();
-  updatePortalUI();
-}
-
-function updatePortalUI() {
-  const lock = document.getElementById('portal-lock');
-  const unlockBtn = document.getElementById('unlock-portal-btn');
-  const status = document.getElementById('portal-status');
-  const fragmentsText = document.getElementById('portal-fragments-needed');
-
-  const fragments = gameState.itemInventory.fragments || 0;
-  if (gameState.portalUnlocked) {
-    if (lock) lock.style.display = 'none';
-    if (unlockBtn) unlockBtn.style.display = 'none';
-    if (status) status.textContent = 'Portal Unlocked!';
-    if (fragmentsText) fragmentsText.textContent = `Sea Essence needed to enter.`;
-  } else {
-    if (lock) lock.style.display = fragments < 10 ? 'block' : 'block';
-    if (unlockBtn) unlockBtn.style.display = fragments >= 10 ? 'inline-flex' : 'none';
-    if (status) status.textContent = fragments >= 10 ? 'Ready to unlock' : 'Locked';
-    if (fragmentsText) fragmentsText.textContent = `Requires: 10 Portal Fragments (${fragments}/10)`;
-  }
-}
-
-// ==================== CHAT SYSTEM ====================
-function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#ffd700') {
-  const chatMessages = document.getElementById('chat-messages');
-  if (!chatMessages) return;
-  
-  const msgEl = document.createElement('div');
-  msgEl.className = isSystem ? 'chat-message system-message' : 'chat-message';
-  msgEl.dataset.messageId = timestamp;
-  
-  const time = new Date(timestamp).toLocaleTimeString();
-  
-  if (isSystem) {
-    msgEl.innerHTML = `
-      <span style="font-weight: bold; color: #FF0000;">⚡ ${escapeHtml(message)}</span>
-      <br><small style="opacity: 0.7;">${time}</small>
-    `;
-  } else {
-    let displayColor = titleColor || '#ffd700';
-    let textShadow = `0 0 8px ${displayColor}`;
-    if (title === 'The CEO' || displayColor.toLowerCase() === '#000000') {
-      displayColor = '#ffffff';
-      textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
-    }
-    const titleLabel = title ? `<span style="color: ${displayColor}; font-weight: 700; margin-right: 6px; text-shadow: ${textShadow};">[${escapeHtml(title)}]</span>` : '';
-    msgEl.innerHTML = `
-      <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
-      <span>${escapeHtml(message)}</span>
-      <br><small style="opacity: 0.7;">${time}</small>
-    `;
-  }
-  
-  chatMessages.appendChild(msgEl);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-async function loadAdminUsers() {
-  const userList = document.getElementById('user-list');
-  if (!userList || !currentUser?.is_admin) return;
-
-  userList.innerHTML = '<p class="admin-empty-state">Loading player records...</p>';
-  const response = await handleAPI('/api/admin/users');
-  if (!response.success) {
-    userList.innerHTML = `<p class="admin-empty-state">${escapeHtml(response.error || 'Unable to load players.')}</p>`;
-    return;
+  const normalized = username.trim();
+  const existing = await findUser(normalized);
+  if (existing) {
+    return res.status(409).json({ success: false, error: 'Username already exists.' });
   }
 
-  userList.innerHTML = '';
-  response.users.forEach(user => {
-    const row = document.createElement('div');
-    row.className = 'admin-user-row';
-    row.innerHTML = `
-      <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_admin ? 'Administrator' : 'Player'}</span></div>
-      <div><strong>${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls</span></div>
-      <div><strong>${user.inventoryTotal || 0} drops</strong><span>${(user.titles || []).length} titles</span></div>
-    `;
-    userList.appendChild(row);
-  });
-  if (!response.users.length) {
-    userList.innerHTML = '<p class="admin-empty-state">No player records yet.</p>';
+  const user = {
+    username: normalized,
+    password: hashPassword(password),
+    coins: 0,
+    spins: 0,
+    inventory: { rarities: {} },
+    achievements: [],
+    potions: { luck: 0, speed: 0 },
+    items: { fragments: 0, clovers: 0, essence: 0 },
+    titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
+    portal_unlocked: false,
+    is_admin: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin',
+    created_at: new Date().toISOString(),
+    last_login: new Date().toISOString()
+  };
+
+  try {
+    await saveUser(user);
+    req.session.username = normalized;
+    res.json({ success: true, user: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ success: false, error: 'Registration failed.' });
   }
-}
+});
 
-// ==================== THEME EVENTS ====================
-function applyThemeEvent(eventName, initiatedBy = 'Admin') {
-  const eventNameLower = String(eventName || '').toLowerCase();
-  
-  if (eventNameLower === 'hollow-rally' || eventNameLower === 'hollow-square-rally') {
-    document.body.classList.add('hollow-square-rally');
-    showPopup(`🎆 ${initiatedBy} activated Hollow Square Rally!`, '#FFD700');
-    setTimeout(() => {
-      document.body.classList.remove('hollow-square-rally');
-      showPopup('Hollow Square Rally ended', '#0ea5e9');
-    }, 300000); // 5 minutes
-  } else if (eventNameLower === 'stop-hollow-rally') {
-    document.body.classList.remove('hollow-square-rally');
-    showPopup('Hollow Square Rally stopped', '#0ea5e9');
-  } else if (eventNameLower === 'geometric-cascade') {
-    createGeometricCascade();
-    showPopup(`✨ ${initiatedBy} launched Geometric Cascade!`, '#FFD700');
-  } else if (eventNameLower === 'quantum-boost') {
-    showPopup(`⚛️ ${initiatedBy} activated Quantum Boost! 10x luck incoming!`, '#FFD700');
-  } else if (eventNameLower === 'stop-quantum-boost') {
-    showPopup('Quantum Boost deactivated', '#0ea5e9');
-  } else if (eventNameLower === 'upside-down') {
-    document.body.classList.add('upside-down-mode');
-    showPopup(`🌀 ${initiatedBy} activated Upside Down mode!`, '#FFD700');
-  } else if (eventNameLower === 'stop-upside-down') {
-    document.body.classList.remove('upside-down-mode');
-    showPopup('Upside Down mode deactivated', '#0ea5e9');
-  }
-}
-
-function createGeometricCascade() {
-  // Create falling geometric shapes animation
-  const shapes = ['square', 'circle', 'triangle'];
-  for (let i = 0; i < 15; i++) {
-    setTimeout(() => {
-      const shape = document.createElement('div');
-      shape.className = `geometric ${shapes[Math.floor(Math.random() * shapes.length)]}`;
-      shape.style.position = 'fixed';
-      shape.style.left = Math.random() * 100 + '%';
-      shape.style.top = '-30px';
-      shape.style.zIndex = 9999;
-      document.body.appendChild(shape);
-      
-      // Animate falling
-      let top = -30;
-      const fall = setInterval(() => {
-        top += 3;
-        shape.style.top = top + 'px';
-        if (top > window.innerHeight) {
-          clearInterval(fall);
-          shape.remove();
-        }
-      }, 30);
-    }, i * 150);
-  }
-}
-
-// ==================== CHAT API ====================
-
-function showPage(pageName) {
-  const pageIds = ['landing-page', 'login-page', 'register-page', 'game-page', 'admin-panel'];
-  pageIds.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.classList.add('hidden');
-      el.classList.remove('active');
-    }
-  });
-
-  const targetPage = document.getElementById(pageName + '-page') || document.getElementById(pageName);
-  if (targetPage) {
-    targetPage.classList.remove('hidden');
-    if (targetPage.classList.contains('auth-container')) {
-      targetPage.classList.add('active');
-    }
-    if (pageName === 'landing') {
-      initTagline();
-    }
-  }
-}
-
-function showGamePage() {
-  showPage('game');
-}
-
-function hideGamePage() {
-  document.getElementById('game-page').classList.add('hidden');
-}
-
-function showLanding() {
-  showPage('landing');
-}
-
-// ==================== AUTH HANDLERS ====================
-async function handleLogin(e) {
-  e.preventDefault();
-  const button = e.target.querySelector('button[type="submit"]');
-  const errorDiv = document.getElementById('login-error');
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body || {};
   if (!username || !password) {
-    errorDiv.textContent = 'Please enter both username and password';
-    errorDiv.classList.remove('hidden');
-    return;
+    return res.status(400).json({ success: false, error: 'Username and password are required.' });
+  }
+
+  const normalized = username.trim();
+  const user = await findUser(normalized);
+  if (!user || user.password !== hashPassword(password)) {
+    return res.status(401).json({ success: false, error: 'Invalid username or password.' });
+  }
+
+  await updateUser(normalized, { last_login: new Date().toISOString() });
+  req.session.username = normalized;
+  res.json({ success: true, user: sanitizeUser({ ...user, last_login: new Date().toISOString() }) });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.json({ success: true });
+  });
+});
+
+app.get('/api/session', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.json({ success: false, user: null });
+  }
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.json({ success: false, user: null });
+  }
+  res.json({ success: true, user: sanitizeUser(user) });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, status: 'ok', version: '3.0.0', uptime: process.uptime() });
+});
+
+app.get('/api/inventory', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+  res.json({ success: true, inventory: user.inventory || { rarities: {} }, inventoryValue: calculateInventoryValue(user.inventory), coins: user.coins });
+});
+
+app.get('/api/profile', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+  res.json({
+    success: true,
+    user: sanitizeUser(user)
+  });
+});
+
+app.post('/api/spin', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const user = await findUser(req.session.username);
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found.' });
+  }
+
+  const roll = Math.random() * 100;
+  let cursor = 0;
+  let result = null;
+  const options = [
+    { key: '17-news', name: '17 News', chance: 65.2, reward: 150, color: '#0f172a' },
+    { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
+    { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450, color: '#166534' },
+    { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450, color: '#0d9488' },
+    { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450, color: '#115e59' },
+    { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550, color: '#7c3aed' },
+    { key: 'kayla-walters', name: 'Kayla Walters', chance: 1, reward: 550, color: '#ec4899' },
+    { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700, color: '#2dd4bf' },
+    { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700, color: '#f97316' },
+    { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050, color: '#f87171' },
+    { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 1250, color: '#c084fc' },
+    { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 1750, color: '#ddd6fe' },
+    { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 2250, color: '#facc15' },
+    { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 3333, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
+    { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 5000, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
+    { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' }
+  ];
+
+  for (const rarity of options) {
+    cursor += rarity.chance;
+    if (roll <= cursor) {
+      result = rarity;
+      break;
+    }
+  }
+
+  if (!result) {
+    result = options[0];
+  }
+
+  const inventory = user.inventory || { rarities: {} };
+  inventory.rarities = inventory.rarities || {};
+  inventory.rarities[result.key] = (inventory.rarities[result.key] || 0) + 1;
+
+  const dimension = String(req.body?.dimension || '').toLowerCase();
+  const multiplier = computeSpinMultiplier(req.session.username, dimension === 'deep-sea' ? 'deep-sea' : null);
+  const rawReward = result.reward;
+  const finalReward = Math.round(rawReward * multiplier);
+
+  const newSpins = (user.spins || 0) + 1;
+  const newCoins = (user.coins || 0) + finalReward;
+  const currentTitles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+  const updatedTitles = [...new Set(currentTitles)];
+  if (newCoins >= 1000000 && !updatedTitles.includes('millionaire')) {
+    updatedTitles.push('millionaire');
   }
 
   try {
-    setLoading(button, true, 'Logging in...');
-    errorDiv.classList.add('hidden');
-
-    const data = await handleAPI('/api/login', {
-      method: 'POST',
-      body: { username, password }
+    await updateUser(req.session.username, {
+      inventory: JSON.stringify(inventory),
+      spins: newSpins,
+      coins: newCoins,
+      titles: JSON.stringify(updatedTitles)
     });
 
-    if (data.banned) {
-      errorDiv.textContent = 'Your account has been banned';
-      errorDiv.classList.remove('hidden');
-      button.disabled = false;
-      button.innerHTML = 'Login';
-      return;
+    const updatedUser = await findUser(req.session.username);
+    const responsePayload = {
+      success: true,
+      result: {
+        ...result,
+        multiplier,
+        reward: finalReward
+      },
+      user: sanitizeUser(updatedUser)
+    };
+
+    if (result.isGlobal) {
+      const globalMessage = `${user.username} activated global ${result.name}!`;
+      const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false);
+      io.emit('chat-message', chatRecord);
     }
 
-    if (data.success && data.user) {
-      currentUser = data.user;
-      console.log('✅ Logged in as:', currentUser.username);
-      window.refreshMultiplayerSession?.();
-      window.loadChatFallback?.();
-      showPopup('Welcome back, ' + currentUser.username + '!', '#27ae60');
-      showPage('game');
-      setupPortalUI();
-      setupRollButton();
-      updateUI(currentUser);
-      e.target.reset();
-    } else {
-      throw new Error(data.error || data.message || 'Login failed');
-    }
-  } catch (err) {
-    errorDiv.textContent = err.message;
-    errorDiv.classList.remove('hidden');
-    showPopup('Login failed', '#e74c3c');
-  } finally {
-    button.disabled = false;
-    button.innerHTML = 'Login';
+    res.json(responsePayload);
+  } catch (error) {
+    console.error('Spin error:', error);
+    res.status(500).json({ success: false, error: 'Unable to complete roll.' });
   }
-}
+});
 
-async function handleRegister(e) {
-  e.preventDefault();
-  const button = e.target.querySelector('button[type="submit"]');
-  const errorDiv = document.getElementById('register-error');
-  const username = document.getElementById('register-username').value.trim();
-  const password = document.getElementById('register-password').value;
-
-  if (!username || !password) {
-    errorDiv.textContent = 'Please enter both username and password';
-    errorDiv.classList.remove('hidden');
-    return;
+// Code Redemption
+app.post('/api/redeem-code', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
-  if (username.length < 3) {
-    errorDiv.textContent = 'Username must be at least 3 characters';
-    errorDiv.classList.remove('hidden');
-    return;
+  const { code } = req.body || {};
+  if (!code || !code.trim()) {
+    return res.status(400).json({ success: false, error: 'Code required.' });
   }
 
-  if (password.length < 6) {
-    errorDiv.textContent = 'Password must be at least 6 characters';
-    errorDiv.classList.remove('hidden');
-    return;
+  const codeRewards = {
+    'THETHREEQUEL': { title: 'veteran' }
+  };
+
+  const reward = codeRewards[code.toUpperCase()];
+  if (!reward) {
+    return res.status(400).json({ success: false, error: 'Invalid code.' });
   }
 
   try {
-    setLoading(button, true, 'Registering...');
-    errorDiv.classList.add('hidden');
-
-    const data = await handleAPI('/api/register', {
-      method: 'POST',
-      body: { username, password }
-    });
-
-    if (data.success && data.user) {
-      currentUser = data.user;
-      window.refreshMultiplayerSession?.();
-      window.loadChatFallback?.();
-      showPopup('Account created! Welcome, ' + currentUser.username + '!', '#27ae60');
-      showPage('game');
-      setupPortalUI();
-      setupRollButton();
-      updateUI(currentUser);
-      e.target.reset();
-    } else {
-      throw new Error(data.error || data.message || 'Registration failed');
+    const user = await findUser(req.session.username);
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    
+    if (titles.includes(reward.title)) {
+      return res.json({ success: false, error: 'Already redeemed.' });
     }
-  } catch (err) {
-    errorDiv.textContent = err.message;
-    errorDiv.classList.remove('hidden');
-    showPopup('Registration failed', '#e74c3c');
-  } finally {
-    button.disabled = false;
-    button.innerHTML = 'Register';
-  }
-}
 
-// ==================== AUTH ====================
-async function loadSession() {
-  const response = await handleAPI('/api/session');
-  if (response.success && response.user) {
-    currentUser = response.user;
-    window.refreshMultiplayerSession?.();
-    window.loadChatFallback?.();
-    showGamePage();
-    updateUI(response.user);
-    setupPortalUI();
-    setupRollButton();
+    titles.push(reward.title);
+    await updateUser(req.session.username, { titles: JSON.stringify(titles) });
+    
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, title: reward.title, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Redeem error:', error);
+    res.status(500).json({ success: false, error: 'Redemption failed.' });
   }
-}
-
-document.getElementById('logout-btn')?.addEventListener('click', async () => {
-  await handleAPI('/api/logout', { method: 'POST' });
-  currentUser = null;
-  hideGamePage();
-  showLanding();
-  showPopup('Logged out successfully');
 });
 
-document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea);
-
-// ==================== ADVANCED SPIN ANIMATION ====================
-function createSpinWheel() {
-  const wheel = document.createElement('div');
-  wheel.className = 'spin-wheel';
-  const wheelOptions = [...rarityOptions, ...globalOptions];
-  const segments = wheelOptions.map((option, index) => `
-    <div class="wheel-segment" style="--rotation: ${index * (360 / wheelOptions.length)}deg; --color: ${option.color};">
-      <span>${option.name}</span>
-    </div>
-  `).join('');
-  wheel.innerHTML = `
-    <div class="wheel-container" aria-hidden="true">
-      <div class="wheel-kicker">17 NEWS / RNG 3</div>
-      <div class="wheel-inner">
-        ${segments}
-        <div class="wheel-center"></div>
-      </div>
-      <div class="wheel-pointer"></div>
-    </div>
-  `;
-  return wheel;
-}
-
-function animateSpinWheel(duration = 2200, result = null) {
-  return new Promise((resolve) => {
-    const wheel = createSpinWheel();
-    if (result?.color) {
-      wheel.style.setProperty('--result-color', result.color);
-    }
-    document.body.appendChild(wheel);
-    
-    // Trigger animation
-    setTimeout(() => wheel.classList.add('spin-active'), 10);
-    
-    setTimeout(() => {
-      wheel.remove();
-      resolve();
-    }, duration);
-  });
-}
-
-// ==================== ROLL BUTTON ====================
-function setupRollButton() {
-  const rollBtn = document.getElementById('roll-btn');
-  if (!rollBtn || rollBtn.dataset.bound) return;
-
-  rollBtn.dataset.bound = 'true';
-
-  rollBtn.addEventListener('click', async () => {
-    if (!currentUser) {
-      showPopup('Login first to roll', 'error');
-      return;
-    }
-    if (rollBtn.disabled) return;
-
-    const rollDisplay = document.getElementById('roll-display');
-    const rewardDisplay = document.getElementById('reward-display');
-    if (!rollDisplay || !rewardDisplay) return;
-
-    setLoading(rollBtn, true, 'ROLLING...');
-    rollDisplay.textContent = '🎰 Spinning...';
-    rollDisplay.style.opacity = '1';
-
-    const response = await handleAPI('/api/spin', {
-      method: 'POST',
-      body: { dimension: gameState.currentDimension || null }
-    });
-
-    if (response.success && response.result && response.user) {
-      await animateSpinWheel(2200, response.result);
-    }
-
-    setLoading(rollBtn, false);
-
-    if (!response.success || !response.result || !response.user) {
-      rollDisplay.textContent = '❌ Roll Failed';
-      showPopup(response.error || 'Roll failed', 'error');
-      rollDisplay.style.opacity = '0.5';
-      return;
-    }
-
-    currentUser = response.user;
-    updateUI(response.user);
-
-    const result = response.result;
-    const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
-    
-    // Dramatic reveal with color animation
-    rollDisplay.style.color = result.color || '#ffffff';
-    rollDisplay.style.textShadow = `0 0 20px ${result.color || '#ffffff'}`;
-    rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}`;
-    
-    rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
-    rewardDisplay.style.color = result.color || '#60a5fa';
-    
-    showRewardPopup(`💎 +${formatCoins(result.reward)} coins!`);
-  });
-}
-
-// ==================== INITIALIZATION ====================
-document.addEventListener('DOMContentLoaded', () => {
-  // Show landing page and start tagline
-  showPage('landing');
-  
-  // Auth form listeners
-  document.getElementById('login-form')?.addEventListener('submit', handleLogin);
-  document.getElementById('register-form')?.addEventListener('submit', handleRegister);
-  
-  // Landing page buttons
-  document.getElementById('login-btn')?.addEventListener('click', () => showPage('login'));
-  document.getElementById('register-btn')?.addEventListener('click', () => showPage('register'));
-  
-  // Auth page links
-  document.getElementById('show-login')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage('login');
-  });
-  document.getElementById('show-register')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage('register');
-  });
-  
-  // Chat send button
-  document.getElementById('send-chat')?.addEventListener('click', () => {
-    const input = document.getElementById('chat-input');
-    if (input && input.value.trim()) {
-      sendChatToServer(input.value);
-      input.value = '';
-    }
-  });
-  
-  // Allow Enter key in chat input
-  document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      document.getElementById('send-chat')?.click();
-    }
-  });
-
-  function activateDefaultTabs() {
-    const firstTab = document.querySelector('.content-tab');
-    if (firstTab) {
-      document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => {
-        p.classList.remove('active');
-        p.classList.add('hidden');
-      });
-      firstTab.classList.add('active');
-      const tabPane = document.getElementById(firstTab.dataset.tab + '-tab');
-      if (tabPane) {
-        tabPane.classList.remove('hidden');
-        tabPane.classList.add('active');
-      }
-    }
+// Buy Potion
+app.post('/api/buy-potion', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
-  document.querySelectorAll('.content-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => {
-        p.classList.remove('active');
-        p.classList.add('hidden');
-      });
-      tab.classList.add('active');
-      const tabPane = document.getElementById(tab.dataset.tab + '-tab');
-      if (tabPane) {
-        tabPane.classList.remove('hidden');
-        tabPane.classList.add('active');
-      }
-    });
-  });
+  const { potionType } = req.body || {};
+  const potionCosts = { luck: 5000, speed: 3500 };
 
-  activateDefaultTabs();
+  if (!potionCosts[potionType]) {
+    return res.status(400).json({ success: false, error: 'Invalid potion.' });
+  }
 
-  document.querySelectorAll('.inv-subtab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.inv-subtab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.inventory-subtab-content').forEach(c => c.classList.add('hidden'));
-      tab.classList.add('active');
-      const content = document.getElementById('inv-' + tab.dataset.inv);
-      if (content) content.classList.remove('hidden');
+  try {
+    const user = await findUser(req.session.username);
+    if (user.coins < potionCosts[potionType]) {
+      return res.json({ success: false, error: 'Not enough coins.' });
+    }
+
+    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || {});
+    potions[potionType] = (potions[potionType] || 0) + 1;
+
+    await updateUser(req.session.username, {
+      coins: user.coins - potionCosts[potionType],
+      potions: JSON.stringify(potions)
     });
-  });
-  
-  // Load session if already logged in
-  loadSession();
-  
-  // Admin panel controls
-  document.getElementById('admin-btn')?.addEventListener('click', () => {
-    if (currentUser && currentUser.is_admin) {
-      showPage('admin-panel');
-      loadAdminUsers();
-    } else {
-      showPopup('Admin access denied', 'error');
-    }
-  });
-  document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
-  document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
-  
-  // Admin event buttons with confirmation
-  document.getElementById('start-hollow-rally')?.addEventListener('click', () => {
-    if (confirm('Start Hollow Square Rally? This will boost all players.')) {
-      triggerAdminEvent('hollow-rally');
-      showPopup('🎆 Hollow Square Rally activated!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('stop-hollow-rally')?.addEventListener('click', () => {
-    triggerAdminEvent('stop-hollow-rally');
-    showPopup('Hollow Square Rally stopped', '#0ea5e9');
-  });
-  
-  document.getElementById('start-geometric-cascade')?.addEventListener('click', () => {
-    if (confirm('Launch Geometric Cascade? Shapes will fall!')) {
-      triggerAdminEvent('geometric-cascade');
-      showPopup('✨ Geometric Cascade launched!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('start-quantum-boost')?.addEventListener('click', () => {
-    if (confirm('Activate Quantum Boost? 10x luck for all players!')) {
-      triggerAdminEvent('quantum-boost');
-      showPopup('⚛️ Quantum Boost activated! 10x luck incoming!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('stop-quantum-boost')?.addEventListener('click', () => {
-    triggerAdminEvent('stop-quantum-boost');
-    showPopup('Quantum Boost deactivated', '#0ea5e9');
-  });
-  
-  document.getElementById('start-upside-down')?.addEventListener('click', () => {
-    if (confirm('Activate Upside Down theme?')) {
-      triggerAdminEvent('upside-down');
-      showPopup('🌀 Upside Down mode activated!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('stop-upside-down')?.addEventListener('click', () => {
-    triggerAdminEvent('stop-upside-down');
-    showPopup('Upside Down mode deactivated', '#0ea5e9');
-  });
-  
-  // Broadcast button
-  document.getElementById('broadcast-btn')?.addEventListener('click', () => {
-    const msg = prompt('Enter broadcast message:');
-    if (msg && msg.trim()) {
-      handleAPI('/api/broadcast', {
-        method: 'POST',
-        body: { message: msg.trim() }
-      }).then(response => {
-        if (response.success) {
-          showPopup('📢 Message broadcast to all players!', '#FFD700');
-        } else {
-          showPopup(response.error || 'Broadcast failed', 'error');
-        }
-      });
-    }
-  });
-  
-  // Clear chat button
-  document.getElementById('clear-chat-btn')?.addEventListener('click', () => {
-    if (confirm('Clear all chat messages? This cannot be undone.')) {
-      requestClearChat();
-      showPopup('💬 Chat cleared by admin', '#0ea5e9');
-    }
-  });
-  
-  // Clear chat
-  document.getElementById('clear-chat')?.addEventListener('click', requestClearChat);
-  
-  // Announcement form
-  document.getElementById('announcement-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const title = document.getElementById('announcement-title').value.trim();
-    const content = document.getElementById('announcement-content').value;
-    if (!title || !content) return;
-  
-    try {
-      const response = await handleAPI('/api/admin/announcement', {
-        method: 'POST',
-        body: { title, content }
-      });
-      if (response.success) {
-        showPopup('Announcement sent!', 'success');
-        e.target.reset();
-      } else {
-        showPopup(response.error || 'Failed to send announcement', 'error');
-      }
-    } catch (err) {
-      showPopup('Failed to send announcement', 'error');
-    }
-  });
-  
-  // Game loops
-  setInterval(updatePotionDisplay, 100);
-  setInterval(updateShopTimer, 1000);
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Buy potion error:', error);
+    res.status(500).json({ success: false, error: 'Purchase failed.' });
+  }
 });
+
+// Buy Shop Item
+app.post('/api/buy-shop-item', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const { itemName } = req.body || {};
+  const itemCosts = {
+    'Portal Fragment': 15000,
+    'Clover Leaf': 500,
+    'Sea Essence': 300000
+  };
+
+  const cost = itemCosts[itemName];
+  if (!cost) {
+    return res.status(400).json({ success: false, error: 'Invalid item.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    if (user.coins < cost) {
+      return res.json({ success: false, error: 'Not enough coins.' });
+    }
+
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+    
+    if (itemName === 'Portal Fragment') items.fragments = (items.fragments || 0) + 1;
+    else if (itemName === 'Clover Leaf') items.clovers = (items.clovers || 0) + 1;
+    else if (itemName === 'Sea Essence') items.essence = (items.essence || 0) + 1;
+
+    await updateUser(req.session.username, {
+      coins: user.coins - cost,
+      items: JSON.stringify(items)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Buy item error:', error);
+    res.status(500).json({ success: false, error: 'Purchase failed.' });
+  }
+});
+
+app.post('/api/use-potion', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const { potionType } = req.body || {};
+  if (!['luck', 'speed'].includes(potionType)) {
+    return res.status(400).json({ success: false, error: 'Invalid potion.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || { luck: 0, speed: 0 });
+    if ((potions[potionType] || 0) <= 0) {
+      return res.json({ success: false, error: 'No potion available.' });
+    }
+
+    potions[potionType] -= 1;
+    const potionConfig = potionType === 'luck' ? { multiplier: 2, duration: 120 } : { multiplier: 2, duration: 90 };
+    setUserActiveEffect(req.session.username, potionType, {
+      multiplier: potionConfig.multiplier,
+      endTime: Date.now() + potionConfig.duration * 1000
+    });
+
+    await updateUser(req.session.username, {
+      potions: JSON.stringify(potions)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated), effect: potionConfig });
+  } catch (error) {
+    console.error('Use potion error:', error);
+    res.status(500).json({ success: false, error: 'Unable to use potion.' });
+  }
+});
+
+app.post('/api/set-active-title', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const { titleId } = req.body || {};
+  if (!titleId) {
+    return res.status(400).json({ success: false, error: 'Title ID required.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    if (!titles.includes(titleId)) {
+      return res.status(400).json({ success: false, error: 'Title not owned.' });
+    }
+    await updateUser(req.session.username, { active_title: titleId });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Set active title error:', error);
+    res.status(500).json({ success: false, error: 'Unable to set title.' });
+  }
+});
+
+app.post('/api/enter-dimension', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const { dimension } = req.body || {};
+  if (dimension !== 'deep-sea') {
+    return res.status(400).json({ success: false, error: 'Invalid dimension.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    if (!user.portal_unlocked) {
+      return res.status(400).json({ success: false, error: 'Portal is locked.' });
+    }
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+    if ((items.essence || 0) < 1) {
+      return res.json({ success: false, error: 'Need 1 Sea Essence.' });
+    }
+    items.essence -= 1;
+    await updateUser(req.session.username, { items: JSON.stringify(items) });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Enter dimension error:', error);
+    res.status(500).json({ success: false, error: 'Unable to enter dimension.' });
+  }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user || !user.is_admin) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
+  }
+
+  try {
+    if (pool) {
+      const result = await executeQuery('SELECT * FROM users ORDER BY username ASC');
+      const users = result.rows.map(row => sanitizeUser({
+        ...row,
+        inventory: typeof row.inventory === 'string' ? JSON.parse(row.inventory) : row.inventory,
+        achievements: typeof row.achievements === 'string' ? JSON.parse(row.achievements) : row.achievements,
+        potions: typeof row.potions === 'string' ? JSON.parse(row.potions) : row.potions,
+        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+        titles: typeof row.titles === 'string' ? JSON.parse(row.titles) : row.titles
+      }));
+      return res.json({ success: true, users });
+    }
+    const users = Object.values(inMemoryStore.users).map(stored => sanitizeUser({
+      ...stored,
+      inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : stored.inventory,
+      achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : stored.achievements,
+      potions: typeof stored.potions === 'string' ? JSON.parse(stored.potions) : stored.potions,
+      items: typeof stored.items === 'string' ? JSON.parse(stored.items) : stored.items,
+      titles: typeof stored.titles === 'string' ? JSON.parse(stored.titles) : stored.titles
+    }));
+    res.json({ success: true, users });
+  } catch (error) {
+    console.error('Admin users error:', error);
+    res.status(500).json({ success: false, error: 'Unable to load users.' });
+  }
+});
+
+// Unlock Portal
+app.post('/api/unlock-portal', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
+
+    if ((items.fragments || 0) < 10) {
+      return res.json({ success: false, error: 'Need 10 Portal Fragments.' });
+    }
+
+    items.fragments -= 10;
+    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    if (!titles.includes('portalmancer')) {
+      titles.push('portalmancer');
+    }
+
+    await updateUser(req.session.username, {
+      portal_unlocked: true,
+      items: JSON.stringify(items),
+      titles: JSON.stringify(titles)
+    });
+
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Portal unlock error:', error);
+    res.status(500).json({ success: false, error: 'Failed.' });
+  }
+});
+
+app.post('/api/admin/announcement', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  const user = await findUser(req.session.username);
+  if (!user || !user.is_admin) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
+  }
+
+  const { title, content } = req.body || {};
+  if (!title || !content) {
+    return res.status(400).json({ success: false, error: 'Title and content required.' });
+  }
+
+  const announcement = {
+    id: Date.now().toString(),
+    title: title.trim(),
+    content: content.trim(),
+    timestamp: new Date().toISOString(),
+    admin: user.username
+  };
+
+  // Emit to all connected clients
+  io.emit('announcement_popup', announcement);
+
+  // Also add to chat
+  const chatMsg = {
+    username: 'ANNOUNCEMENT',
+    message: `${title}: ${content}`,
+    timestamp: announcement.timestamp,
+    system: true,
+    isAnnouncement: true
+  };
+  // Persist announcement as a system chat message (title = announcement title)
+  await saveChatMessage(chatMsg.username, chatMsg.message, announcement.title, '#ffd700', true);
+
+  // Emit both the announcement popup and a chat message for clients
+  io.emit('chat-message', chatMsg);
+
+  res.json({ success: true, announcement });
+});
+
+// Admin broadcast message to all players (short chat message)
+app.post('/api/broadcast', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const user = await findUser(req.session.username);
+  if (!user || !user.is_admin) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
+  }
+
+  const { message } = req.body || {};
+  if (!message || !String(message).trim()) {
+    return res.status(400).json({ success: false, error: 'Message required.' });
+  }
+
+  const text = String(message).trim().slice(0, 500);
+  const chatRecord = await saveChatMessage('BROADCAST', text, 'Broadcast', '#ffd700', true);
+  io.emit('chat-message', chatRecord);
+  io.emit('system-message', { username: 'System', message: `Broadcast sent by ${req.session.username}`, timestamp: new Date().toISOString(), system: true });
+  res.json({ success: true });
+});
+
+app.get('/api/chat', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Login required to view chat.' });
+  }
+  try {
+    res.json({ success: true, messages: await getRecentChatMessages(60) });
+  } catch (error) {
+    console.error('Chat history error:', error);
+    res.status(500).json({ success: false, error: 'Unable to load chat.' });
+  }
+});
+
+app.post('/api/chat', async (req, res) => {
+  if (!req.session || !req.session.username) {
+    return res.status(401).json({ success: false, error: 'Login required to chat.' });
+  }
+  const text = String(req.body?.message || '').trim().slice(0, 500);
+  if (!text) {
+    return res.status(400).json({ success: false, error: 'Message cannot be empty.' });
+  }
+  try {
+    const user = await findUser(req.session.username);
+    const title = user?.active_title || null;
+    const record = await saveChatMessage(req.session.username, text, title, '#ffd700', false);
+    io.emit('chat-message', record);
+    res.json({ success: true, message: record });
+  } catch (error) {
+    console.error('Chat message error:', error);
+    res.status(500).json({ success: false, error: 'Unable to send chat message.' });
+  }
+});
+
+// Socket.IO middleware
+io.use((socket, next) => {
+  const response = {
+    getHeader: () => undefined,
+    setHeader: () => {},
+    removeHeader: () => {}
+  };
+  sessionMiddleware(socket.request, response, next);
+});
+
+
+// Socket.IO connection handling
+io.on('connection', async (socket) => {
+  console.log(`🔌 RNG 3 Player connected: ${socket.id}`);
+  connectedUsers += 1;
+  io.emit('online-count', connectedUsers);
+
+  const history = await getRecentChatMessages(60);
+  socket.emit('chat-history', history);
+  socket.emit('system-message', {
+    username: 'System',
+    message: 'Welcome to RNG 3 chat. Be kind and enjoy the roll!',
+    timestamp: new Date().toISOString(),
+    system: true
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 RNG 3 Player disconnected: ${socket.id}`);
+    connectedUsers = Math.max(0, connectedUsers - 1);
+    io.emit('online-count', connectedUsers);
+  });
+
+  socket.on('join-game', () => {
+    socket.emit('game-joined', {
+      message: 'Welcome to RNG 3!',
+      version: '3.0.0',
+      features: ['New Mechanics', 'Enhanced UI', 'Community Features']
+    });
+  });
+
+  socket.on('chat-message', async (data) => {
+    const text = String(data?.message || '').trim().slice(0, 500);
+    if (!text) return;
+    const username = socket.request?.session?.username || 'Guest';
+    const user = username !== 'Guest' ? await findUser(username) : null;
+    const title = user?.active_title || null;
+    const record = await saveChatMessage(username, text, title, '#ffd700', false);
+    io.emit('chat-message', record);
+  });
+
+  socket.on('clear-chat', async () => {
+    if (!(await isAdminSocket(socket))) {
+      socket.emit('system-message', {
+        username: 'System',
+        message: 'Admin privileges required to clear chat.',
+        timestamp: new Date().toISOString(),
+        system: true
+      });
+      return;
+    }
+    await clearChatHistory();
+    io.emit('chat-history', []);
+    io.emit('system-message', {
+      username: 'System',
+      message: 'Chat history has been cleared by an administrator.',
+      timestamp: new Date().toISOString(),
+      system: true
+    });
+  });
+
+  socket.on('admin-event', async (data) => {
+    if (!(await isAdminSocket(socket))) {
+      socket.emit('system-message', {
+        username: 'System',
+        message: 'Admin privileges required to trigger events.',
+        timestamp: new Date().toISOString(),
+        system: true
+      });
+      return;
+    }
+    const eventName = String(data?.eventName || '').trim();
+    if (!eventName) return;
+    io.emit('theme-event', {
+      eventName,
+      initiatedBy: socket.request?.session?.username || 'Admin',
+      timestamp: new Date().toISOString()
+    });
+  });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('RNG 3 Error:', err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    version: '3.0.0'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Endpoint not found',
+    version: '3.0.0'
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+async function startServer() {
+  try {
+    await ensureDatabase();
+    server.listen(PORT, () => {
+      console.log(`🚀 RNG 3 Server running on port ${PORT}`);
+      console.log(`📅 Version: 3.0.0 - The Next Generation`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Ready for players!`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 RNG 3 Server shutting down gracefully...');
+  server.close(() => {
+    console.log('✅ RNG 3 Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 RNG 3 Server interrupted...');
+  server.close(() => {
+    console.log('✅ RNG 3 Server closed');
+    process.exit(0);
+  });
+});
+
+module.exports = app;
