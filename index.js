@@ -105,18 +105,17 @@ function setUserActiveEffect(username, effectType, data) {
   return existing[effectType];
 }
 
-function computeSpinMultiplier(username, dimension = null) {
-  let multiplier = 1;
-  const effects = getUserActiveEffects(username);
-  Object.values(effects).forEach(effect => {
-    if (effect && Date.now() < effect.endTime) {
-      multiplier *= effect.multiplier;
-    }
-  });
-  if (dimension === 'deep-sea') {
-    multiplier *= 2;
-  }
-  return multiplier;
+function getActiveEffectMultiplier(username, effectType) {
+  const effect = getUserActiveEffects(username)[effectType];
+  return effect && Date.now() < effect.endTime ? Math.max(1, Number(effect.multiplier) || 1) : 1;
+}
+
+function getLuckMultiplier(username, dimension = null) {
+  return getActiveEffectMultiplier(username, 'luck') * (dimension === 'deep-sea' ? 2 : 1);
+}
+
+function computeSpinMultiplier() {
+  return 1;
 }
 
 async function executeQuery(text, params = []) {
@@ -348,6 +347,12 @@ function startGameEvent(eventName, initiatedBy) {
   return activeGameEvent;
 }
 
+function stopGameEvent(eventName) {
+  if (!activeGameEvent || activeGameEvent.eventName !== eventName) return false;
+  endActiveGameEvent();
+  return true;
+}
+
 let connectedUsers = 0;
 
 async function getRecentChatMessages(limit = 60) {
@@ -520,6 +525,7 @@ function sanitizeUser(user) {
     items: items,
     titles: titles,
     active_title: user.active_title || null,
+    active_effects: user.username ? getUserActiveEffects(user.username) : {},
     portal_unlocked: user.portal_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(inventory),
@@ -718,7 +724,8 @@ app.post('/api/spin', async (req, res) => {
     return res.status(404).json({ success: false, error: 'User not found.' });
   }
 
-  const roll = Math.random() * 100;
+  const dimension = String(req.body?.dimension || '').toLowerCase();
+  const luckMultiplier = getLuckMultiplier(req.session.username, dimension);
   let cursor = 0;
   let result = null;
   const options = [
@@ -740,8 +747,10 @@ app.post('/api/spin', async (req, res) => {
     { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' }
   ];
 
+  const totalWeight = options.reduce((total, rarity) => total + rarity.chance * (rarity.chance < 20 ? luckMultiplier : 1), 0);
+  const roll = Math.random() * totalWeight;
   for (const rarity of options) {
-    cursor += rarity.chance;
+    cursor += rarity.chance * (rarity.chance < 20 ? luckMultiplier : 1);
     if (roll <= cursor) {
       result = rarity;
       break;
@@ -769,9 +778,8 @@ app.post('/api/spin', async (req, res) => {
   const ownedCount = Number(inventory.rarities[result.key]);
   inventory.rarities[result.key] = Number.isFinite(ownedCount) && ownedCount >= 0 ? ownedCount + 1 : 1;
 
-  const dimension = String(req.body?.dimension || '').toLowerCase();
   const event = getActiveGameEvent();
-  const multiplier = computeSpinMultiplier(req.session.username, dimension === 'deep-sea' ? 'deep-sea' : null) * (event?.coinMultiplier || 1);
+  const multiplier = computeSpinMultiplier() * (event?.coinMultiplier || 1);
   const rawReward = result.reward;
   const eventBonus = event?.bonusCoins || 0;
   const finalReward = Math.round(rawReward * multiplier) + eventBonus;
@@ -811,6 +819,7 @@ app.post('/api/spin', async (req, res) => {
       result: {
         ...result,
         multiplier,
+        luckMultiplier,
         reward: finalReward,
         eventBonus,
         eventName: event?.title || null
@@ -1051,28 +1060,65 @@ app.get('/api/admin/users', async (req, res) => {
   try {
     if (pool) {
       const result = await executeQuery('SELECT * FROM users ORDER BY username ASC');
-      const users = result.rows.map(row => sanitizeUser({
-        ...row,
-        inventory: typeof row.inventory === 'string' ? JSON.parse(row.inventory) : row.inventory,
-        achievements: typeof row.achievements === 'string' ? JSON.parse(row.achievements) : row.achievements,
-        potions: typeof row.potions === 'string' ? JSON.parse(row.potions) : row.potions,
-        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
-        titles: typeof row.titles === 'string' ? JSON.parse(row.titles) : row.titles
-      }));
+      const users = result.rows.map(sanitizeUser);
       return res.json({ success: true, users });
     }
-    const users = Object.values(inMemoryStore.users).map(stored => sanitizeUser({
-      ...stored,
-      inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : stored.inventory,
-      achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : stored.achievements,
-      potions: typeof stored.potions === 'string' ? JSON.parse(stored.potions) : stored.potions,
-      items: typeof stored.items === 'string' ? JSON.parse(stored.items) : stored.items,
-      titles: typeof stored.titles === 'string' ? JSON.parse(stored.titles) : stored.titles
-    }));
+    const users = Object.values(inMemoryStore.users).map(sanitizeUser);
     res.json({ success: true, users });
   } catch (error) {
     console.error('Admin users error:', error);
     res.status(500).json({ success: false, error: 'Unable to load users.' });
+  }
+});
+
+app.post('/api/admin/users/:username', async (req, res) => {
+  if (!req.session?.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  try {
+    const admin = await findUser(req.session.username);
+    if (!admin?.is_admin) {
+      return res.status(403).json({ success: false, error: 'Admin access required.' });
+    }
+
+    const target = await findUser(req.params.username);
+    if (!target) {
+      return res.status(404).json({ success: false, error: 'Player not found.' });
+    }
+
+    const { type, amount, potion, item } = req.body || {};
+    const quantity = Number(amount);
+    if (!Number.isSafeInteger(quantity) || quantity < 0) {
+      return res.status(400).json({ success: false, error: 'Enter a valid whole-number amount.' });
+    }
+
+    let updates;
+    if (type === 'coins') {
+      if (quantity > 2147483647) {
+        return res.status(400).json({ success: false, error: 'Coin balance is too large.' });
+      }
+      updates = { coins: quantity };
+    } else if (type === 'potion' && ['luck', 'speed'].includes(potion) && quantity >= 1 && quantity <= 99) {
+      const potions = normalizeRecord(target.potions, { luck: 0, speed: 0 });
+      potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
+      updates = { potions: JSON.stringify(potions) };
+    } else if (type === 'item' && ['fragments', 'clovers', 'essence'].includes(item) && quantity >= 1 && quantity <= 99) {
+      const items = normalizeRecord(target.items, { fragments: 0, clovers: 0, essence: 0 });
+      items[item] = Math.min(999, (Number(items[item]) || 0) + quantity);
+      updates = { items: JSON.stringify(items) };
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid player adjustment.' });
+    }
+
+    await updateUser(target.username, updates);
+    const updatedTarget = { ...target, ...updates };
+    if (typeof updatedTarget.potions === 'string') updatedTarget.potions = normalizeRecord(updatedTarget.potions);
+    if (typeof updatedTarget.items === 'string') updatedTarget.items = normalizeRecord(updatedTarget.items);
+    res.json({ success: true, user: sanitizeUser(updatedTarget) });
+  } catch (error) {
+    console.error('Admin player update error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to update player. Check the database and try again.' });
   }
 });
 
@@ -1297,8 +1343,17 @@ io.on('connection', async (socket) => {
         return;
       }
       const eventName = String(data?.eventName || '').trim().toLowerCase();
+      const action = data?.action === 'stop' ? 'stop' : 'start';
       if (!Object.prototype.hasOwnProperty.call(GAME_EVENTS, eventName)) {
         respond({ success: false, error: 'Unknown event.' });
+        return;
+      }
+      if (action === 'stop') {
+        if (!stopGameEvent(eventName)) {
+          respond({ success: false, error: 'That event is not active.' });
+          return;
+        }
+        respond({ success: true, stopped: true });
         return;
       }
       const event = startGameEvent(eventName, socket.request?.session?.username || 'Admin');
