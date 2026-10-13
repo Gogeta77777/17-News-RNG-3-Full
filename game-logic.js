@@ -60,6 +60,7 @@ const CODE_REWARDS = {
 let currentUser = null;
 let isEnteringDimension = false;
 let meteorShowerLayer = null;
+let eventCountdownTimer = null;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -213,12 +214,9 @@ function updatePotionDisplay() {
   });
 }
 
-function getPotionMultiplier() {
-  let mult = 1;
-  Object.values(gameState.activeEffects).forEach(eff => {
-    if (Date.now() < eff.endTime) mult *= eff.multiplier;
-  });
-  return mult;
+function getPotionMultiplier(potionType) {
+  const effect = gameState.activeEffects[potionType];
+  return effect && Date.now() < effect.endTime ? Math.max(1, Number(effect.multiplier) || 1) : 1;
 }
 
 // ==================== SHOP SYSTEM ====================
@@ -421,13 +419,23 @@ function checkTitleUnlocks(user) {
 function setupPortalUI() {
   const lockBtn = document.getElementById('portal-lock');
   if (lockBtn && !lockBtn.dataset.bound) {
-    lockBtn.addEventListener('click', tryUnlockPortal);
+    lockBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      tryUnlockPortal();
+    });
+    lockBtn.addEventListener('keydown', event => event.stopPropagation());
     lockBtn.dataset.bound = 'true';
   }
 
   const portalBtn = document.querySelector('.portal-base');
   if (portalBtn && !portalBtn.dataset.bound) {
     portalBtn.addEventListener('click', showDimensions);
+    portalBtn.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        showDimensions();
+      }
+    });
     portalBtn.dataset.bound = 'true';
   }
 
@@ -541,29 +549,22 @@ async function rollInDeepSea() {
   if (!rollBtn || !rollDisplay || !rewardDisplay) return;
 
   setLoading(rollBtn, true, 'DIVING...');
-  rollDisplay.textContent = '🌊 Diving...';
-
-  const deepSeaAnimations = ['🐠 Current', '🌊 Tide', '⭐ Luck', '🌀 Vortex', '🦑 Deep'];
-  let index = 0;
-  const spinner = setInterval(() => {
-    rollDisplay.textContent = deepSeaAnimations[index % deepSeaAnimations.length];
-    index += 1;
-  }, 90);
+  rollDisplay.textContent = 'Reading the current...';
 
   const response = await handleAPI('/api/spin', { method: 'POST', body: { dimension: 'deep-sea' } });
-  await new Promise(resolve => setTimeout(resolve, 1800));
-  clearInterval(spinner);
+  if (response.success && response.result && response.user) await waitForRollReveal();
   setLoading(rollBtn, false);
 
-  if (!response.success) {
+  if (!response.success || !response.result || !response.user) {
     rollDisplay.textContent = '❌ Dive Failed';
     showPopup(response.error || 'Deep Sea roll failed', 'error');
     return;
   }
 
   const result = response.result;
-  const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
-  rollDisplay.textContent = `🌊 ${result.name}${multiplierDisplay}`;
+  const multiplierDisplay = result.multiplier > 1 ? ` · ${result.multiplier}x coins` : '';
+  const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
+  rollDisplay.textContent = `🌊 ${result.name}${multiplierDisplay}${luckDisplay}`;
   rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
   currentUser = response.user;
   updateUI(currentUser);
@@ -692,6 +693,7 @@ function updateUI(user) {
   gameState.potionInventory = user.potions || { luck: 0, speed: 0 };
   gameState.userTitles = user.titles || [];
   gameState.activeTitle = user.active_title || null;
+  gameState.activeEffects = user.active_effects || {};
   gameState.portalUnlocked = user.portal_unlocked || false;
   
   document.getElementById('game-username').textContent = user.username;
@@ -714,15 +716,18 @@ function updateUI(user) {
   renderInventory(user);
   renderShop();
   updatePortalUI();
+  updatePotionDisplay();
 }
 
 function updatePortalUI() {
+  const portal = document.getElementById('portal-container');
   const lock = document.getElementById('portal-lock');
   const unlockBtn = document.getElementById('unlock-portal-btn');
   const status = document.getElementById('portal-status');
   const fragmentsText = document.getElementById('portal-fragments-needed');
 
   const fragments = gameState.itemInventory.fragments || 0;
+  if (portal) portal.classList.toggle('portal-open', gameState.portalUnlocked);
   if (gameState.portalUnlocked) {
     if (lock) lock.style.display = 'none';
     if (unlockBtn) unlockBtn.style.display = 'none';
@@ -793,10 +798,47 @@ async function loadAdminUsers() {
     const row = document.createElement('div');
     row.className = 'admin-user-row';
     row.innerHTML = `
-      <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_admin ? 'Administrator' : 'Player'}</span></div>
-      <div><strong>🪙 ${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls</span></div>
-      <div><strong>${user.inventoryTotal || 0} drops</strong><span>${(user.titles || []).length} titles</span></div>
+      <div class="admin-user-summary">
+        <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_admin ? 'Administrator' : 'Player'}</span></div>
+        <div><strong>🪙 ${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls · ${user.inventoryTotal || 0} drops · ${(user.titles || []).length} titles</span></div>
+      </div>
+      <div class="admin-user-tools">
+        <form class="admin-adjust-form" data-adjustment="coins">
+          <label>Set coins<input name="amount" type="number" min="0" max="2147483647" step="1" value="${Number(user.coins) || 0}" required></label>
+          <button class="btn" type="submit">Save balance</button>
+        </form>
+        <form class="admin-adjust-form" data-adjustment="potion">
+          <label>Grant potion<select name="potion"><option value="luck">Luck</option><option value="speed">Speed</option></select></label>
+          <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
+          <button class="btn" type="submit">Grant</button>
+        </form>
+        <form class="admin-adjust-form" data-adjustment="item">
+          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option></select></label>
+          <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
+          <button class="btn" type="submit">Grant</button>
+        </form>
+      </div>
     `;
+    row.querySelectorAll('.admin-adjust-form').forEach(form => {
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const fields = new FormData(form);
+        const body = { type: form.dataset.adjustment, amount: Number(fields.get('amount')) };
+        if (body.type === 'potion') body.potion = fields.get('potion');
+        if (body.type === 'item') body.item = fields.get('item');
+        const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, { method: 'POST', body });
+        if (!result.success) {
+          showPopup(result.error || 'Unable to update player.', 'error');
+          return;
+        }
+        if (result.user?.username === currentUser?.username) {
+          currentUser = result.user;
+          updateUI(currentUser);
+        }
+        showPopup(`Updated ${user.username}.`);
+        loadAdminUsers();
+      });
+    });
     userList.appendChild(row);
   });
   if (!response.users.length) {
@@ -811,21 +853,40 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const isActive = event.active !== false;
   const title = event.title || (eventName === 'starlight-surge' ? 'Starlight Surge' : 'Meteor Shower');
   const status = document.getElementById(`${eventName}-status`);
+  const startButton = eventName === 'starlight-surge' ? document.getElementById('activate-starlight-surge') : document.getElementById('activate-meteor-shower');
+  const stopButton = eventName === 'starlight-surge' ? document.getElementById('deactivate-starlight-surge') : null;
 
   if (eventName === 'starlight-surge') {
     document.body.classList.toggle('starlight-surge', isActive);
-    if (status) status.textContent = isActive ? 'ACTIVE · 2x coins per roll' : 'Ready';
+    if (startButton) startButton.hidden = isActive;
+    if (stopButton) stopButton.hidden = !isActive;
   } else if (eventName === 'meteor-shower') {
     if (isActive) {
       createMeteorShower(event.durationSeconds || 90);
-      if (status) status.textContent = 'ACTIVE · +250 coins per roll';
+      if (startButton) startButton.disabled = true;
     } else {
       meteorShowerLayer?.remove();
       meteorShowerLayer = null;
-      if (status) status.textContent = 'Ready';
+      if (startButton) startButton.disabled = false;
     }
   } else {
     return;
+  }
+
+  clearInterval(eventCountdownTimer);
+  eventCountdownTimer = null;
+  if (status) {
+    if (!isActive) {
+      status.textContent = 'Ready';
+    } else {
+      const rewardText = eventName === 'starlight-surge' ? '2x coins per roll' : '+250 coins per roll';
+      const updateStatus = () => {
+        const remaining = event.expiresAt ? Math.max(0, Math.ceil((Number(event.expiresAt) - Date.now()) / 1000)) : event.durationSeconds || 0;
+        status.textContent = `ACTIVE · ${rewardText} · ${remaining}s`;
+      };
+      updateStatus();
+      eventCountdownTimer = setInterval(updateStatus, 1000);
+    }
   }
 
   const initiatedBy = event.initiatedBy || 'Admin';
@@ -1029,45 +1090,9 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 
 document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea);
 
-// ==================== ADVANCED SPIN ANIMATION ====================
-function createSpinWheel() {
-  const wheel = document.createElement('div');
-  wheel.className = 'spin-wheel';
-  const wheelOptions = [...rarityOptions, ...globalOptions];
-  const segments = wheelOptions.map((option, index) => `
-    <div class="wheel-segment" style="--rotation: ${index * (360 / wheelOptions.length)}deg; --color: ${option.color};">
-      <span>${option.name}</span>
-    </div>
-  `).join('');
-  wheel.innerHTML = `
-    <div class="wheel-container" aria-hidden="true">
-      <div class="wheel-kicker">17 NEWS / RNG 3</div>
-      <div class="wheel-inner">
-        ${segments}
-        <div class="wheel-center"></div>
-      </div>
-      <div class="wheel-pointer"></div>
-    </div>
-  `;
-  return wheel;
-}
-
-function animateSpinWheel(duration = 2200, result = null) {
-  return new Promise((resolve) => {
-    const wheel = createSpinWheel();
-    if (result?.color) {
-      wheel.style.setProperty('--result-color', result.color);
-    }
-    document.body.appendChild(wheel);
-    
-    // Trigger animation
-    setTimeout(() => wheel.classList.add('spin-active'), 10);
-    
-    setTimeout(() => {
-      wheel.remove();
-      resolve();
-    }, duration);
-  });
+function waitForRollReveal() {
+  const speedMultiplier = getPotionMultiplier('speed');
+  return new Promise(resolve => setTimeout(resolve, 300 / speedMultiplier));
 }
 
 // ==================== ROLL BUTTON ====================
@@ -1089,7 +1114,7 @@ function setupRollButton() {
     if (!rollDisplay || !rewardDisplay) return;
 
     setLoading(rollBtn, true, 'ROLLING...');
-    rollDisplay.textContent = '🎰 Spinning...';
+    rollDisplay.textContent = 'Drawing signal...';
     rollDisplay.style.opacity = '1';
 
     const response = await handleAPI('/api/spin', {
@@ -1098,7 +1123,7 @@ function setupRollButton() {
     });
 
     if (response.success && response.result && response.user) {
-      await animateSpinWheel(2200, response.result);
+      await waitForRollReveal();
     }
 
     setLoading(rollBtn, false);
@@ -1114,12 +1139,13 @@ function setupRollButton() {
     updateUI(response.user);
 
     const result = response.result;
-    const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
+    const multiplierDisplay = result.multiplier > 1 ? ` · ${result.multiplier}x coins` : '';
+    const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
     
     // Dramatic reveal with color animation
     rollDisplay.style.color = '#f8fafc';
     rollDisplay.style.textShadow = `0 0 20px ${result.color || '#38bdf8'}`;
-    rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}`;
+    rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}${luckDisplay}`;
     
     rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
     rewardDisplay.style.color = '#7dd3fc';
@@ -1231,6 +1257,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Server-authoritative, timed reward events.
   document.getElementById('activate-starlight-surge')?.addEventListener('click', () => {
     triggerAdminEvent('starlight-surge');
+  });
+  document.getElementById('deactivate-starlight-surge')?.addEventListener('click', () => {
+    triggerAdminEvent('starlight-surge', 'stop');
   });
   document.getElementById('activate-meteor-shower')?.addEventListener('click', () => {
     triggerAdminEvent('meteor-shower');
