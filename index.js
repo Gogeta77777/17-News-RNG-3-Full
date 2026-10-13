@@ -13,7 +13,6 @@ const { Server } = require('socket.io');
 const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
 const path = require('path');
-const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const crypto = require('crypto');
@@ -41,6 +40,7 @@ app.set('trust proxy', 1);
 let pool;
 const IS_VERCEL = process.env.VERCEL === '1';
 const IS_RENDER = process.env.RENDER === 'true';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || IS_RENDER || IS_VERCEL;
 // Neon/Postgres connection string: prefer NEON_DATABASE_URL or DATABASE_URL as a fallback
 const DATABASE_URL = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.PG_CONNECTION_STRING;
 const USE_POSTGRES = Boolean(DATABASE_URL);
@@ -49,13 +49,18 @@ if (USE_POSTGRES) {
   try {
     pool = new Pool({
       connectionString: DATABASE_URL,
-      ssl: (process.env.NODE_ENV === 'production' || DATABASE_URL.includes('sslmode=require') || process.env.PGSSLMODE === 'require')
+      max: 10,
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+      keepAlive: true,
+      ssl: (IS_PRODUCTION || /sslmode=require|\.neon\.tech/i.test(DATABASE_URL) || process.env.PGSSLMODE === 'require')
         ? { rejectUnauthorized: false }
         : false
     });
+    pool.on('error', error => console.error('Neon PostgreSQL pool error:', error.message || error));
     console.log('✅ PostgreSQL/Neon initialized for RNG 3');
   } catch (error) {
-    console.error('⚠️ PostgreSQL initialization failed, falling back to local storage:', error.message || error);
+    console.error('⚠️ PostgreSQL pool initialization failed:', error.message || error);
     pool = null;
   }
 }
@@ -64,62 +69,6 @@ const inMemoryStore = {
   users: {},
   chatMessages: []
 };
-
-const STORAGE_DIR = path.join(__dirname, 'data');
-const USERS_FILE = path.join(STORAGE_DIR, 'users.json');
-const CHAT_FILE = path.join(STORAGE_DIR, 'chat.json');
-const JSON_ENCODING = 'utf8';
-
-function ensureStorageFiles() {
-  try {
-    if (!fs.existsSync(STORAGE_DIR)) {
-      fs.mkdirSync(STORAGE_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(USERS_FILE)) {
-      fs.writeFileSync(USERS_FILE, JSON.stringify({}, null, 2), JSON_ENCODING);
-    }
-    if (!fs.existsSync(CHAT_FILE)) {
-      fs.writeFileSync(CHAT_FILE, JSON.stringify([], null, 2), JSON_ENCODING);
-    }
-  } catch (error) {
-    console.error('Storage initialization failed:', error);
-  }
-}
-
-function loadStorageFiles() {
-  try {
-    const usersRaw = fs.readFileSync(USERS_FILE, JSON_ENCODING);
-    inMemoryStore.users = JSON.parse(usersRaw) || {};
-  } catch (error) {
-    inMemoryStore.users = {};
-  }
-
-  try {
-    const chatRaw = fs.readFileSync(CHAT_FILE, JSON_ENCODING);
-    inMemoryStore.chatMessages = JSON.parse(chatRaw) || [];
-  } catch (error) {
-    inMemoryStore.chatMessages = [];
-  }
-}
-
-ensureStorageFiles();
-loadStorageFiles();
-
-function persistUsers() {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(inMemoryStore.users, null, 2), JSON_ENCODING);
-  } catch (error) {
-    console.error('Unable to persist users:', error);
-  }
-}
-
-function persistChatMessages() {
-  try {
-    fs.writeFileSync(CHAT_FILE, JSON.stringify(inMemoryStore.chatMessages, null, 2), JSON_ENCODING);
-  } catch (error) {
-    console.error('Unable to persist chat messages:', error);
-  }
-}
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
@@ -175,6 +124,31 @@ async function executeQuery(text, params = []) {
   return pool.query(text, params);
 }
 
+function parseJsonField(value, fallback) {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeRecord(value, fallback = {}) {
+  const parsed = parseJsonField(value, fallback);
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
+}
+
+function normalizeList(value) {
+  const parsed = parseJsonField(value, []);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function normalizeInventory(value) {
+  const inventory = normalizeRecord(value);
+  return { ...inventory, rarities: normalizeRecord(inventory.rarities) };
+}
+
 async function findUser(username) {
   if (!username) return null;
   const normalized = username.trim();
@@ -182,17 +156,17 @@ async function findUser(username) {
     const result = await executeQuery('SELECT * FROM users WHERE username = $1', [normalized]);
     if (!result.rows.length) return null;
     const user = result.rows[0];
-    const inventory = typeof user.inventory === 'string' ? JSON.parse(user.inventory) : (user.inventory || { rarities: {} });
-    const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || { luck: 0, speed: 0 });
-    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || { fragments: 0, clovers: 0, essence: 0 });
-    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    const inventory = normalizeInventory(user.inventory);
+    const potions = normalizeRecord(user.potions, { luck: 0, speed: 0 });
+    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0 });
+    const titles = normalizeList(user.titles);
     return {
       username: user.username,
       password: user.password,
       coins: user.coins,
       spins: user.spins,
       inventory,
-      achievements: typeof user.achievements === 'string' ? JSON.parse(user.achievements) : (user.achievements || []),
+      achievements: normalizeList(user.achievements),
       potions,
       items,
       titles,
@@ -207,11 +181,11 @@ async function findUser(username) {
   if (!stored) return null;
   return {
     ...stored,
-    inventory: typeof stored.inventory === 'string' ? JSON.parse(stored.inventory) : (stored.inventory || { rarities: {} }),
-    achievements: typeof stored.achievements === 'string' ? JSON.parse(stored.achievements) : (stored.achievements || []),
-    potions: typeof stored.potions === 'string' ? JSON.parse(stored.potions) : (stored.potions || { luck: 0, speed: 0 }),
-    items: typeof stored.items === 'string' ? JSON.parse(stored.items) : (stored.items || { fragments: 0, clovers: 0, essence: 0 }),
-    titles: typeof stored.titles === 'string' ? JSON.parse(stored.titles) : (stored.titles || []),
+    inventory: normalizeInventory(stored.inventory),
+    achievements: normalizeList(stored.achievements),
+    potions: normalizeRecord(stored.potions, { luck: 0, speed: 0 }),
+    items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0 }),
+    titles: normalizeList(stored.titles),
     portal_unlocked: stored.portal_unlocked || false,
     active_title: stored.active_title || null
   };
@@ -220,22 +194,11 @@ async function findUser(username) {
 async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
-    await executeQuery(
+    const result = await executeQuery(
       `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, is_admin, created_at, last_login)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-       ON CONFLICT (username) DO UPDATE SET
-         password = EXCLUDED.password,
-         coins = EXCLUDED.coins,
-         spins = EXCLUDED.spins,
-         inventory = EXCLUDED.inventory,
-         achievements = EXCLUDED.achievements,
-         potions = EXCLUDED.potions,
-         items = EXCLUDED.items,
-         titles = EXCLUDED.titles,
-         active_title = EXCLUDED.active_title,
-         portal_unlocked = EXCLUDED.portal_unlocked,
-         is_admin = EXCLUDED.is_admin,
-         last_login = EXCLUDED.last_login`,
+       ON CONFLICT (username) DO NOTHING
+       RETURNING username`,
       [
         normalized,
         user.password,
@@ -253,10 +216,11 @@ async function saveUser(user) {
         user.last_login || new Date().toISOString()
       ]
     );
-    return;
+    return result.rowCount === 1;
   }
+  if (inMemoryStore.users[normalized]) return false;
   inMemoryStore.users[normalized] = user;
-  persistUsers();
+  return true;
 }
 
 async function updateUser(username, updates) {
@@ -271,11 +235,15 @@ async function updateUser(username, updates) {
   }
   const existing = inMemoryStore.users[normalized] || {};
   inMemoryStore.users[normalized] = { ...existing, ...updates };
-  persistUsers();
 }
 
 async function ensureDatabase() {
-  if (!pool) return;
+  if (!pool) {
+    if (IS_PRODUCTION) {
+      throw new Error('Neon database is required in production. Configure NEON_DATABASE_URL or DATABASE_URL.');
+    }
+    return;
+  }
   await executeQuery(`
     CREATE TABLE IF NOT EXISTS users (
       username TEXT PRIMARY KEY,
@@ -302,6 +270,82 @@ async function ensureDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await executeQuery(`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS spins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{"rarities":{}}'::jsonb,
+      ADD COLUMN IF NOT EXISTS achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS potions JSONB NOT NULL DEFAULT '{"luck":0,"speed":0}'::jsonb,
+      ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0}'::jsonb,
+      ADD COLUMN IF NOT EXISTS titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS active_title TEXT,
+      ADD COLUMN IF NOT EXISTS portal_unlocked BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  `);
+  await executeQuery('CREATE INDEX IF NOT EXISTS chat_messages_created_at_idx ON chat_messages (created_at DESC)');
+}
+
+const GAME_EVENTS = {
+  'starlight-surge': {
+    title: 'Starlight Surge',
+    durationSeconds: 120,
+    coinMultiplier: 2,
+    bonusCoins: 0
+  },
+  'meteor-shower': {
+    title: 'Meteor Shower',
+    durationSeconds: 90,
+    coinMultiplier: 1,
+    bonusCoins: 250
+  }
+};
+
+let activeGameEvent = null;
+let activeGameEventTimeout = null;
+
+function endActiveGameEvent() {
+  if (!activeGameEvent) return;
+  const endedEvent = activeGameEvent;
+  activeGameEvent = null;
+  clearTimeout(activeGameEventTimeout);
+  activeGameEventTimeout = null;
+  io.emit('theme-event', {
+    eventName: endedEvent.eventName,
+    title: endedEvent.title,
+    initiatedBy: endedEvent.initiatedBy,
+    active: false,
+    endedAt: new Date().toISOString()
+  });
+}
+
+function getActiveGameEvent() {
+  if (activeGameEvent && Date.now() >= activeGameEvent.expiresAt) {
+    endActiveGameEvent();
+  }
+  return activeGameEvent;
+}
+
+function startGameEvent(eventName, initiatedBy) {
+  const config = GAME_EVENTS[eventName];
+  if (!config) return null;
+  endActiveGameEvent();
+  activeGameEvent = {
+    eventName,
+    title: config.title,
+    initiatedBy,
+    durationSeconds: config.durationSeconds,
+    coinMultiplier: config.coinMultiplier,
+    bonusCoins: config.bonusCoins,
+    startedAt: new Date().toISOString(),
+    expiresAt: Date.now() + config.durationSeconds * 1000
+  };
+  io.emit('theme-event', { ...activeGameEvent, active: true });
+  activeGameEventTimeout = setTimeout(endActiveGameEvent, config.durationSeconds * 1000);
+  activeGameEventTimeout.unref?.();
+  return activeGameEvent;
 }
 
 let connectedUsers = 0;
@@ -342,7 +386,6 @@ async function saveChatMessage(username, message, title = null, titleColor = '#f
     if (inMemoryStore.chatMessages.length > 200) {
       inMemoryStore.chatMessages.shift();
     }
-    persistChatMessages();
   }
 
   return record;
@@ -353,7 +396,6 @@ async function clearChatHistory() {
     await executeQuery('TRUNCATE chat_messages');
   }
   inMemoryStore.chatMessages = [];
-  persistChatMessages();
 }
 
 async function isAdminSocket(socket) {
@@ -463,30 +505,31 @@ app.get('/health', (req, res) => {
 });
 
 function sanitizeUser(user) {
-  const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || {});
-  const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
-  const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+  const inventory = normalizeInventory(user.inventory);
+  const potions = normalizeRecord(user.potions, { luck: 0, speed: 0 });
+  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0 });
+  const titles = normalizeList(user.titles);
   
   return {
     username: user.username,
     coins: user.coins,
     spins: user.spins,
-    inventory: user.inventory || { rarities: {} },
-    achievements: user.achievements || [],
+    inventory,
+    achievements: normalizeList(user.achievements),
     potions: potions,
     items: items,
     titles: titles,
     active_title: user.active_title || null,
     portal_unlocked: user.portal_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
-    inventoryValue: calculateInventoryValue(user.inventory || { rarities: {} }),
-    inventoryTotal: Object.values((user.inventory || {}).rarities || {}).reduce((sum, count) => sum + count, 0),
+    inventoryValue: calculateInventoryValue(inventory),
+    inventoryTotal: Object.values(inventory.rarities).reduce((sum, count) => sum + (Number(count) || 0), 0),
     is_admin: user.is_admin || false
   };
 }
 
 function calculateInventoryValue(inventory) {
-  const parsed = typeof inventory === 'string' ? JSON.parse(inventory) : inventory || {};
+  const parsed = normalizeInventory(inventory);
   const rarities = (parsed || {}).rarities || {};
   const valueMap = {
     '17-news': 150,
@@ -509,6 +552,16 @@ function calculateInventoryValue(inventory) {
   return Object.entries(rarities).reduce((sum, [key, count]) => sum + (valueMap[key] || 0) * count, 0);
 }
 
+function establishSession(req, username) {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate(error => {
+      if (error) return reject(error);
+      req.session.username = username;
+      req.session.save(saveError => saveError ? reject(saveError) : resolve());
+    });
+  });
+}
+
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password || username.trim().length < 3 || password.length < 6) {
@@ -516,7 +569,13 @@ app.post('/api/register', async (req, res) => {
   }
 
   const normalized = username.trim();
-  const existing = await findUser(normalized);
+  let existing;
+  try {
+    existing = await findUser(normalized);
+  } catch (error) {
+    console.error('Register lookup error:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Account database is unavailable. Please try again.' });
+  }
   if (existing) {
     return res.status(409).json({ success: false, error: 'Username already exists.' });
   }
@@ -538,8 +597,10 @@ app.post('/api/register', async (req, res) => {
   };
 
   try {
-    await saveUser(user);
-    req.session.username = normalized;
+    if (!(await saveUser(user))) {
+      return res.status(409).json({ success: false, error: 'Username already exists.' });
+    }
+    await establishSession(req, normalized);
     res.json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
     console.error('Register error:', error);
@@ -554,14 +615,20 @@ app.post('/api/login', async (req, res) => {
   }
 
   const normalized = username.trim();
-  const user = await findUser(normalized);
-  if (!user || user.password !== hashPassword(password)) {
-    return res.status(401).json({ success: false, error: 'Invalid username or password.' });
-  }
+  try {
+    const user = await findUser(normalized);
+    if (!user || user.password !== hashPassword(password)) {
+      return res.status(401).json({ success: false, error: 'Invalid username or password.' });
+    }
 
-  await updateUser(normalized, { last_login: new Date().toISOString() });
-  req.session.username = normalized;
-  res.json({ success: true, user: sanitizeUser({ ...user, last_login: new Date().toISOString() }) });
+    const lastLogin = new Date().toISOString();
+    await updateUser(normalized, { last_login: lastLogin });
+    await establishSession(req, normalized);
+    res.json({ success: true, user: sanitizeUser({ ...user, last_login: lastLogin }) });
+  } catch (error) {
+    console.error('Login error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Account database is unavailable. Please try again.' });
+  }
 });
 
 app.post('/api/logout', (req, res) => {
@@ -574,22 +641,47 @@ app.get('/api/session', async (req, res) => {
   if (!req.session || !req.session.username) {
     return res.json({ success: false, user: null });
   }
-  const user = await findUser(req.session.username);
+  let user;
+  try {
+    user = await findUser(req.session.username);
+  } catch (error) {
+    console.error('Session lookup error:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Account database is unavailable. Please try again.' });
+  }
   if (!user) {
     return res.json({ success: false, user: null });
   }
   res.json({ success: true, user: sanitizeUser(user) });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, status: 'ok', version: '3.0.0', uptime: process.uptime() });
+app.get('/api/health', async (req, res) => {
+  try {
+    if (pool) await executeQuery('SELECT 1');
+    if (IS_PRODUCTION && !pool) throw new Error('Production database is not configured.');
+    res.json({
+      success: true,
+      status: 'ok',
+      database: pool ? (/\.neon\.tech/i.test(DATABASE_URL) ? 'neon' : 'postgres') : 'memory-dev',
+      version: '3.0.0',
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error.message || error);
+    res.status(503).json({ success: false, status: 'degraded', database: 'unavailable' });
+  }
 });
 
 app.get('/api/inventory', async (req, res) => {
   if (!req.session || !req.session.username) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
-  const user = await findUser(req.session.username);
+  let user;
+  try {
+    user = await findUser(req.session.username);
+  } catch (error) {
+    console.error('Inventory lookup error:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Account database is unavailable. Please try again.' });
+  }
   if (!user) {
     return res.status(404).json({ success: false, error: 'User not found.' });
   }
@@ -615,7 +707,13 @@ app.post('/api/spin', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
-  const user = await findUser(req.session.username);
+  let user;
+  try {
+    user = await findUser(req.session.username);
+  } catch (error) {
+    console.error('Spin lookup error:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Account database is unavailable. Please try again.' });
+  }
   if (!user) {
     return res.status(404).json({ success: false, error: 'User not found.' });
   }
@@ -672,9 +770,11 @@ app.post('/api/spin', async (req, res) => {
   inventory.rarities[result.key] = Number.isFinite(ownedCount) && ownedCount >= 0 ? ownedCount + 1 : 1;
 
   const dimension = String(req.body?.dimension || '').toLowerCase();
-  const multiplier = computeSpinMultiplier(req.session.username, dimension === 'deep-sea' ? 'deep-sea' : null);
+  const event = getActiveGameEvent();
+  const multiplier = computeSpinMultiplier(req.session.username, dimension === 'deep-sea' ? 'deep-sea' : null) * (event?.coinMultiplier || 1);
   const rawReward = result.reward;
-  const finalReward = Math.round(rawReward * multiplier);
+  const eventBonus = event?.bonusCoins || 0;
+  const finalReward = Math.round(rawReward * multiplier) + eventBonus;
 
   const newSpins = (Number(user.spins) || 0) + 1;
   const newCoins = (Number(user.coins) || 0) + finalReward;
@@ -690,6 +790,13 @@ app.post('/api/spin', async (req, res) => {
   if (newCoins >= 1000000 && !updatedTitles.includes('millionaire')) {
     updatedTitles.push('millionaire');
   }
+  const updatedUser = {
+    ...user,
+    inventory,
+    spins: newSpins,
+    coins: newCoins,
+    titles: updatedTitles
+  };
 
   try {
     await updateUser(req.session.username, {
@@ -699,13 +806,14 @@ app.post('/api/spin', async (req, res) => {
       titles: JSON.stringify(updatedTitles)
     });
 
-    const updatedUser = await findUser(req.session.username);
     const responsePayload = {
       success: true,
       result: {
         ...result,
         multiplier,
-        reward: finalReward
+        reward: finalReward,
+        eventBonus,
+        eventName: event?.title || null
       },
       user: sanitizeUser(updatedUser)
     };
@@ -722,8 +830,8 @@ app.post('/api/spin', async (req, res) => {
 
     res.json(responsePayload);
   } catch (error) {
-    console.error('Spin error:', error);
-    res.status(500).json({ success: false, error: 'Unable to complete roll.' });
+    console.error('Spin persistence error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Your roll could not be saved. Please try again.' });
   }
 });
 
@@ -1118,6 +1226,10 @@ io.on('connection', async (socket) => {
 
   const history = await getRecentChatMessages(60);
   socket.emit('chat-history', history);
+  const runningEvent = getActiveGameEvent();
+  if (runningEvent) {
+    socket.emit('theme-event', { ...runningEvent, active: true });
+  }
   socket.emit('system-message', {
     username: 'System',
     message: 'Welcome to RNG 3 chat. Be kind and enjoy the roll!',
@@ -1169,23 +1281,32 @@ io.on('connection', async (socket) => {
     });
   });
 
-  socket.on('admin-event', async (data) => {
-    if (!(await isAdminSocket(socket))) {
-      socket.emit('system-message', {
-        username: 'System',
-        message: 'Admin privileges required to trigger events.',
-        timestamp: new Date().toISOString(),
-        system: true
-      });
-      return;
+  socket.on('admin-event', async (data, acknowledge) => {
+    const respond = payload => {
+      if (typeof acknowledge === 'function') acknowledge(payload);
+    };
+    try {
+      if (!(await isAdminSocket(socket))) {
+        respond({ success: false, error: 'Admin privileges required.' });
+        socket.emit('system-message', {
+          username: 'System',
+          message: 'Admin privileges required to trigger events.',
+          timestamp: new Date().toISOString(),
+          system: true
+        });
+        return;
+      }
+      const eventName = String(data?.eventName || '').trim().toLowerCase();
+      if (!Object.prototype.hasOwnProperty.call(GAME_EVENTS, eventName)) {
+        respond({ success: false, error: 'Unknown event.' });
+        return;
+      }
+      const event = startGameEvent(eventName, socket.request?.session?.username || 'Admin');
+      respond({ success: true, event: { title: event.title, durationSeconds: event.durationSeconds } });
+    } catch (error) {
+      console.error('Admin event error:', error.message || error);
+      respond({ success: false, error: 'Unable to start the event.' });
     }
-    const eventName = String(data?.eventName || '').trim();
-    if (!eventName) return;
-    io.emit('theme-event', {
-      eventName,
-      initiatedBy: socket.request?.session?.username || 'Admin',
-      timestamp: new Date().toISOString()
-    });
   });
 });
 
