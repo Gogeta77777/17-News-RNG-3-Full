@@ -29,9 +29,9 @@ const rarityOptions = [
 ];
 
 const globalOptions = [
-  { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444' },
-  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8' },
-  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#f8fafc', glowColor: '#000000' }
+  { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444', isGlobal: true },
+  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8', isGlobal: true },
+  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#f8fafc', glowColor: '#000000', isGlobal: true }
 ];
 
 const POTIONS = {
@@ -46,10 +46,15 @@ const ROTATING_SHOP_ITEMS = [
 ];
 
 const TITLES = [
-  { id: 'owner', name: 'Owner', color: '#FFD700', requirement: 'admin', description: 'Only for Mr_Fernanski' },
-  { id: 'veteran', name: 'Veteran', color: '#CD853F', requirement: 'code:THETHREEQUEL', description: 'Redeem code THETHREEQUEL' },
-  { id: 'millionaire', name: 'Millionaire', color: '#90EE90', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
-  { id: 'portalmancer', name: 'Portalmancer', color: '#87CEEB', requirement: 'portal', description: 'Open the Deep Sea portal' }
+  { id: 'owner', name: 'Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
+  { id: 'veteran', name: 'Veteran', color: '#38bdf8', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
+  { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
+  { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
+  { id: 'first-signal', name: 'First Signal', color: '#22d3ee', requirement: 'spins:1', description: 'Complete your first roll' },
+  { id: 'archive-keeper', name: 'Archive Keeper', color: '#60a5fa', requirement: 'spins:25', description: 'Complete 25 rolls' },
+  { id: 'collector', name: 'Rarity Collector', color: '#34d399', requirement: 'drops:10', description: 'Collect 10 rarity drops' },
+  { id: 'global-headliner', name: 'Global Headliner', color: '#fb7185', requirement: 'global:1', description: 'Find a global rarity' },
+  { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' }
 ];
 
 const CODE_REWARDS = {
@@ -70,6 +75,7 @@ let gameState = {
   portalFragments: 0,
   seaEssence: 0,
   portalUnlocked: false,
+  seaRealmUnlocked: false,
   userTitles: [],
   activeTitle: null,
   potionInventory: { luck: 0, speed: 0 },
@@ -412,6 +418,13 @@ function checkTitleUnlocks(user) {
   if (user.portal_unlocked) {
     existing.add('portalmancer');
   }
+  const rarities = user.inventory?.rarities || {};
+  const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
+  if ((Number(user.spins) || 0) >= 1) existing.add('first-signal');
+  if ((Number(user.spins) || 0) >= 25) existing.add('archive-keeper');
+  if (rarityTotal >= 10) existing.add('collector');
+  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if (user.sea_realm_unlocked) existing.add('tidekeeper');
   gameState.userTitles = Array.from(existing);
 }
 
@@ -443,6 +456,29 @@ function setupPortalUI() {
   if (unlockBtn && !unlockBtn.dataset.bound) {
     unlockBtn.addEventListener('click', tryUnlockPortal);
     unlockBtn.dataset.bound = 'true';
+  }
+
+  const realmAction = document.getElementById('sea-realm-action');
+  if (realmAction && !realmAction.dataset.bound) {
+    realmAction.addEventListener('click', enterOrUnlockSeaRealm);
+    realmAction.dataset.bound = 'true';
+  }
+
+  const realmClose = document.getElementById('close-realm-selector');
+  if (realmClose && !realmClose.dataset.bound) {
+    realmClose.addEventListener('click', closeRealmSelector);
+    realmClose.dataset.bound = 'true';
+  }
+
+  const realmSelector = document.getElementById('realm-selector');
+  if (realmSelector && !realmSelector.dataset.escapeBound) {
+    realmSelector.addEventListener('click', event => {
+      if (event.target === realmSelector) closeRealmSelector();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !realmSelector.classList.contains('hidden')) closeRealmSelector();
+    });
+    realmSelector.dataset.escapeBound = 'true';
   }
 
   const redeemBtn = document.getElementById('redeem-btn');
@@ -483,34 +519,62 @@ function tryUnlockPortal() {
 }
 
 async function showDimensions() {
-  if (isEnteringDimension) return;
   if (!gameState.portalUnlocked) {
     showPopup('Portal is locked. Get 10 Portal Fragments!', 'error');
     return;
   }
+  renderRealmSelector();
+  document.getElementById('realm-selector')?.classList.remove('hidden');
+}
 
-  const choice = confirm('Enter Deep Sea Realm? (Requires 1 Sea Essence)');
-  if (choice) {
-    if (gameState.itemInventory.essence < 1) {
-      showPopup('Need 1 Sea Essence to enter!', 'error');
-      return;
+function closeRealmSelector() {
+  document.getElementById('realm-selector')?.classList.add('hidden');
+}
+
+function renderRealmSelector() {
+  const action = document.getElementById('sea-realm-action');
+  const status = document.getElementById('sea-realm-status');
+  if (!action || !status) return;
+  const unlocked = gameState.seaRealmUnlocked;
+  const essence = Number(gameState.itemInventory.essence) || 0;
+  action.textContent = unlocked ? 'ENTER REALM' : 'UNLOCK & ENTER · 1 ESSENCE';
+  action.disabled = !unlocked && essence < 1;
+  status.textContent = unlocked ? 'Permanently unlocked · entry is free' : `${essence} Sea Essence available · unlock costs 1`;
+}
+
+async function enterOrUnlockSeaRealm() {
+  if (isEnteringDimension) return;
+  if (!gameState.seaRealmUnlocked && (Number(gameState.itemInventory.essence) || 0) < 1) {
+    showPopup('1 Sea Essence is required to permanently unlock this realm.', 'error');
+    return;
+  }
+
+  const action = document.getElementById('sea-realm-action');
+  isEnteringDimension = true;
+  if (action) {
+    action.disabled = true;
+    action.textContent = gameState.seaRealmUnlocked ? 'ENTERING...' : 'UNLOCKING...';
+  }
+  try {
+    if (!gameState.seaRealmUnlocked) {
+      const unlock = await handleAPI('/api/realms/sea/unlock', { method: 'POST' });
+      if (!unlock.success || !unlock.user) throw new Error(unlock.error || 'Unable to unlock Sea Realm.');
+      currentUser = unlock.user;
+      updateUI(currentUser);
     }
 
-    isEnteringDimension = true;
-    const response = await handleAPI('/api/enter-dimension', {
-      method: 'POST',
-      body: { dimension: 'deep-sea' }
-    });
-    isEnteringDimension = false;
-
-    if (!response.success || !response.user) {
-      showPopup(response.error || 'Unable to enter Deep Sea.', 'error');
-      return;
-    }
-
-    currentUser = response.user;
+    const entry = await handleAPI('/api/enter-dimension', { method: 'POST', body: { dimension: 'deep-sea' } });
+    if (!entry.success || !entry.user) throw new Error(entry.error || 'Unable to enter Sea Realm.');
+    currentUser = entry.user;
     updateUI(currentUser);
+    closeRealmSelector();
     enterDeepSea();
+  } catch (error) {
+    showPopup(error.message, 'error');
+    renderRealmSelector();
+  } finally {
+    isEnteringDimension = false;
+    renderRealmSelector();
   }
 }
 
@@ -527,6 +591,7 @@ function enterDeepSea() {
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.style.left = Math.random() * 100 + '%';
+    bubble.style.setProperty('--bubble-size', `${6 + Math.random() * 24}px`);
     bubble.style.animationDuration = (Math.random() * 6) + 's';
     bubble.style.animationDelay = Math.random() * 2 + 's';
     bubbleContainer.appendChild(bubble);
@@ -619,14 +684,15 @@ function renderInventory(user) {
         const rarity = [...rarityOptions, ...globalOptions].find(r => r.key === key);
         if (!rarity) return;
         const card = document.createElement('div');
-        card.className = 'inventory-item';
-        card.style.borderLeft = `4px solid ${rarity.color}`;
+        const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
+        card.className = `inventory-item rarity-card${rarity.isGlobal ? ' global-rarity-card' : ''}`;
+        card.style.setProperty('--rarity-color', rarityColor);
         card.innerHTML = `
-          <div>
-            <h4 style="color: ${rarity.color};">${rarity.name}</h4>
-            <span>${count} owned</span>
+          <div class="rarity-card-head">
+            <h4>${escapeHtml(rarity.name)}</h4>
+            <span class="rarity-count">x${Number(count) || 0}</span>
           </div>
-          <div><span style="color: ${rarity.color}; font-weight: 700;">🪙 ${formatCoins(rarity.reward)} coins each</span></div>
+          <span class="rarity-reward">🪙 ${formatCoins(rarity.reward)} per drop</span>
         `;
         rarGrid.appendChild(card);
       });
@@ -684,6 +750,23 @@ function renderInventory(user) {
   }
 }
 
+function renderRarityCatalog() {
+  const list = document.getElementById('rarity-catalog-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  [...rarityOptions, ...globalOptions]
+    .sort((left, right) => left.chance - right.chance)
+    .forEach((rarity, index) => {
+      const row = document.createElement('div');
+      const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
+      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}`;
+      row.style.setProperty('--rarity-color', rarityColor);
+      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
+      list.appendChild(row);
+    });
+}
+
 // ==================== UI UPDATES ====================
 function updateUI(user) {
   currentUser = user;
@@ -695,6 +778,7 @@ function updateUI(user) {
   gameState.activeTitle = user.active_title || null;
   gameState.activeEffects = user.active_effects || {};
   gameState.portalUnlocked = user.portal_unlocked || false;
+  gameState.seaRealmUnlocked = user.sea_realm_unlocked || false;
   
   document.getElementById('game-username').textContent = user.username;
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
@@ -714,9 +798,11 @@ function updateUI(user) {
   checkTitleUnlocks(user);
   renderTitles();
   renderInventory(user);
+  renderRarityCatalog();
   renderShop();
   updatePortalUI();
   updatePotionDisplay();
+  renderRealmSelector();
 }
 
 function updatePortalUI() {
@@ -731,8 +817,10 @@ function updatePortalUI() {
   if (gameState.portalUnlocked) {
     if (lock) lock.style.display = 'none';
     if (unlockBtn) unlockBtn.style.display = 'none';
-    if (status) status.textContent = 'Portal Unlocked!';
-    if (fragmentsText) fragmentsText.textContent = `Sea Essence needed to enter.`;
+    if (status) status.textContent = 'Gateway Online';
+    if (fragmentsText) fragmentsText.textContent = gameState.seaRealmUnlocked
+      ? 'Sea Realm unlocked permanently · two destinations coming soon.'
+      : 'Choose a realm · Sea Realm unlock costs 1 Essence once.';
   } else {
     if (lock) lock.style.display = fragments < 10 ? 'block' : 'block';
     if (unlockBtn) unlockBtn.style.display = fragments >= 10 ? 'inline-flex' : 'none';
@@ -742,12 +830,12 @@ function updatePortalUI() {
 }
 
 // ==================== CHAT SYSTEM ====================
-function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#ffd700') {
+function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false) {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
   
   const msgEl = document.createElement('div');
-  msgEl.className = isSystem ? 'chat-message system-message' : 'chat-message';
+  msgEl.className = isSystem ? 'chat-message system-message' : `chat-message${isGlobalDrop ? ' global-drop-message' : ''}`;
   msgEl.dataset.messageId = timestamp;
   
   const time = new Date(timestamp).toLocaleTimeString();
@@ -758,14 +846,17 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       <br><small style="opacity: 0.7;">${time}</small>
     `;
   } else {
-    let displayColor = titleColor || '#ffd700';
+    const titleDefinition = TITLES.find(titleOption => titleOption.id === title);
+    let displayTitle = titleDefinition?.name || title;
+    let displayColor = titleDefinition?.color || (/^#[0-9a-f]{6}$/i.test(titleColor || '') ? titleColor : '#7dd3fc');
     let textShadow = `0 0 8px ${displayColor}`;
     if (title === 'The CEO' || displayColor.toLowerCase() === '#000000') {
       displayColor = '#ffffff';
       textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
     }
-    const titleLabel = title ? `<span style="color: ${displayColor}; font-weight: 700; margin-right: 6px; text-shadow: ${textShadow};">[${escapeHtml(title)}]</span>` : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
     msgEl.innerHTML = `
+      ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
       <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
       <br><small style="opacity: 0.7;">${time}</small>
@@ -774,6 +865,33 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   
   chatMessages.appendChild(msgEl);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (isGlobalDrop && announceGlobalDrop) showGlobalDropBanner(username, title, message, titleColor);
+}
+
+function showGlobalDropBanner(username, rarityName, message, rarityColor) {
+  document.querySelector('.global-drop-banner')?.remove();
+  const banner = document.createElement('aside');
+  banner.className = 'global-drop-banner';
+  banner.setAttribute('role', 'status');
+  const accent = /^#[0-9a-f]{6}$/i.test(rarityColor || '') && rarityColor.toLowerCase() !== '#000000' ? rarityColor : '#f8fafc';
+  banner.style.setProperty('--drop-color', accent);
+
+  const eyebrow = document.createElement('span');
+  eyebrow.className = 'global-drop-banner-kicker';
+  eyebrow.textContent = 'GLOBAL SIGNAL';
+  const headline = document.createElement('strong');
+  headline.textContent = rarityName || 'Global rarity';
+  const detail = document.createElement('p');
+  detail.textContent = message || `${username} found a global rarity!`;
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'global-drop-dismiss';
+  close.setAttribute('aria-label', 'Dismiss global drop announcement');
+  close.textContent = '×';
+  close.addEventListener('click', () => banner.remove());
+  banner.append(eyebrow, headline, detail, close);
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 8500);
 }
 
 function escapeHtml(text) {
