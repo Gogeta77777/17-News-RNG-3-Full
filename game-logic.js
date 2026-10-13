@@ -245,8 +245,9 @@ function renderShop() {
       card.innerHTML = `
         <h4 class="shop-item-name">${emoji} ${item.name}</h4>
         <p class="shop-item-price">💎 ${formatCoins(item.cost)} coins</p>
-        <button class="potion-buy-btn" onclick="buyShopItem('${item.name}')">Purchase</button>
+        <button class="potion-buy-btn shop-item-buy">Purchase</button>
       `;
+      card.querySelector('.shop-item-buy')?.addEventListener('click', () => buyShopItem(item.name));
       rotatingDiv.appendChild(card);
     });
   }
@@ -266,8 +267,9 @@ function renderShop() {
           <span>⏱️ ${potion.duration}s active</span>
         </div>
         <div class="potion-cost">💎 ${formatCoins(potion.cost)} coins</div>
-        <button class="potion-buy-btn" onclick="buyPotion('${key}')">Buy Now</button>
+        <button class="potion-buy-btn potion-buy">Buy Now</button>
       `;
+      card.querySelector('.potion-buy')?.addEventListener('click', () => buyPotion(key));
       potionsDiv.appendChild(card);
     });
   }
@@ -311,7 +313,7 @@ function usePotion(potionType) {
 
 function buyShopItem(itemName) {
   const item = ROTATING_SHOP_ITEMS.find(i => i.name === itemName);
-  if (!item || currentUser.coins < item.cost) {
+  if (!item || !currentUser || currentUser.coins < item.cost) {
     showPopup('Not enough coins!', 'error');
     return;
   }
@@ -348,8 +350,9 @@ function renderTitles() {
       card.innerHTML = `
         <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${emoji} ${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
-        ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px; background: rgba(34,197,94,0.3);">(Active)</button>' : `<button class="btn" onclick="setActiveTitle('${titleId}')" style="font-size:0.8rem; padding:6px;">Equip</button>`}
+        ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
       `;
+      card.querySelector('.title-equip')?.addEventListener('click', () => setActiveTitle(titleId));
       listDiv.appendChild(card);
     });
   }
@@ -640,8 +643,9 @@ function renderInventory(user) {
             <h4>${emoji} ${name}</h4>
             <span>x${count} available</span>
           </div>
-          <button class="btn" style="padding: 8px 12px; font-size: 0.85rem;" onclick="usePotion('${key}')">Use Now</button>
+          <button class="btn potion-use" style="padding: 8px 12px; font-size: 0.85rem;">Use Now</button>
         `;
+        card.querySelector('.potion-use')?.addEventListener('click', () => usePotion(key));
         potGrid.appendChild(card);
       });
     }
@@ -678,6 +682,7 @@ function updateUI(user) {
   gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0 };
   gameState.potionInventory = user.potions || { luck: 0, speed: 0 };
   gameState.userTitles = user.titles || [];
+  gameState.activeTitle = user.active_title || null;
   gameState.portalUnlocked = user.portal_unlocked || false;
   
   document.getElementById('game-username').textContent = user.username;
@@ -1087,18 +1092,21 @@ function setupRollButton() {
       body: { dimension: gameState.currentDimension || null }
     });
 
-    if (response.success) {
+    if (response.success && response.result && response.user) {
       await animateSpinWheel(2200, response.result);
     }
 
     setLoading(rollBtn, false);
 
-    if (!response.success) {
+    if (!response.success || !response.result || !response.user) {
       rollDisplay.textContent = '❌ Roll Failed';
       showPopup(response.error || 'Roll failed', 'error');
       rollDisplay.style.opacity = '0.5';
       return;
     }
+
+    currentUser = response.user;
+    updateUI(response.user);
 
     const result = response.result;
     const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
@@ -1111,8 +1119,6 @@ function setupRollButton() {
     rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
     rewardDisplay.style.color = result.color || '#60a5fa';
     
-    currentUser = response.user;
-    updateUI(response.user);
     showRewardPopup(`💎 +${formatCoins(result.reward)} coins!`);
   });
 }
