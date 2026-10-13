@@ -56,6 +56,7 @@ const CODE_REWARDS = {
 
 // ==================== GAME STATE ====================
 let currentUser = null;
+let isEnteringDimension = false;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -301,7 +302,7 @@ function usePotion(potionType) {
       currentUser = response.user;
       gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
       updateUI(currentUser);
-      showPopup(`${POTIONS[potionType].name} activated!`);
+      applyPotion(potionType);
     } else {
       showPopup(response.error || 'Unable to use potion', 'error');
     }
@@ -461,7 +462,8 @@ function tryUnlockPortal() {
   });
 }
 
-function showDimensions() {
+async function showDimensions() {
+  if (isEnteringDimension) return;
   if (!gameState.portalUnlocked) {
     showPopup('Portal is locked. Get 10 Portal Fragments!', 'error');
     return;
@@ -473,7 +475,21 @@ function showDimensions() {
       showPopup('Need 1 Sea Essence to enter!', 'error');
       return;
     }
-    gameState.itemInventory.essence--;
+
+    isEnteringDimension = true;
+    const response = await handleAPI('/api/enter-dimension', {
+      method: 'POST',
+      body: { dimension: 'deep-sea' }
+    });
+    isEnteringDimension = false;
+
+    if (!response.success || !response.user) {
+      showPopup(response.error || 'Unable to enter Deep Sea.', 'error');
+      return;
+    }
+
+    currentUser = response.user;
+    updateUI(currentUser);
     enterDeepSea();
   }
 }
