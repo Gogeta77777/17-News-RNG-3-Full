@@ -59,6 +59,7 @@ const CODE_REWARDS = {
 // ==================== GAME STATE ====================
 let currentUser = null;
 let isEnteringDimension = false;
+let meteorShowerLayer = null;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -804,60 +805,56 @@ async function loadAdminUsers() {
 }
 
 // ==================== THEME EVENTS ====================
-function applyThemeEvent(eventName, initiatedBy = 'Admin') {
-  const eventNameLower = String(eventName || '').toLowerCase();
-  
-  if (eventNameLower === 'hollow-rally' || eventNameLower === 'hollow-square-rally') {
-    document.body.classList.add('hollow-square-rally');
-    showPopup(`🎆 ${initiatedBy} activated Hollow Square Rally!`, '#FFD700');
-    setTimeout(() => {
-      document.body.classList.remove('hollow-square-rally');
-      showPopup('Hollow Square Rally ended', '#0ea5e9');
-    }, 300000); // 5 minutes
-  } else if (eventNameLower === 'stop-hollow-rally') {
-    document.body.classList.remove('hollow-square-rally');
-    showPopup('Hollow Square Rally stopped', '#0ea5e9');
-  } else if (eventNameLower === 'geometric-cascade') {
-    createGeometricCascade();
-    showPopup(`✨ ${initiatedBy} launched Geometric Cascade!`, '#FFD700');
-  } else if (eventNameLower === 'quantum-boost') {
-    showPopup(`⚛️ ${initiatedBy} activated Quantum Boost! 10x luck incoming!`, '#FFD700');
-  } else if (eventNameLower === 'stop-quantum-boost') {
-    showPopup('Quantum Boost deactivated', '#0ea5e9');
-  } else if (eventNameLower === 'upside-down') {
-    document.body.classList.add('upside-down-mode');
-    showPopup(`🌀 ${initiatedBy} activated Upside Down mode!`, '#FFD700');
-  } else if (eventNameLower === 'stop-upside-down') {
-    document.body.classList.remove('upside-down-mode');
-    showPopup('Upside Down mode deactivated', '#0ea5e9');
+function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
+  const event = typeof eventData === 'string' ? { eventName: eventData, initiatedBy: legacyInitiatedBy } : eventData || {};
+  const eventName = String(event.eventName || '').toLowerCase();
+  const isActive = event.active !== false;
+  const title = event.title || (eventName === 'starlight-surge' ? 'Starlight Surge' : 'Meteor Shower');
+  const status = document.getElementById(`${eventName}-status`);
+
+  if (eventName === 'starlight-surge') {
+    document.body.classList.toggle('starlight-surge', isActive);
+    if (status) status.textContent = isActive ? 'ACTIVE · 2x coins per roll' : 'Ready';
+  } else if (eventName === 'meteor-shower') {
+    if (isActive) {
+      createMeteorShower(event.durationSeconds || 90);
+      if (status) status.textContent = 'ACTIVE · +250 coins per roll';
+    } else {
+      meteorShowerLayer?.remove();
+      meteorShowerLayer = null;
+      if (status) status.textContent = 'Ready';
+    }
+  } else {
+    return;
   }
+
+  const initiatedBy = event.initiatedBy || 'Admin';
+  showPopup(isActive ? `${title} activated by ${initiatedBy}!` : `${title} ended.`, '#38bdf8');
 }
 
-function createGeometricCascade() {
-  // Create falling geometric shapes animation
-  const shapes = ['square', 'circle', 'triangle'];
-  for (let i = 0; i < 15; i++) {
-    setTimeout(() => {
-      const shape = document.createElement('div');
-      shape.className = `geometric ${shapes[Math.floor(Math.random() * shapes.length)]}`;
-      shape.style.position = 'fixed';
-      shape.style.left = Math.random() * 100 + '%';
-      shape.style.top = '-30px';
-      shape.style.zIndex = 9999;
-      document.body.appendChild(shape);
-      
-      // Animate falling
-      let top = -30;
-      const fall = setInterval(() => {
-        top += 3;
-        shape.style.top = top + 'px';
-        if (top > window.innerHeight) {
-          clearInterval(fall);
-          shape.remove();
-        }
-      }, 30);
-    }, i * 150);
+function createMeteorShower(durationSeconds) {
+  meteorShowerLayer?.remove();
+  const layer = document.createElement('div');
+  layer.className = 'meteor-layer';
+  layer.setAttribute('aria-hidden', 'true');
+
+  for (let index = 0; index < 18; index += 1) {
+    const meteor = document.createElement('span');
+    meteor.className = 'event-meteor';
+    meteor.style.setProperty('--meteor-left', `${Math.random() * 100}%`);
+    meteor.style.setProperty('--meteor-delay', `${Math.random() * 6}s`);
+    meteor.style.setProperty('--meteor-duration', `${2.8 + Math.random() * 2.6}s`);
+    layer.appendChild(meteor);
   }
+
+  document.body.appendChild(layer);
+  meteorShowerLayer = layer;
+  setTimeout(() => {
+    if (meteorShowerLayer === layer) {
+      layer.remove();
+      meteorShowerLayer = null;
+    }
+  }, durationSeconds * 1000);
 }
 
 // ==================== CHAT API ====================
@@ -1231,48 +1228,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
   document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
   
-  // Admin event buttons with confirmation
-  document.getElementById('start-hollow-rally')?.addEventListener('click', () => {
-    if (confirm('Start Hollow Square Rally? This will boost all players.')) {
-      triggerAdminEvent('hollow-rally');
-      showPopup('🎆 Hollow Square Rally activated!', '#FFD700');
-    }
+  // Server-authoritative, timed reward events.
+  document.getElementById('activate-starlight-surge')?.addEventListener('click', () => {
+    triggerAdminEvent('starlight-surge');
   });
-  
-  document.getElementById('stop-hollow-rally')?.addEventListener('click', () => {
-    triggerAdminEvent('stop-hollow-rally');
-    showPopup('Hollow Square Rally stopped', '#0ea5e9');
-  });
-  
-  document.getElementById('start-geometric-cascade')?.addEventListener('click', () => {
-    if (confirm('Launch Geometric Cascade? Shapes will fall!')) {
-      triggerAdminEvent('geometric-cascade');
-      showPopup('✨ Geometric Cascade launched!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('start-quantum-boost')?.addEventListener('click', () => {
-    if (confirm('Activate Quantum Boost? 10x luck for all players!')) {
-      triggerAdminEvent('quantum-boost');
-      showPopup('⚛️ Quantum Boost activated! 10x luck incoming!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('stop-quantum-boost')?.addEventListener('click', () => {
-    triggerAdminEvent('stop-quantum-boost');
-    showPopup('Quantum Boost deactivated', '#0ea5e9');
-  });
-  
-  document.getElementById('start-upside-down')?.addEventListener('click', () => {
-    if (confirm('Activate Upside Down theme?')) {
-      triggerAdminEvent('upside-down');
-      showPopup('🌀 Upside Down mode activated!', '#FFD700');
-    }
-  });
-  
-  document.getElementById('stop-upside-down')?.addEventListener('click', () => {
-    triggerAdminEvent('stop-upside-down');
-    showPopup('Upside Down mode deactivated', '#0ea5e9');
+  document.getElementById('activate-meteor-shower')?.addEventListener('click', () => {
+    triggerAdminEvent('meteor-shower');
   });
   
   // Broadcast button
