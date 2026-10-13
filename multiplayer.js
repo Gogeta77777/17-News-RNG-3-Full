@@ -54,11 +54,10 @@ function initMultiplayer() {
 
   socket.on('theme-event', (data) => {
     if (!data || !data.eventName) return;
-    // Ensure applyThemeEvent is available (defined in game-logic.js)
     if (typeof applyThemeEvent === 'function') {
-      applyThemeEvent(data.eventName, data.initiatedBy || 'Admin');
+      applyThemeEvent(data);
     } else {
-      showPopup(`Event: ${data.eventName} by ${data.initiatedBy || 'Admin'}`, '#FFD700');
+      showPopup(`${data.title || data.eventName} ${data.active === false ? 'ended' : `activated by ${data.initiatedBy || 'Admin'}`}`, '#38bdf8');
     }
   });
 
@@ -106,7 +105,11 @@ function triggerAdminEvent(eventName) {
     showPopup('Unable to trigger admin event while disconnected.', 'error');
     return;
   }
-  socket.emit('admin-event', { eventName });
+  socket.emit('admin-event', { eventName }, (response) => {
+    if (!response?.success) {
+      showPopup(response?.error || 'Unable to start event.', 'error');
+    }
+  });
 }
 
 function requestClearChat() {
