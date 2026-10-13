@@ -9,7 +9,7 @@ async function loadChatFallback() {
   if (!container) return;
   container.innerHTML = '';
   response.messages.forEach((message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#ffd700');
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false);
   });
 }
 
@@ -32,12 +32,12 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.forEach((message) => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#ffd700');
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false);
     });
   });
 
   socket.on('chat-message', (message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#ffd700');
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false);
   });
 
   socket.on('system-message', (message) => {
