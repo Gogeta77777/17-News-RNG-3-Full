@@ -9,6 +9,8 @@ const taglines = [
 ];
 
 let currentTaglineIndex = 0;
+let taglineTimer = null;
+let taglineRun = 0;
 
 const rarityOptions = [
   { key: '17-news', name: '17 News', reward: 150, chance: 65.2, color: '#0f172a' },
@@ -74,21 +76,26 @@ let gameState = {
 
 // ==================== TAGLINE CYCLING ====================
 function typeText(text, element, speed = 45) {
+  clearTimeout(taglineTimer);
+  const run = ++taglineRun;
+  let index = 0;
   element.classList.add('typing');
   element.textContent = '';
-  let i = 0;
-  const timer = setInterval(() => {
-    if (i < text.length) {
-      element.textContent += text.charAt(i);
-      i += 1;
-    } else {
-      clearInterval(timer);
-      setTimeout(() => {
-        element.classList.remove('typing');
-        setTimeout(nextTagline, 2200);
-      }, 1200);
+
+  function typeNextCharacter() {
+    if (run !== taglineRun) return;
+    if (index < text.length) {
+      element.textContent += text.charAt(index);
+      index += 1;
+      taglineTimer = setTimeout(typeNextCharacter, speed);
+      return;
     }
-  }, speed);
+
+    element.classList.remove('typing');
+    taglineTimer = setTimeout(nextTagline, 2200);
+  }
+
+  typeNextCharacter();
 }
 
 function nextTagline() {
@@ -100,9 +107,10 @@ function nextTagline() {
 }
 
 function initTagline() {
+  currentTaglineIndex = 0;
   const taglineElement = document.getElementById('tagline');
   if (taglineElement) {
-    typeText(taglines[0], taglineElement);
+    typeText(taglines[currentTaglineIndex], taglineElement);
   }
 }
 
@@ -244,7 +252,7 @@ function renderShop() {
       const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : '💧';
       card.innerHTML = `
         <h4 class="shop-item-name">${emoji} ${item.name}</h4>
-        <p class="shop-item-price">💎 ${formatCoins(item.cost)} coins</p>
+        <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
         <button class="potion-buy-btn shop-item-buy">Purchase</button>
       `;
       card.querySelector('.shop-item-buy')?.addEventListener('click', () => buyShopItem(item.name));
@@ -266,7 +274,7 @@ function renderShop() {
           <span>⚡ +${potion.multiplier}x ${potion.effect}</span>
           <span>⏱️ ${potion.duration}s active</span>
         </div>
-        <div class="potion-cost">💎 ${formatCoins(potion.cost)} coins</div>
+        <div class="potion-cost">🪙 ${formatCoins(potion.cost)} coins</div>
         <button class="potion-buy-btn potion-buy">Buy Now</button>
       `;
       card.querySelector('.potion-buy')?.addEventListener('click', () => buyPotion(key));
@@ -555,10 +563,10 @@ async function rollInDeepSea() {
   const result = response.result;
   const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
   rollDisplay.textContent = `🌊 ${result.name}${multiplierDisplay}`;
-  rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
+  rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
   currentUser = response.user;
   updateUI(currentUser);
-  showRewardPopup(`🌊 +${formatCoins(result.reward)} coins!`);
+  showRewardPopup(`🪙 +${formatCoins(result.reward)} coins!`);
 }
 
 function exitDeepSea() {
@@ -616,7 +624,7 @@ function renderInventory(user) {
             <h4 style="color: ${rarity.color};">${rarity.name}</h4>
             <span>${count} owned</span>
           </div>
-          <div><span style="color: ${rarity.color}; font-weight: 700;">${formatCoins(rarity.reward)} coins each</span></div>
+          <div><span style="color: ${rarity.color}; font-weight: 700;">🪙 ${formatCoins(rarity.reward)} coins each</span></div>
         `;
         rarGrid.appendChild(card);
       });
@@ -686,7 +694,7 @@ function updateUI(user) {
   gameState.portalUnlocked = user.portal_unlocked || false;
   
   document.getElementById('game-username').textContent = user.username;
-  document.getElementById('game-coins').textContent = `${formatCoins(user.coins)} coins`;
+  document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
 
   // Show admin button if user is admin
   const adminBtn = document.getElementById('admin-btn');
@@ -698,7 +706,7 @@ function updateUI(user) {
     }
   }
 
-  document.getElementById('reward-display').textContent = `Reward: 0 coins`;
+  document.getElementById('reward-display').textContent = `🪙 Reward: 0 coins`;
 
   checkTitleUnlocks(user);
   renderTitles();
@@ -785,7 +793,7 @@ async function loadAdminUsers() {
     row.className = 'admin-user-row';
     row.innerHTML = `
       <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_admin ? 'Administrator' : 'Player'}</span></div>
-      <div><strong>${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls</span></div>
+      <div><strong>🪙 ${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls</span></div>
       <div><strong>${user.inventoryTotal || 0} drops</strong><span>${(user.titles || []).length} titles</span></div>
     `;
     userList.appendChild(row);
@@ -1112,14 +1120,14 @@ function setupRollButton() {
     const multiplierDisplay = result.multiplier > 1 ? ` • ×${result.multiplier.toFixed(1)}` : '';
     
     // Dramatic reveal with color animation
-    rollDisplay.style.color = result.color || '#ffffff';
-    rollDisplay.style.textShadow = `0 0 20px ${result.color || '#ffffff'}`;
+    rollDisplay.style.color = '#f8fafc';
+    rollDisplay.style.textShadow = `0 0 20px ${result.color || '#38bdf8'}`;
     rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}`;
     
-    rewardDisplay.textContent = `💰 Reward: ${formatCoins(result.reward)} coins`;
-    rewardDisplay.style.color = result.color || '#60a5fa';
+    rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
+    rewardDisplay.style.color = '#7dd3fc';
     
-    showRewardPopup(`💎 +${formatCoins(result.reward)} coins!`);
+    showRewardPopup(`🪙 +${formatCoins(result.reward)} coins!`);
   });
 }
 
