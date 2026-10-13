@@ -70,6 +70,51 @@ const inMemoryStore = {
   chatMessages: []
 };
 
+const TITLE_CATALOG = {
+  owner: { name: 'Owner', color: '#fbbf24' },
+  veteran: { name: 'Veteran', color: '#38bdf8' },
+  millionaire: { name: 'Millionaire', color: '#4ade80' },
+  portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
+  'first-signal': { name: 'First Signal', color: '#22d3ee' },
+  'archive-keeper': { name: 'Archive Keeper', color: '#60a5fa' },
+  collector: { name: 'Rarity Collector', color: '#34d399' },
+  'global-headliner': { name: 'Global Headliner', color: '#fb7185' },
+  tidekeeper: { name: 'Tidekeeper', color: '#2dd4bf' }
+};
+
+function isAdministratorUser(user) {
+  const username = String(user?.username || '').trim().toLowerCase();
+  return Boolean(user?.is_admin || username === 'mr_fernanski' || username === 'testadmin');
+}
+
+function getUnlockedTitles(user) {
+  const titles = new Set(normalizeList(user?.titles));
+  const rarities = normalizeInventory(user?.inventory).rarities;
+  const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
+  const hasGlobalDrop = ['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo'].some(key => Number(rarities[key]) > 0);
+  const spins = Number(user?.spins) || 0;
+
+  if (isAdministratorUser(user)) titles.add('owner');
+  if ((Number(user?.coins) || 0) >= 1000000) titles.add('millionaire');
+  if (user?.portal_unlocked) titles.add('portalmancer');
+  if (spins >= 1) titles.add('first-signal');
+  if (spins >= 25) titles.add('archive-keeper');
+  if (rarityTotal >= 10) titles.add('collector');
+  if (hasGlobalDrop) titles.add('global-headliner');
+  if (user?.sea_realm_unlocked) titles.add('tidekeeper');
+
+  return [...titles].filter(title => Object.prototype.hasOwnProperty.call(TITLE_CATALOG, title));
+}
+
+function getChatBadge(user) {
+  const titles = getUnlockedTitles(user);
+  const titleId = user?.active_title && titles.includes(user.active_title)
+    ? user.active_title
+    : (isAdministratorUser(user) ? 'owner' : null);
+  const definition = titleId ? TITLE_CATALOG[titleId] : null;
+  return { title: definition?.name || null, titleColor: definition?.color || '#7dd3fc' };
+}
+
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
@@ -158,7 +203,7 @@ async function findUser(username) {
     const inventory = normalizeInventory(user.inventory);
     const potions = normalizeRecord(user.potions, { luck: 0, speed: 0 });
     const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0 });
-    const titles = normalizeList(user.titles);
+    const titles = getUnlockedTitles({ ...user, inventory });
     return {
       username: user.username,
       password: user.password,
@@ -173,7 +218,8 @@ async function findUser(username) {
       active_title: user.active_title || null,
       created_at: user.created_at,
       last_login: user.last_login,
-      is_admin: user.is_admin
+      is_admin: isAdministratorUser(user),
+      sea_realm_unlocked: user.sea_realm_unlocked || false
     };
   }
   const stored = inMemoryStore.users[normalized] || null;
@@ -184,9 +230,11 @@ async function findUser(username) {
     achievements: normalizeList(stored.achievements),
     potions: normalizeRecord(stored.potions, { luck: 0, speed: 0 }),
     items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0 }),
-    titles: normalizeList(stored.titles),
+    titles: getUnlockedTitles(stored),
+    is_admin: isAdministratorUser(stored),
     portal_unlocked: stored.portal_unlocked || false,
-    active_title: stored.active_title || null
+    active_title: stored.active_title || null,
+    sea_realm_unlocked: stored.sea_realm_unlocked || false
   };
 }
 
@@ -194,8 +242,8 @@ async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
     const result = await executeQuery(
-      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, is_admin, created_at, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, sea_realm_unlocked, is_admin, created_at, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        ON CONFLICT (username) DO NOTHING
        RETURNING username`,
       [
@@ -210,6 +258,7 @@ async function saveUser(user) {
         JSON.stringify(user.titles || []),
         user.active_title || null,
         user.portal_unlocked || false,
+        user.sea_realm_unlocked || false,
         user.is_admin,
         user.created_at || new Date().toISOString(),
         user.last_login || new Date().toISOString()
@@ -257,6 +306,7 @@ async function ensureDatabase() {
       titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       active_title TEXT,
       portal_unlocked BOOLEAN NOT NULL DEFAULT false,
+      sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -266,7 +316,11 @@ async function ensureDatabase() {
       id BIGSERIAL PRIMARY KEY,
       username TEXT NOT NULL,
       message TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      title TEXT,
+      title_color TEXT NOT NULL DEFAULT '#7dd3fc',
+      system BOOLEAN NOT NULL DEFAULT false,
+      is_global BOOLEAN NOT NULL DEFAULT false
     )
   `);
   await executeQuery(`
@@ -281,8 +335,16 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS active_title TEXT,
       ADD COLUMN IF NOT EXISTS portal_unlocked BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  `);
+  await executeQuery(`
+    ALTER TABLE chat_messages
+      ADD COLUMN IF NOT EXISTS title TEXT,
+      ADD COLUMN IF NOT EXISTS title_color TEXT NOT NULL DEFAULT '#7dd3fc',
+      ADD COLUMN IF NOT EXISTS system BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT false
   `);
   await executeQuery('CREATE INDEX IF NOT EXISTS chat_messages_created_at_idx ON chat_messages (created_at DESC)');
 }
@@ -358,33 +420,37 @@ let connectedUsers = 0;
 async function getRecentChatMessages(limit = 60) {
   if (pool) {
     const result = await executeQuery(
-      'SELECT username, message, created_at FROM chat_messages ORDER BY created_at DESC LIMIT $1',
+      'SELECT username, message, created_at, title, title_color, system, is_global FROM chat_messages ORDER BY created_at DESC LIMIT $1',
       [limit]
     );
     return result.rows.reverse().map(row => ({
       username: row.username,
       message: row.message,
+      title: row.title,
+      titleColor: row.title_color || '#7dd3fc',
       timestamp: row.created_at,
-      system: false
+      system: row.system || false,
+      isGlobalDrop: row.is_global || false
     }));
   }
   return inMemoryStore.chatMessages.slice(-limit);
 }
 
-async function saveChatMessage(username, message, title = null, titleColor = '#ffd700', system = false) {
+async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false) {
   const record = {
     username: username || 'Guest',
     message,
     title,
     titleColor,
     timestamp: new Date().toISOString(),
-    system
+    system,
+    isGlobalDrop
   };
 
   if (pool) {
     await executeQuery(
-      'INSERT INTO chat_messages (username, message) VALUES ($1, $2)',
-      [record.username, record.message]
+      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global) VALUES ($1, $2, $3, $4, $5, $6)',
+      [record.username, record.message, title, titleColor, system, isGlobalDrop]
     );
   } else {
     inMemoryStore.chatMessages.push(record);
@@ -513,7 +579,7 @@ function sanitizeUser(user) {
   const inventory = normalizeInventory(user.inventory);
   const potions = normalizeRecord(user.potions, { luck: 0, speed: 0 });
   const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0 });
-  const titles = normalizeList(user.titles);
+  const titles = getUnlockedTitles(user);
   
   return {
     username: user.username,
@@ -527,10 +593,11 @@ function sanitizeUser(user) {
     active_title: user.active_title || null,
     active_effects: user.username ? getUserActiveEffects(user.username) : {},
     portal_unlocked: user.portal_unlocked || false,
+    sea_realm_unlocked: user.sea_realm_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(inventory),
     inventoryTotal: Object.values(inventory.rarities).reduce((sum, count) => sum + (Number(count) || 0), 0),
-    is_admin: user.is_admin || false
+    is_admin: isAdministratorUser(user)
   };
 }
 
@@ -597,6 +664,7 @@ app.post('/api/register', async (req, res) => {
     items: { fragments: 0, clovers: 0, essence: 0 },
     titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
     portal_unlocked: false,
+    sea_realm_unlocked: false,
     is_admin: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin',
     created_at: new Date().toISOString(),
     last_login: new Date().toISOString()
@@ -794,10 +862,13 @@ app.post('/api/spin', async (req, res) => {
       currentTitles = [];
     }
   }
-  const updatedTitles = [...new Set(Array.isArray(currentTitles) ? currentTitles.filter(title => typeof title === 'string') : [])];
-  if (newCoins >= 1000000 && !updatedTitles.includes('millionaire')) {
-    updatedTitles.push('millionaire');
-  }
+  const updatedTitles = getUnlockedTitles({
+    ...user,
+    inventory,
+    spins: newSpins,
+    coins: newCoins,
+    titles: Array.isArray(currentTitles) ? currentTitles : []
+  });
   const updatedUser = {
     ...user,
     inventory,
@@ -830,7 +901,7 @@ app.post('/api/spin', async (req, res) => {
     if (result.isGlobal) {
       try {
         const globalMessage = `${user.username} activated global ${result.name}!`;
-        const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false);
+        const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false, true);
         io.emit('chat-message', chatRecord);
       } catch (error) {
         console.error('Unable to announce global drop:', error);
@@ -1007,16 +1078,48 @@ app.post('/api/set-active-title', async (req, res) => {
 
   try {
     const user = await findUser(req.session.username);
-    const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
+    const titles = getUnlockedTitles(user);
     if (!titles.includes(titleId)) {
       return res.status(400).json({ success: false, error: 'Title not owned.' });
     }
-    await updateUser(req.session.username, { active_title: titleId });
+    await updateUser(req.session.username, { active_title: titleId, titles: JSON.stringify(titles) });
     const updated = await findUser(req.session.username);
     res.json({ success: true, user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Set active title error:', error);
     res.status(500).json({ success: false, error: 'Unable to set title.' });
+  }
+});
+
+app.post('/api/realms/sea/unlock', async (req, res) => {
+  if (!req.session?.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  try {
+    const user = await findUser(req.session.username);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+    if (!user.portal_unlocked) return res.status(400).json({ success: false, error: 'Unlock the gateway with 10 Portal Fragments first.' });
+    if (user.sea_realm_unlocked) return res.json({ success: true, alreadyUnlocked: true, user: sanitizeUser(user) });
+
+    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0 });
+    if ((Number(items.essence) || 0) < 1) {
+      return res.status(400).json({ success: false, error: '1 Sea Essence is required to permanently unlock the realm.' });
+    }
+    items.essence -= 1;
+    const titles = normalizeList(user.titles);
+    if (!titles.includes('tidekeeper')) titles.push('tidekeeper');
+
+    await updateUser(req.session.username, {
+      sea_realm_unlocked: true,
+      items: JSON.stringify(items),
+      titles: JSON.stringify(titles)
+    });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Sea Realm unlock error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to unlock the realm. Please try again.' });
   }
 });
 
@@ -1031,17 +1134,10 @@ app.post('/api/enter-dimension', async (req, res) => {
 
   try {
     const user = await findUser(req.session.username);
-    if (!user.portal_unlocked) {
-      return res.status(400).json({ success: false, error: 'Portal is locked.' });
+    if (!user.portal_unlocked || !user.sea_realm_unlocked) {
+      return res.status(403).json({ success: false, error: 'Unlock the Sea Realm once with Sea Essence before entering.' });
     }
-    const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
-    if ((items.essence || 0) < 1) {
-      return res.json({ success: false, error: 'Need 1 Sea Essence.' });
-    }
-    items.essence -= 1;
-    await updateUser(req.session.username, { items: JSON.stringify(items) });
-    const updated = await findUser(req.session.username);
-    res.json({ success: true, user: sanitizeUser(updated) });
+    res.json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
     console.error('Enter dimension error:', error);
     res.status(500).json({ success: false, error: 'Unable to enter dimension.' });
@@ -1243,8 +1339,8 @@ app.post('/api/chat', async (req, res) => {
   }
   try {
     const user = await findUser(req.session.username);
-    const title = user?.active_title || null;
-    const record = await saveChatMessage(req.session.username, text, title, '#ffd700', false);
+    const badge = getChatBadge(user);
+    const record = await saveChatMessage(req.session.username, text, badge.title, badge.titleColor, false);
     io.emit('chat-message', record);
     res.json({ success: true, message: record });
   } catch (error) {
@@ -1302,8 +1398,8 @@ io.on('connection', async (socket) => {
     if (!text) return;
     const username = socket.request?.session?.username || 'Guest';
     const user = username !== 'Guest' ? await findUser(username) : null;
-    const title = user?.active_title || null;
-    const record = await saveChatMessage(username, text, title, '#ffd700', false);
+    const badge = getChatBadge(user);
+    const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false);
     io.emit('chat-message', record);
   });
 
