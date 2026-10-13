@@ -3753,6 +3753,77 @@
             padding: 18px;
         }
 
+        .event-item.event-starlight {
+            border-color: rgba(96, 165, 250, 0.42);
+            background:
+                radial-gradient(circle at 88% 12%, rgba(96, 165, 250, 0.2), transparent 34%),
+                linear-gradient(145deg, #102343, #09162d);
+        }
+
+        .event-item.event-meteor {
+            border-color: rgba(56, 189, 248, 0.42);
+            background:
+                radial-gradient(circle at 88% 12%, rgba(14, 165, 233, 0.2), transparent 34%),
+                linear-gradient(145deg, #0d2542, #09162d);
+        }
+
+        .event-kicker {
+            margin-bottom: 9px;
+            color: #7dd3fc;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .event-item .event-status {
+            border-left-color: #38bdf8;
+            color: #bfdbfe;
+        }
+
+        body.starlight-surge::after {
+            position: fixed;
+            z-index: 805;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 50% 0%, rgba(96, 165, 250, 0.2), transparent 58%),
+                repeating-linear-gradient(115deg, transparent 0 110px, rgba(147, 197, 253, 0.035) 112px 114px, transparent 116px 210px);
+            content: '';
+            pointer-events: none;
+            animation: starlightSweep 8s linear infinite;
+        }
+
+        .meteor-layer {
+            position: fixed;
+            z-index: 899;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .event-meteor {
+            position: absolute;
+            top: -150px;
+            left: var(--meteor-left);
+            width: 2px;
+            height: 120px;
+            background: linear-gradient(180deg, transparent, #bae6fd 45%, #fff 70%, transparent);
+            filter: drop-shadow(0 0 8px #38bdf8);
+            opacity: 0;
+            transform: rotate(32deg);
+            animation: meteorFall var(--meteor-duration) var(--meteor-delay) linear infinite;
+        }
+
+        @keyframes starlightSweep {
+            from { background-position: center, 0 0; }
+            to { background-position: center, 420px 0; }
+        }
+
+        @keyframes meteorFall {
+            0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(32deg); }
+            8% { opacity: 1; }
+            65% { opacity: 0.9; }
+            100% { opacity: 0; transform: translate3d(-54vw, 130vh, 0) rotate(32deg); }
+        }
+
         .admin-empty-state,
         .event-item p {
             color: #bfdbfe;
@@ -4297,42 +4368,22 @@
 
         <div class="admin-content">
             <div class="admin-section">
-                <h2>🌟 Special Events</h2>
+                <h2>Live Game Events</h2>
                 <div class="event-controls">
-                    <div class="event-item">
-                        <h3>Hollow Square Rally</h3>
-                        <p>Activate a rally of glowing squares and rally player luck.</p>
-                        <div class="event-buttons">
-                            <button class="btn" id="start-hollow-rally">Start</button>
-                            <button class="btn stop-btn" id="stop-hollow-rally">Stop</button>
-                        </div>
-                        <div class="event-status" id="hollow-rally-status"></div>
+                    <div class="event-item event-starlight">
+                        <div class="event-kicker">GLOBAL BOOST / 02:00</div>
+                        <h3>Starlight Surge</h3>
+                        <p>Every roll pays 2x coins while a blue starfield sweeps across the game.</p>
+                        <button class="btn" id="activate-starlight-surge">Launch Surge</button>
+                        <div class="event-status" id="starlight-surge-status">Ready · 2-minute event</div>
                     </div>
 
-                    <div class="event-item">
-                        <h3>Geometric Cascade</h3>
-                        <p>Falling geometric shapes with coin bonuses</p>
-                        <button class="btn" id="start-geometric-cascade">Launch</button>
-                    </div>
-
-                    <div class="event-item">
-                        <h3>Quantum Boost</h3>
-                        <p>10x luck multiplier for all players</p>
-                        <div class="event-buttons">
-                            <button class="btn" id="start-quantum-boost">Activate</button>
-                            <button class="btn stop-btn" id="stop-quantum-boost">Deactivate</button>
-                        </div>
-                        <div class="event-status" id="quantum-status"></div>
-                    </div>
-
-                    <div class="event-item">
-                        <h3>Upside Down</h3>
-                        <p>Flip the game theme with an inverted cosmic surge.</p>
-                        <div class="event-buttons">
-                            <button class="btn" id="start-upside-down">Activate</button>
-                            <button class="btn stop-btn" id="stop-upside-down">Deactivate</button>
-                        </div>
-                        <div class="event-status" id="upside-down-status"></div>
+                    <div class="event-item event-meteor">
+                        <div class="event-kicker">GLOBAL BOUNTY / 01:30</div>
+                        <h3>Meteor Shower</h3>
+                        <p>Every roll collects an extra 250 coins as bright meteors cross the sky.</p>
+                        <button class="btn" id="activate-meteor-shower">Call Meteor Shower</button>
+                        <div class="event-status" id="meteor-shower-status">Ready · 90-second event</div>
                     </div>
                 </div>
             </div>
