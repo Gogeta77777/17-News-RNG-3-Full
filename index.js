@@ -654,19 +654,39 @@ app.post('/api/spin', async (req, res) => {
     result = options[0];
   }
 
-  const inventory = user.inventory || { rarities: {} };
-  inventory.rarities = inventory.rarities || {};
-  inventory.rarities[result.key] = (inventory.rarities[result.key] || 0) + 1;
+  let inventory = user.inventory;
+  if (typeof inventory === 'string') {
+    try {
+      inventory = JSON.parse(inventory);
+    } catch {
+      inventory = null;
+    }
+  }
+  if (!inventory || typeof inventory !== 'object' || Array.isArray(inventory)) {
+    inventory = {};
+  }
+  if (!inventory.rarities || typeof inventory.rarities !== 'object' || Array.isArray(inventory.rarities)) {
+    inventory.rarities = {};
+  }
+  const ownedCount = Number(inventory.rarities[result.key]);
+  inventory.rarities[result.key] = Number.isFinite(ownedCount) && ownedCount >= 0 ? ownedCount + 1 : 1;
 
   const dimension = String(req.body?.dimension || '').toLowerCase();
   const multiplier = computeSpinMultiplier(req.session.username, dimension === 'deep-sea' ? 'deep-sea' : null);
   const rawReward = result.reward;
   const finalReward = Math.round(rawReward * multiplier);
 
-  const newSpins = (user.spins || 0) + 1;
-  const newCoins = (user.coins || 0) + finalReward;
-  const currentTitles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
-  const updatedTitles = [...new Set(currentTitles)];
+  const newSpins = (Number(user.spins) || 0) + 1;
+  const newCoins = (Number(user.coins) || 0) + finalReward;
+  let currentTitles = user.titles;
+  if (typeof currentTitles === 'string') {
+    try {
+      currentTitles = JSON.parse(currentTitles);
+    } catch {
+      currentTitles = [];
+    }
+  }
+  const updatedTitles = [...new Set(Array.isArray(currentTitles) ? currentTitles.filter(title => typeof title === 'string') : [])];
   if (newCoins >= 1000000 && !updatedTitles.includes('millionaire')) {
     updatedTitles.push('millionaire');
   }
@@ -691,9 +711,13 @@ app.post('/api/spin', async (req, res) => {
     };
 
     if (result.isGlobal) {
-      const globalMessage = `${user.username} activated global ${result.name}!`;
-      const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false);
-      io.emit('chat-message', chatRecord);
+      try {
+        const globalMessage = `${user.username} activated global ${result.name}!`;
+        const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false);
+        io.emit('chat-message', chatRecord);
+      } catch (error) {
+        console.error('Unable to announce global drop:', error);
+      }
     }
 
     res.json(responsePayload);
