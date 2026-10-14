@@ -13,13 +13,12 @@ let taglineTimer = null;
 let taglineRun = 0;
 
 const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 65.2, color: '#0f172a' },
+  { key: '17-news', name: '17 News', reward: 150, chance: 66.2, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
   { key: 'daniel-poole', name: 'Daniel Poole', reward: 450, chance: 4, color: '#166534' },
   { key: 'dominik-procter', name: 'Dominik Procter', reward: 450, chance: 3, color: '#0d9488' },
   { key: 'gabe-muir', name: 'Gabe Muir', reward: 450, chance: 2, color: '#115e59' },
   { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', reward: 550, chance: 1.5, color: '#7c3aed' },
-  { key: 'kayla-walters', name: 'Kayla Walters', reward: 550, chance: 1, color: '#ec4899' },
   { key: 'leo-thacker', name: 'Leo Thacker', reward: 700, chance: 0.8, color: '#2dd4bf' },
   { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 700, chance: 0.7, color: '#f97316' },
   { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
@@ -31,7 +30,7 @@ const rarityOptions = [
 const globalOptions = [
   { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444', isGlobal: true },
   { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8', isGlobal: true },
-  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#f8fafc', glowColor: '#000000', isGlobal: true }
+  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true }
 ];
 
 const POTIONS = {
@@ -50,8 +49,8 @@ const TITLES = [
   { id: 'veteran', name: 'Veteran', color: '#38bdf8', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
-  { id: 'first-signal', name: 'First Signal', color: '#22d3ee', requirement: 'spins:1', description: 'Complete your first roll' },
-  { id: 'archive-keeper', name: 'Archive Keeper', color: '#60a5fa', requirement: 'spins:25', description: 'Complete 25 rolls' },
+  { id: 'signal-cartographer', name: 'Signal Cartographer', color: '#22d3ee', requirement: 'spins:250', description: 'Complete 250 rolls' },
+  { id: 'endless-frequency', name: 'The Endless Frequency', color: '#60a5fa', requirement: 'spins:5000', description: 'Complete 5,000 rolls' },
   { id: 'collector', name: 'Rarity Collector', color: '#34d399', requirement: 'drops:10', description: 'Collect 10 rarity drops' },
   { id: 'global-headliner', name: 'Global Headliner', color: '#fb7185', requirement: 'global:1', description: 'Find a global rarity' },
   { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' }
@@ -173,10 +172,15 @@ async function handleAPI(url, options = {}) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (data.banned) showBanScreen(data.banReason);
+      if (data.shutdown) setShutdownScreen(true, data.error);
       return {
         success: false,
         error: data.error || data.message || `Request failed (${response.status})`,
-        status: response.status
+        status: response.status,
+        banned: data.banned || false,
+        banReason: data.banReason || '',
+        shutdown: data.shutdown || false
       };
     }
     return data;
@@ -420,8 +424,8 @@ function checkTitleUnlocks(user) {
   }
   const rarities = user.inventory?.rarities || {};
   const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
-  if ((Number(user.spins) || 0) >= 1) existing.add('first-signal');
-  if ((Number(user.spins) || 0) >= 25) existing.add('archive-keeper');
+  if ((Number(user.spins) || 0) >= 250) existing.add('signal-cartographer');
+  if ((Number(user.spins) || 0) >= 5000) existing.add('endless-frequency');
   if (rarityTotal >= 10) existing.add('collector');
   if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
   if (user.sea_realm_unlocked) existing.add('tidekeeper');
@@ -629,7 +633,13 @@ async function rollInDeepSea() {
   const result = response.result;
   const multiplierDisplay = result.multiplier > 1 ? ` · ${result.multiplier}x coins` : '';
   const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
-  rollDisplay.textContent = `🌊 ${result.name}${multiplierDisplay}${luckDisplay}`;
+  const readableColor = ['#0f172a', '#000000', '#1e3a8a'].includes((result.color || '').toLowerCase()) ? (result.glowColor || '#93c5fd') : result.color;
+  rollDisplay.style.color = readableColor || '#f8fafc';
+  rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
+  rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
+  if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
+  else rollDisplay.style.removeProperty('--roll-glow');
+  rollDisplay.textContent = `${result.name}${multiplierDisplay}${luckDisplay}`;
   rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
   currentUser = response.user;
   updateUI(currentUser);
@@ -687,6 +697,7 @@ function renderInventory(user) {
         const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
         card.className = `inventory-item rarity-card${rarity.isGlobal ? ' global-rarity-card' : ''}`;
         card.style.setProperty('--rarity-color', rarityColor);
+        if (rarity.isGlobal) card.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
         card.innerHTML = `
           <div class="rarity-card-head">
             <h4>${escapeHtml(rarity.name)}</h4>
@@ -762,6 +773,7 @@ function renderRarityCatalog() {
       const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
       row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}`;
       row.style.setProperty('--rarity-color', rarityColor);
+      if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
       row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
       list.appendChild(row);
     });
@@ -770,6 +782,7 @@ function renderRarityCatalog() {
 // ==================== UI UPDATES ====================
 function updateUI(user) {
   currentUser = user;
+  if (user.is_admin) setShutdownScreen(false);
   
   // Load game state from user
   gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0 };
@@ -782,6 +795,8 @@ function updateUI(user) {
   
   document.getElementById('game-username').textContent = user.username;
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
+  const totalRolls = document.getElementById('settings-total-rolls');
+  if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
 
   // Show admin button if user is admin
   const adminBtn = document.getElementById('admin-btn');
@@ -830,13 +845,14 @@ function updatePortalUI() {
 }
 
 // ==================== CHAT SYSTEM ====================
-function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false) {
+function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false) {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
   
   const msgEl = document.createElement('div');
-  msgEl.className = isSystem ? 'chat-message system-message' : `chat-message${isGlobalDrop ? ' global-drop-message' : ''}`;
+  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isSystem ? 'chat-message system-message' : `chat-message${isGlobalDrop ? ' global-drop-message' : ''}`;
   msgEl.dataset.messageId = timestamp;
+  if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
   
   const time = new Date(timestamp).toLocaleTimeString();
   
@@ -856,6 +872,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     }
     const titleLabel = displayTitle ? `<span class="chat-title-badge" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
     msgEl.innerHTML = `
+      ${isAnnouncement ? '<span class="global-drop-kicker">ADMIN EVENT</span>' : ''}
       ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
       <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
@@ -866,6 +883,49 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   chatMessages.appendChild(msgEl);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   if (isGlobalDrop && announceGlobalDrop) showGlobalDropBanner(username, title, message, titleColor);
+}
+
+function showAdminAnnouncementBanner(announcement) {
+  if (!announcement?.title || !announcement?.content) return;
+  document.querySelector('.admin-announcement-banner')?.remove();
+  const banner = document.createElement('aside');
+  banner.className = 'admin-announcement-banner';
+  banner.setAttribute('role', 'alert');
+  const label = document.createElement('span');
+  label.className = 'admin-announcement-label';
+  label.textContent = 'ADMIN EVENT';
+  const copy = document.createElement('div');
+  copy.className = 'admin-announcement-copy';
+  const title = document.createElement('strong');
+  title.textContent = announcement.title;
+  const content = document.createElement('p');
+  content.textContent = announcement.content;
+  copy.append(title, content);
+  const close = document.createElement('button');
+  close.className = 'admin-announcement-dismiss';
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Dismiss admin announcement');
+  close.textContent = '×';
+  close.addEventListener('click', () => banner.remove());
+  banner.append(label, copy, close);
+  document.body.appendChild(banner);
+  const globalBanner = document.querySelector('.global-drop-banner');
+  if (globalBanner) globalBanner.style.top = `${banner.offsetHeight + 12}px`;
+  setTimeout(() => banner.remove(), 15000);
+}
+
+function showBanScreen(reason = '') {
+  const screen = document.getElementById('ban-screen');
+  const details = document.getElementById('ban-screen-reason');
+  if (details) details.textContent = reason || 'Access to this game has been restricted.';
+  screen?.classList.remove('hidden');
+}
+
+function setShutdownScreen(active, message = 'Update or Fix in progress please wait') {
+  const screen = document.getElementById('shutdown-screen');
+  const title = document.getElementById('shutdown-screen-title');
+  if (title && message) title.textContent = message;
+  screen?.classList.toggle('hidden', !active || Boolean(currentUser?.is_admin));
 }
 
 function showGlobalDropBanner(username, rarityName, message, rarityColor) {
@@ -891,6 +951,8 @@ function showGlobalDropBanner(username, rarityName, message, rarityColor) {
   close.addEventListener('click', () => banner.remove());
   banner.append(eyebrow, headline, detail, close);
   document.body.appendChild(banner);
+  const adminBanner = document.querySelector('.admin-announcement-banner');
+  if (adminBanner) banner.style.top = `${adminBanner.offsetHeight + 12}px`;
   setTimeout(() => banner.remove(), 8500);
 }
 
@@ -915,9 +977,10 @@ async function loadAdminUsers() {
   response.users.forEach(user => {
     const row = document.createElement('div');
     row.className = 'admin-user-row';
+    row.dataset.username = String(user.username || '').toLowerCase();
     row.innerHTML = `
       <div class="admin-user-summary">
-        <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_admin ? 'Administrator' : 'Player'}</span></div>
+        <div><strong>${escapeHtml(user.username)}</strong><span>${user.is_banned ? 'BANNED' : user.is_admin ? 'Administrator' : 'Player'}</span></div>
         <div><strong>🪙 ${formatCoins(user.coins)} coins</strong><span>${user.spins || 0} rolls · ${user.inventoryTotal || 0} drops · ${(user.titles || []).length} titles</span></div>
       </div>
       <div class="admin-user-tools">
@@ -936,7 +999,27 @@ async function loadAdminUsers() {
           <button class="btn" type="submit">Grant</button>
         </form>
       </div>
+      <form class="admin-ban-form">
+        <label>Ban reason<input class="ban-reason" type="text" maxlength="250" placeholder="Optional reason" ${user.is_admin ? 'disabled' : ''}></label>
+        <button class="btn ${user.is_banned ? '' : 'danger-btn'}" type="submit" ${user.is_admin ? 'disabled' : ''}>${user.is_banned ? 'Unban player' : 'Ban player'}</button>
+      </form>
     `;
+    row.classList.toggle('admin-user-banned', Boolean(user.is_banned));
+    row.querySelector('.ban-reason').value = user.ban_reason || '';
+    row.querySelector('.admin-ban-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const banned = !user.is_banned;
+      const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST',
+        body: { type: 'ban', banned, reason: row.querySelector('.ban-reason').value }
+      });
+      if (!result.success) {
+        showPopup(result.error || 'Unable to update player access.', 'error');
+        return;
+      }
+      showPopup(banned ? `${user.username} has been banned.` : `${user.username} has been unbanned.`);
+      loadAdminUsers();
+    });
     row.querySelectorAll('.admin-adjust-form').forEach(form => {
       form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -959,9 +1042,31 @@ async function loadAdminUsers() {
     });
     userList.appendChild(row);
   });
+  const search = document.getElementById('admin-user-search');
+  if (search && !search.dataset.bound) {
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      userList.querySelectorAll('.admin-user-row').forEach(row => {
+        row.hidden = !row.dataset.username.includes(query);
+      });
+    });
+    search.dataset.bound = 'true';
+  }
+  search?.dispatchEvent(new Event('input'));
   if (!response.users.length) {
     userList.innerHTML = '<p class="admin-empty-state">No player records yet.</p>';
   }
+}
+
+async function loadShutdownState() {
+  if (!currentUser?.is_admin) return;
+  const response = await handleAPI('/api/admin/shutdown');
+  if (!response.success) return;
+  const status = document.getElementById('shutdown-status');
+  const button = document.getElementById('shutdown-toggle');
+  if (status) status.textContent = response.active ? 'Maintenance mode active' : 'All systems online';
+  if (status) status.style.color = response.active ? '#fca5a5' : '#86efac';
+  if (button) button.textContent = response.active ? 'Resume game' : 'Begin shutdown';
 }
 
 // ==================== THEME EVENTS ====================
@@ -1188,6 +1293,10 @@ async function handleRegister(e) {
 async function loadSession() {
   const response = await handleAPI('/api/session');
   if (response.success && response.user) {
+    if (response.user.is_banned) {
+      showBanScreen(response.user.ban_reason);
+      return;
+    }
     currentUser = response.user;
     window.refreshMultiplayerSession?.();
     window.loadChatFallback?.();
@@ -1261,9 +1370,13 @@ function setupRollButton() {
     const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
     
     // Dramatic reveal with color animation
-    rollDisplay.style.color = '#f8fafc';
-    rollDisplay.style.textShadow = `0 0 20px ${result.color || '#38bdf8'}`;
-    rollDisplay.textContent = `✨ ${result.name}${multiplierDisplay}${luckDisplay}`;
+    const readableColor = ['#0f172a', '#000000', '#1e3a8a'].includes((result.color || '').toLowerCase()) ? (result.glowColor || '#93c5fd') : result.color;
+    rollDisplay.style.color = readableColor || '#f8fafc';
+    rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
+    rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
+    if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
+    else rollDisplay.style.removeProperty('--roll-glow');
+    rollDisplay.textContent = `${result.name}${multiplierDisplay}${luckDisplay}`;
     
     rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
     rewardDisplay.style.color = '#7dd3fc';
@@ -1365,12 +1478,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentUser && currentUser.is_admin) {
       showPage('admin-panel');
       loadAdminUsers();
+      loadShutdownState();
     } else {
       showPopup('Admin access denied', 'error');
     }
   });
   document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
   document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
+  document.getElementById('shutdown-toggle')?.addEventListener('click', async () => {
+    const active = document.getElementById('shutdown-toggle').textContent === 'Begin shutdown';
+    if (active && !confirm('Put the game into maintenance mode for every player?')) return;
+    const response = await handleAPI('/api/admin/shutdown', { method: 'POST', body: { active } });
+    if (!response.success) {
+      showPopup(response.error || 'Unable to change service mode.', 'error');
+      return;
+    }
+    loadShutdownState();
+    showPopup(active ? 'Maintenance mode enabled.' : 'Game services resumed.');
+  });
   
   // Server-authoritative, timed reward events.
   document.getElementById('activate-starlight-surge')?.addEventListener('click', () => {
