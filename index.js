@@ -379,6 +379,7 @@ const GAME_EVENTS = {
 
 let activeGameEvent = null;
 let activeGameEventTimeout = null;
+let adminHeadline = { active: false, text: '' };
 
 function endActiveGameEvent() {
   if (!activeGameEvent) return;
@@ -571,7 +572,7 @@ app.use('/api', apiLimiter);
 let gameShutdown = false;
 app.use('/api', async (req, res, next) => {
   const apiPath = req.originalUrl.split('?')[0].replace(/^\/api/, '') || '/';
-  const maintenancePaths = ['/login', '/register', '/session', '/logout', '/admin/shutdown'];
+  const maintenancePaths = ['/login', '/register', '/session', '/logout', '/admin/shutdown', '/admin/headline'];
   if (gameShutdown && !maintenancePaths.includes(apiPath)) {
     return res.status(503).json({ success: false, shutdown: true, error: 'Update or Fix in progress please wait' });
   }
@@ -1359,6 +1360,27 @@ app.get('/api/admin/shutdown', async (req, res) => {
   res.json({ success: true, active: gameShutdown });
 });
 
+app.get('/api/admin/headline', async (req, res) => {
+  const user = req.session?.username ? await findUser(req.session.username) : null;
+  if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+  res.json({ success: true, headline: adminHeadline });
+});
+
+app.post('/api/admin/headline', async (req, res) => {
+  const user = req.session?.username ? await findUser(req.session.username) : null;
+  if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+  if (typeof req.body?.active !== 'boolean') {
+    return res.status(400).json({ success: false, error: 'Headline visibility must be enabled or disabled.' });
+  }
+  const text = String(req.body?.text || '').trim().slice(0, 220);
+  if (req.body.active && !text) {
+    return res.status(400).json({ success: false, error: 'Enter headline text before enabling it.' });
+  }
+  adminHeadline = { active: req.body.active, text };
+  io.emit('admin-headline', adminHeadline);
+  res.json({ success: true, headline: adminHeadline });
+});
+
 app.post('/api/admin/shutdown', async (req, res) => {
   const user = req.session?.username ? await findUser(req.session.username) : null;
   if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
@@ -1454,6 +1476,7 @@ io.on('connection', async (socket) => {
   if (gameShutdown && !socket.data.isAdmin) {
     socket.emit('shutdown-state', { active: true, message: 'Update or Fix in progress please wait' });
   }
+  socket.emit('admin-headline', adminHeadline);
 
   const history = await getRecentChatMessages(60);
   socket.emit('chat-history', history);
