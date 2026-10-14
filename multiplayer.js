@@ -9,7 +9,7 @@ async function loadChatFallback() {
   if (!container) return;
   container.innerHTML = '';
   response.messages.forEach((message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false);
   });
 }
 
@@ -32,12 +32,12 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.forEach((message) => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false);
     });
   });
 
   socket.on('chat-message', (message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false);
   });
 
   socket.on('system-message', (message) => {
@@ -62,9 +62,19 @@ function initMultiplayer() {
   });
 
   socket.on('announcement_popup', (data) => {
-    if (data && data.title && data.content) {
-      showPopup(`${data.title}: ${data.content}`, '#FFD700');
-    }
+    if (data && data.title && data.content) showAdminAnnouncementBanner(data);
+  });
+
+  socket.on('admin-announcement', (data) => {
+    showAdminAnnouncementBanner(data);
+  });
+
+  socket.on('shutdown-state', (data) => {
+    setShutdownScreen(Boolean(data?.active), data?.message);
+  });
+
+  socket.on('player-banned', (data) => {
+    showBanScreen(data?.reason);
   });
 
   socket.on('disconnect', () => {
