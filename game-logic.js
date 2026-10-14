@@ -68,7 +68,7 @@ let eventCountdownTimer = null;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
-  rotatingShopIndex: 0,
+  rotatingShopIndex: Math.floor(Math.random() * ROTATING_SHOP_ITEMS.length),
   shopLastRestock: Date.now(),
   deathSeaUnlocked: false,
   portalFragments: 0,
@@ -231,11 +231,6 @@ function getPotionMultiplier(potionType) {
 
 // ==================== SHOP SYSTEM ====================
 function getRotatingShopItems() {
-  const now = Date.now();
-  if (now - gameState.shopLastRestock > 600000) { // 10 minutes
-    gameState.shopLastRestock = now;
-    gameState.rotatingShopIndex = Math.floor(Math.random() * ROTATING_SHOP_ITEMS.length);
-  }
   return [ROTATING_SHOP_ITEMS[gameState.rotatingShopIndex]];
 }
 
@@ -243,31 +238,80 @@ function updateShopTimer() {
   const timer = document.getElementById('shop-timer');
   if (!timer) return;
   const elapsed = Math.floor((Date.now() - gameState.shopLastRestock) / 1000);
-  const remaining = Math.max(0, 600 - elapsed);
+  if (elapsed >= 600) restockRotatingShop();
+  const updatedElapsed = Math.floor((Date.now() - gameState.shopLastRestock) / 1000);
+  const remaining = Math.max(0, 600 - updatedElapsed);
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
   timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function restockRotatingShop() {
+  const previousIndex = gameState.rotatingShopIndex;
+  const availableIndices = ROTATING_SHOP_ITEMS.map((item, index) => index).filter(index => index !== previousIndex);
+  gameState.rotatingShopIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+  gameState.shopLastRestock = Date.now();
+  renderRotatingShopItems();
+  if (currentUser) showShopRestockNotice(ROTATING_SHOP_ITEMS[gameState.rotatingShopIndex]);
+}
+
+function showShopRestockNotice(item) {
+  document.querySelector('.shop-restock-notice')?.remove();
+  const notice = document.createElement('aside');
+  notice.className = 'shop-restock-notice';
+  notice.setAttribute('role', 'status');
+  const kicker = document.createElement('span');
+  kicker.textContent = 'SHOP RESTOCKED';
+  const detail = document.createElement('strong');
+  detail.textContent = `${item.name} is now in stock`;
+  const dismiss = document.createElement('button');
+  dismiss.type = 'button';
+  dismiss.className = 'shop-restock-dismiss';
+  dismiss.setAttribute('aria-label', 'Dismiss shop restock notice');
+  dismiss.textContent = '×';
+  dismiss.addEventListener('click', () => notice.remove());
+  notice.append(kicker, detail, dismiss);
+  document.body.appendChild(notice);
+  setTimeout(() => notice.remove(), 12000);
+}
+
+function renderRotatingShopItems() {
+  const rotatingDiv = document.getElementById('rotating-items');
+  if (!rotatingDiv) return;
+  rotatingDiv.innerHTML = '';
+  getRotatingShopItems().forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'shop-item';
+    const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : '💧';
+    card.innerHTML = `
+      <h4 class="shop-item-name">${emoji} ${item.name}</h4>
+      <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
+      <button class="potion-buy-btn shop-item-buy">Purchase</button>
+    `;
+    card.querySelector('.shop-item-buy')?.addEventListener('click', () => buyShopItem(item.name));
+    rotatingDiv.appendChild(card);
+  });
+}
+
+function renderShopGuide() {
+  const guide = document.getElementById('rotating-shop-guide-items');
+  if (!guide) return;
+  guide.innerHTML = '';
+  ROTATING_SHOP_ITEMS.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'shop-guide-item';
+    const name = document.createElement('strong');
+    name.textContent = item.name;
+    const price = document.createElement('span');
+    price.textContent = `${formatCoins(item.cost)} coins`;
+    row.append(name, price);
+    guide.appendChild(row);
+  });
+}
+
 function renderShop() {
   updateShopTimer();
-  
-  const rotatingDiv = document.getElementById('rotating-items');
-  if (rotatingDiv) {
-    rotatingDiv.innerHTML = '';
-    getRotatingShopItems().forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'shop-item';
-      const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : '💧';
-      card.innerHTML = `
-        <h4 class="shop-item-name">${emoji} ${item.name}</h4>
-        <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
-        <button class="potion-buy-btn shop-item-buy">Purchase</button>
-      `;
-      card.querySelector('.shop-item-buy')?.addEventListener('click', () => buyShopItem(item.name));
-      rotatingDiv.appendChild(card);
-    });
-  }
+  renderRotatingShopItems();
 
   const potionsDiv = document.getElementById('potions-list');
   if (potionsDiv) {
@@ -612,14 +656,16 @@ function enterDeepSea() {
 async function rollInDeepSea() {
   const rollBtn = document.getElementById('ds-roll-btn');
   const rollDisplay = document.getElementById('ds-roll-display');
+  const chanceDisplay = document.getElementById('ds-roll-chance-display');
   const rewardDisplay = document.getElementById('ds-reward-display');
   if (!rollBtn || !rollDisplay || !rewardDisplay) return;
 
   setLoading(rollBtn, true, 'DIVING...');
   rollDisplay.textContent = 'Reading the current...';
+  if (chanceDisplay) chanceDisplay.textContent = 'Chance: —';
 
   const response = await handleAPI('/api/spin', { method: 'POST', body: { dimension: 'deep-sea' } });
-  if (response.success && response.result && response.user) await waitForRollReveal();
+  if (response.success && response.result && response.user) await animateRarityRoll(rollDisplay, response.result);
   setLoading(rollBtn, false);
 
   if (!response.success || !response.result || !response.user) {
@@ -631,13 +677,13 @@ async function rollInDeepSea() {
   const result = response.result;
   const multiplierDisplay = result.multiplier > 1 ? ` · ${result.multiplier}x coins` : '';
   const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
-  const readableColor = ['#0f172a', '#000000', '#1e3a8a'].includes((result.color || '').toLowerCase()) ? (result.glowColor || '#93c5fd') : result.color;
-  rollDisplay.style.color = readableColor || '#f8fafc';
+  rollDisplay.style.color = getRarityDisplayColor(result);
   rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
   rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
   if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
   else rollDisplay.style.removeProperty('--roll-glow');
   rollDisplay.textContent = `${result.name}${multiplierDisplay}${luckDisplay}`;
+  if (chanceDisplay) chanceDisplay.textContent = formatRollChance(result.rollChance);
   rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
   currentUser = response.user;
   updateUI(currentUser);
@@ -1348,9 +1394,41 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 
 document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea);
 
-function waitForRollReveal() {
+function getRarityDisplayColor(rarity) {
+  return ['#0f172a', '#000000', '#1e3a8a'].includes((rarity.color || '').toLowerCase())
+    ? (rarity.glowColor || '#93c5fd')
+    : rarity.color || '#f8fafc';
+}
+
+function formatRollChance(chance) {
+  const value = Number(chance);
+  if (!Number.isFinite(value) || value <= 0) return 'Chance: —';
+  return `Chance: ${value < 0.001 ? '<0.001' : value.toFixed(value < 0.01 ? 4 : 3)}%`;
+}
+
+async function animateRarityRoll(rollDisplay, result) {
+  const catalog = [...rarityOptions, ...globalOptions];
   const speedMultiplier = getPotionMultiplier('speed');
-  return new Promise(resolve => setTimeout(resolve, 300 / speedMultiplier));
+  rollDisplay.classList.remove('global-rarity-reveal');
+  rollDisplay.style.removeProperty('--roll-glow');
+
+  for (let step = 0; step < 18; step += 1) {
+    const rarity = catalog[Math.floor(Math.random() * catalog.length)];
+    rollDisplay.textContent = rarity.name;
+    rollDisplay.style.color = getRarityDisplayColor(rarity);
+    rollDisplay.style.textShadow = `0 0 14px ${rarity.glowColor || rarity.color}`;
+    rollDisplay.classList.remove('rarity-slot-tick');
+    void rollDisplay.offsetWidth;
+    rollDisplay.classList.add('rarity-slot-tick');
+    await new Promise(resolve => setTimeout(resolve, (42 + step * 7) / speedMultiplier));
+  }
+
+  rollDisplay.classList.remove('rarity-slot-tick');
+  rollDisplay.style.color = getRarityDisplayColor(result);
+  rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
+  rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
+  if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
+  rollDisplay.textContent = result.name;
 }
 
 // ==================== ROLL BUTTON ====================
@@ -1368,21 +1446,21 @@ function setupRollButton() {
     if (rollBtn.disabled) return;
 
     const rollDisplay = document.getElementById('roll-display');
+    const chanceDisplay = document.getElementById('roll-chance-display');
     const rewardDisplay = document.getElementById('reward-display');
     if (!rollDisplay || !rewardDisplay) return;
 
     setLoading(rollBtn, true, 'ROLLING...');
     rollDisplay.textContent = 'Drawing signal...';
     rollDisplay.style.opacity = '1';
+    if (chanceDisplay) chanceDisplay.textContent = 'Chance: —';
 
     const response = await handleAPI('/api/spin', {
       method: 'POST',
       body: { dimension: gameState.currentDimension || null }
     });
 
-    if (response.success && response.result && response.user) {
-      await waitForRollReveal();
-    }
+    if (response.success && response.result && response.user) await animateRarityRoll(rollDisplay, response.result);
 
     setLoading(rollBtn, false);
 
@@ -1401,13 +1479,13 @@ function setupRollButton() {
     const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
     
     // Dramatic reveal with color animation
-    const readableColor = ['#0f172a', '#000000', '#1e3a8a'].includes((result.color || '').toLowerCase()) ? (result.glowColor || '#93c5fd') : result.color;
-    rollDisplay.style.color = readableColor || '#f8fafc';
+    rollDisplay.style.color = getRarityDisplayColor(result);
     rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
     rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
     if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
     else rollDisplay.style.removeProperty('--roll-glow');
     rollDisplay.textContent = `${result.name}${multiplierDisplay}${luckDisplay}`;
+    if (chanceDisplay) chanceDisplay.textContent = formatRollChance(result.rollChance);
     
     rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
     rewardDisplay.style.color = '#7dd3fc';
@@ -1605,6 +1683,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       showPopup('Failed to send announcement', 'error');
     }
+  });
+
+  const shopGuide = document.getElementById('rotating-shop-guide');
+  document.getElementById('shop-info-button')?.addEventListener('click', () => {
+    renderShopGuide();
+    shopGuide?.showModal();
+  });
+  document.getElementById('close-rotating-shop-guide')?.addEventListener('click', () => shopGuide?.close());
+  shopGuide?.addEventListener('click', event => {
+    if (event.target === shopGuide) shopGuide.close();
   });
   
   // Game loops
