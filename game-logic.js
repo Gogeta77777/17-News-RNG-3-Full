@@ -355,7 +355,7 @@ function renderTitles() {
   const availDiv = document.getElementById('titles-available');
 
   if (listDiv) {
-    listDiv.innerHTML = gameState.userTitles.length ? '' : '<p style="color: rgba(241,245,249,0.7); text-align: center; padding: 20px;">🔒 No titles yet. Complete requirements to unlock!</p>';
+    listDiv.innerHTML = gameState.userTitles.length ? '' : '<p style="color: rgba(241,245,249,0.7); text-align: center; padding: 20px;">No titles yet. Complete requirements to unlock.</p>';
     gameState.userTitles.forEach(titleId => {
       const title = TITLES.find(t => t.id === titleId);
       if (!title) return;
@@ -363,9 +363,8 @@ function renderTitles() {
       card.className = 'title-card active';
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
-      const emoji = titleId === 'owner' ? '👑' : titleId === 'veteran' ? '🎖️' : titleId === 'millionaire' ? '💰' : '✨';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${emoji} ${title.name}</div>
+        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
       `;
@@ -382,9 +381,8 @@ function renderTitles() {
       card.className = 'title-card';
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
-      const emoji = title.id === 'owner' ? '👑' : title.id === 'veteran' ? '🎖️' : title.id === 'millionaire' ? '💰' : '✨';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color};">🔒 ${emoji} ${title.name}</div>
+        <div class="title-name" style="color: ${title.color};">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
@@ -1069,6 +1067,28 @@ async function loadShutdownState() {
   if (button) button.textContent = response.active ? 'Resume game' : 'Begin shutdown';
 }
 
+function applyAdminHeadline(headline = {}) {
+  const active = Boolean(headline.active && String(headline.text || '').trim());
+  const ticker = document.getElementById('admin-headline');
+  const display = document.getElementById('admin-headline-text-display');
+  const enabled = document.getElementById('admin-headline-enabled');
+  const input = document.getElementById('admin-headline-text');
+  const status = document.getElementById('admin-headline-status');
+  if (display) display.textContent = active ? headline.text : '';
+  ticker?.classList.toggle('hidden', !active);
+  if (currentUser?.is_admin) {
+    if (enabled) enabled.checked = active;
+    if (input) input.value = headline.text || '';
+    if (status) status.textContent = active ? 'Headline is live for all players' : 'Headline is off';
+  }
+}
+
+async function loadAdminHeadline() {
+  if (!currentUser?.is_admin) return;
+  const response = await handleAPI('/api/admin/headline');
+  if (response.success) applyAdminHeadline(response.headline);
+}
+
 // ==================== THEME EVENTS ====================
 function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const event = typeof eventData === 'string' ? { eventName: eventData, initiatedBy: legacyInitiatedBy } : eventData || {};
@@ -1098,14 +1118,25 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
 
   clearInterval(eventCountdownTimer);
   eventCountdownTimer = null;
+  const eventBar = document.getElementById('active-event-bar');
+  const eventTitle = document.getElementById('active-event-title');
+  const eventDetails = document.getElementById('active-event-details');
   if (status) {
     if (!isActive) {
       status.textContent = 'Ready';
+      eventBar?.classList.add('hidden');
     } else {
       const rewardText = eventName === 'starlight-surge' ? '2x coins per roll' : '+250 coins per roll';
       const updateStatus = () => {
         const remaining = event.expiresAt ? Math.max(0, Math.ceil((Number(event.expiresAt) - Date.now()) / 1000)) : event.durationSeconds || 0;
         status.textContent = `ACTIVE · ${rewardText} · ${remaining}s`;
+        if (eventTitle) eventTitle.textContent = title;
+        if (eventDetails) {
+          const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
+          const seconds = (remaining % 60).toString().padStart(2, '0');
+          eventDetails.textContent = `${rewardText} · ${minutes}:${seconds} remaining`;
+        }
+        eventBar?.classList.remove('hidden');
       };
       updateStatus();
       eventCountdownTimer = setInterval(updateStatus, 1000);
@@ -1479,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showPage('admin-panel');
       loadAdminUsers();
       loadShutdownState();
+      loadAdminHeadline();
     } else {
       showPopup('Admin access denied', 'error');
     }
@@ -1495,6 +1527,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadShutdownState();
     showPopup(active ? 'Maintenance mode enabled.' : 'Game services resumed.');
+  });
+  document.getElementById('admin-headline-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const active = document.getElementById('admin-headline-enabled').checked;
+    const text = document.getElementById('admin-headline-text').value.trim();
+    if (active && !text) {
+      showPopup('Enter headline text before enabling it.', 'error');
+      return;
+    }
+    const response = await handleAPI('/api/admin/headline', { method: 'POST', body: { active, text } });
+    if (!response.success) {
+      showPopup(response.error || 'Unable to save headline.', 'error');
+      return;
+    }
+    applyAdminHeadline(response.headline);
+    showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
   });
   
   // Server-authoritative, timed reward events.
