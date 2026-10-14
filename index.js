@@ -75,8 +75,8 @@ const TITLE_CATALOG = {
   veteran: { name: 'Veteran', color: '#38bdf8' },
   millionaire: { name: 'Millionaire', color: '#4ade80' },
   portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
-  'first-signal': { name: 'First Signal', color: '#22d3ee' },
-  'archive-keeper': { name: 'Archive Keeper', color: '#60a5fa' },
+  'signal-cartographer': { name: 'Signal Cartographer', color: '#22d3ee' },
+  'endless-frequency': { name: 'The Endless Frequency', color: '#60a5fa' },
   collector: { name: 'Rarity Collector', color: '#34d399' },
   'global-headliner': { name: 'Global Headliner', color: '#fb7185' },
   tidekeeper: { name: 'Tidekeeper', color: '#2dd4bf' }
@@ -97,8 +97,8 @@ function getUnlockedTitles(user) {
   if (isAdministratorUser(user)) titles.add('owner');
   if ((Number(user?.coins) || 0) >= 1000000) titles.add('millionaire');
   if (user?.portal_unlocked) titles.add('portalmancer');
-  if (spins >= 1) titles.add('first-signal');
-  if (spins >= 25) titles.add('archive-keeper');
+  if (spins >= 250) titles.add('signal-cartographer');
+  if (spins >= 5000) titles.add('endless-frequency');
   if (rarityTotal >= 10) titles.add('collector');
   if (hasGlobalDrop) titles.add('global-headliner');
   if (user?.sea_realm_unlocked) titles.add('tidekeeper');
@@ -190,7 +190,9 @@ function normalizeList(value) {
 
 function normalizeInventory(value) {
   const inventory = normalizeRecord(value);
-  return { ...inventory, rarities: normalizeRecord(inventory.rarities) };
+  const rarities = normalizeRecord(inventory.rarities);
+  delete rarities['kayla-walters'];
+  return { ...inventory, rarities };
 }
 
 async function findUser(username) {
@@ -219,6 +221,8 @@ async function findUser(username) {
       created_at: user.created_at,
       last_login: user.last_login,
       is_admin: isAdministratorUser(user),
+      is_banned: user.is_banned || false,
+      ban_reason: user.ban_reason || '',
       sea_realm_unlocked: user.sea_realm_unlocked || false
     };
   }
@@ -232,6 +236,8 @@ async function findUser(username) {
     items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0 }),
     titles: getUnlockedTitles(stored),
     is_admin: isAdministratorUser(stored),
+    is_banned: stored.is_banned || false,
+    ban_reason: stored.ban_reason || '',
     portal_unlocked: stored.portal_unlocked || false,
     active_title: stored.active_title || null,
     sea_realm_unlocked: stored.sea_realm_unlocked || false
@@ -307,6 +313,8 @@ async function ensureDatabase() {
       active_title TEXT,
       portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
+      is_banned BOOLEAN NOT NULL DEFAULT false,
+      ban_reason TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
@@ -320,7 +328,8 @@ async function ensureDatabase() {
       title TEXT,
       title_color TEXT NOT NULL DEFAULT '#7dd3fc',
       system BOOLEAN NOT NULL DEFAULT false,
-      is_global BOOLEAN NOT NULL DEFAULT false
+      is_global BOOLEAN NOT NULL DEFAULT false,
+      is_announcement BOOLEAN NOT NULL DEFAULT false
     )
   `);
   await executeQuery(`
@@ -336,6 +345,8 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS active_title TEXT,
       ADD COLUMN IF NOT EXISTS portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
   `);
@@ -344,9 +355,11 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS title TEXT,
       ADD COLUMN IF NOT EXISTS title_color TEXT NOT NULL DEFAULT '#7dd3fc',
       ADD COLUMN IF NOT EXISTS system BOOLEAN NOT NULL DEFAULT false,
-      ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT false
+      ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS is_announcement BOOLEAN NOT NULL DEFAULT false
   `);
   await executeQuery('CREATE INDEX IF NOT EXISTS chat_messages_created_at_idx ON chat_messages (created_at DESC)');
+  await executeQuery("UPDATE users SET inventory = inventory #- ARRAY['rarities', 'kayla-walters'] WHERE inventory ? 'rarities' AND (inventory->'rarities') ? 'kayla-walters'");
 }
 
 const GAME_EVENTS = {
@@ -420,7 +433,7 @@ let connectedUsers = 0;
 async function getRecentChatMessages(limit = 60) {
   if (pool) {
     const result = await executeQuery(
-      'SELECT username, message, created_at, title, title_color, system, is_global FROM chat_messages ORDER BY created_at DESC LIMIT $1',
+      'SELECT username, message, created_at, title, title_color, system, is_global, is_announcement FROM chat_messages ORDER BY created_at DESC LIMIT $1',
       [limit]
     );
     return result.rows.reverse().map(row => ({
@@ -430,13 +443,14 @@ async function getRecentChatMessages(limit = 60) {
       titleColor: row.title_color || '#7dd3fc',
       timestamp: row.created_at,
       system: row.system || false,
-      isGlobalDrop: row.is_global || false
+      isGlobalDrop: row.is_global || false,
+      isAnnouncement: row.is_announcement || false
     }));
   }
   return inMemoryStore.chatMessages.slice(-limit);
 }
 
-async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false) {
+async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false) {
   const record = {
     username: username || 'Guest',
     message,
@@ -444,13 +458,14 @@ async function saveChatMessage(username, message, title = null, titleColor = '#7
     titleColor,
     timestamp: new Date().toISOString(),
     system,
-    isGlobalDrop
+    isGlobalDrop,
+    isAnnouncement
   };
 
   if (pool) {
     await executeQuery(
-      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global) VALUES ($1, $2, $3, $4, $5, $6)',
-      [record.username, record.message, title, titleColor, system, isGlobalDrop]
+      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [record.username, record.message, title, titleColor, system, isGlobalDrop, isAnnouncement]
     );
   } else {
     inMemoryStore.chatMessages.push(record);
@@ -553,6 +568,27 @@ app.set('trust proxy', 1);
 app.use(['/api/login', '/api/register'], authLimiter);
 app.use('/api', apiLimiter);
 
+let gameShutdown = false;
+app.use('/api', async (req, res, next) => {
+  const apiPath = req.originalUrl.split('?')[0].replace(/^\/api/, '') || '/';
+  const maintenancePaths = ['/login', '/register', '/session', '/logout', '/admin/shutdown'];
+  if (gameShutdown && !maintenancePaths.includes(apiPath)) {
+    return res.status(503).json({ success: false, shutdown: true, error: 'Update or Fix in progress please wait' });
+  }
+  if (!req.session?.username || ['/login', '/register', '/session', '/logout'].includes(apiPath)) {
+    return next();
+  }
+  try {
+    const user = await findUser(req.session.username);
+    if (user?.is_banned) {
+      return res.status(403).json({ success: false, banned: true, banReason: user.ban_reason || '' });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 // CORS for development
 if (process.env.NODE_ENV !== 'production') {
   app.use((req, res, next) => {
@@ -590,14 +626,16 @@ function sanitizeUser(user) {
     potions: potions,
     items: items,
     titles: titles,
-    active_title: user.active_title || null,
+    active_title: titles.includes(user.active_title) ? user.active_title : null,
     active_effects: user.username ? getUserActiveEffects(user.username) : {},
     portal_unlocked: user.portal_unlocked || false,
     sea_realm_unlocked: user.sea_realm_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(inventory),
     inventoryTotal: Object.values(inventory.rarities).reduce((sum, count) => sum + (Number(count) || 0), 0),
-    is_admin: isAdministratorUser(user)
+    is_admin: isAdministratorUser(user),
+    is_banned: user.is_banned || false,
+    ban_reason: user.ban_reason || ''
   };
 }
 
@@ -611,7 +649,6 @@ function calculateInventoryValue(inventory) {
     'dominik-procter': 450,
     'gabe-muir': 450,
     'inesh-jayasinghe': 550,
-    'kayla-walters': 550,
     'leo-thacker': 700,
     'sam-whitworth': 700,
     'john-tan': 1050,
@@ -693,6 +730,9 @@ app.post('/api/login', async (req, res) => {
     const user = await findUser(normalized);
     if (!user || user.password !== hashPassword(password)) {
       return res.status(401).json({ success: false, error: 'Invalid username or password.' });
+    }
+    if (user.is_banned) {
+      return res.status(403).json({ success: false, banned: true, banReason: user.ban_reason || '', error: 'This account is banned.' });
     }
 
     const lastLogin = new Date().toISOString();
@@ -797,13 +837,12 @@ app.post('/api/spin', async (req, res) => {
   let cursor = 0;
   let result = null;
   const options = [
-    { key: '17-news', name: '17 News', chance: 65.2, reward: 150, color: '#0f172a' },
+    { key: '17-news', name: '17 News', chance: 66.2, reward: 150, color: '#0f172a' },
     { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
     { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450, color: '#166534' },
     { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450, color: '#0d9488' },
     { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450, color: '#115e59' },
     { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550, color: '#7c3aed' },
-    { key: 'kayla-walters', name: 'Kayla Walters', chance: 1, reward: 550, color: '#ec4899' },
     { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700, color: '#2dd4bf' },
     { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700, color: '#f97316' },
     { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050, color: '#f87171' },
@@ -900,7 +939,7 @@ app.post('/api/spin', async (req, res) => {
 
     if (result.isGlobal) {
       try {
-        const globalMessage = `${user.username} activated global ${result.name}!`;
+        const globalMessage = `${user.username} rolled ${result.name}!`;
         const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false, true);
         io.emit('chat-message', chatRecord);
       } catch (error) {
@@ -1183,34 +1222,57 @@ app.post('/api/admin/users/:username', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Player not found.' });
     }
 
-    const { type, amount, potion, item } = req.body || {};
-    const quantity = Number(amount);
-    if (!Number.isSafeInteger(quantity) || quantity < 0) {
-      return res.status(400).json({ success: false, error: 'Enter a valid whole-number amount.' });
-    }
-
+    const { type, amount, potion, item, banned, reason } = req.body || {};
     let updates;
-    if (type === 'coins') {
-      if (quantity > 2147483647) {
-        return res.status(400).json({ success: false, error: 'Coin balance is too large.' });
+    if (type === 'ban') {
+      if (target.is_admin || normalizeUsername(target.username) === normalizeUsername(admin.username)) {
+        return res.status(400).json({ success: false, error: 'Administrator accounts cannot be banned here.' });
       }
-      updates = { coins: quantity };
-    } else if (type === 'potion' && ['luck', 'speed'].includes(potion) && quantity >= 1 && quantity <= 99) {
-      const potions = normalizeRecord(target.potions, { luck: 0, speed: 0 });
-      potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
-      updates = { potions: JSON.stringify(potions) };
-    } else if (type === 'item' && ['fragments', 'clovers', 'essence'].includes(item) && quantity >= 1 && quantity <= 99) {
-      const items = normalizeRecord(target.items, { fragments: 0, clovers: 0, essence: 0 });
-      items[item] = Math.min(999, (Number(items[item]) || 0) + quantity);
-      updates = { items: JSON.stringify(items) };
+      if (typeof banned !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'Choose whether this player should be banned.' });
+      }
+      updates = {
+        is_banned: banned,
+        ban_reason: banned ? String(reason || '').trim().slice(0, 250) : ''
+      };
     } else {
-      return res.status(400).json({ success: false, error: 'Invalid player adjustment.' });
+      const quantity = Number(amount);
+      if (!Number.isSafeInteger(quantity) || quantity < 0) {
+        return res.status(400).json({ success: false, error: 'Enter a valid whole-number amount.' });
+      }
+      if (type === 'coins') {
+        if (quantity > 2147483647) {
+          return res.status(400).json({ success: false, error: 'Coin balance is too large.' });
+        }
+        updates = { coins: quantity };
+      } else if (type === 'potion' && ['luck', 'speed'].includes(potion) && quantity >= 1 && quantity <= 99) {
+        const potions = normalizeRecord(target.potions, { luck: 0, speed: 0 });
+        potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
+        updates = { potions: JSON.stringify(potions) };
+      } else if (type === 'item' && ['fragments', 'clovers', 'essence'].includes(item) && quantity >= 1 && quantity <= 99) {
+        const items = normalizeRecord(target.items, { fragments: 0, clovers: 0, essence: 0 });
+        items[item] = Math.min(999, (Number(items[item]) || 0) + quantity);
+        updates = { items: JSON.stringify(items) };
+      } else {
+        return res.status(400).json({ success: false, error: 'Invalid player adjustment.' });
+      }
     }
 
     await updateUser(target.username, updates);
     const updatedTarget = { ...target, ...updates };
     if (typeof updatedTarget.potions === 'string') updatedTarget.potions = normalizeRecord(updatedTarget.potions);
     if (typeof updatedTarget.items === 'string') updatedTarget.items = normalizeRecord(updatedTarget.items);
+    if (type === 'ban') {
+      const room = `user:${normalizeUsername(target.username)}`;
+      if (banned) {
+        const sockets = await io.in(room).fetchSockets();
+        sockets.forEach(socket => { socket.data.isBanned = true; });
+      }
+      io.to(room).emit(banned ? 'player-banned' : 'player-unbanned', { reason: updates.ban_reason });
+      if (banned) {
+        setTimeout(() => io.in(room).disconnectSockets(true), 500).unref?.();
+      }
+    }
     res.json({ success: true, user: sanitizeUser(updatedTarget) });
   } catch (error) {
     console.error('Admin player update error:', error.message || error);
@@ -1263,36 +1325,49 @@ app.post('/api/admin/announcement', async (req, res) => {
   }
 
   const { title, content } = req.body || {};
-  if (!title || !content) {
+  if (!String(title || '').trim() || !String(content || '').trim()) {
     return res.status(400).json({ success: false, error: 'Title and content required.' });
   }
 
   const announcement = {
     id: Date.now().toString(),
-    title: title.trim(),
-    content: content.trim(),
+    title: String(title).trim().slice(0, 100),
+    content: String(content).trim().slice(0, 1000),
     timestamp: new Date().toISOString(),
     admin: user.username
   };
 
-  // Emit to all connected clients
-  io.emit('announcement_popup', announcement);
-
-  // Also add to chat
   const chatMsg = {
-    username: 'ANNOUNCEMENT',
-    message: `${title}: ${content}`,
+    username: 'ADMIN ALERT',
+    message: `${announcement.title}: ${announcement.content}`,
     timestamp: announcement.timestamp,
-    system: true,
-    isAnnouncement: true
+    system: false,
+    isAnnouncement: true,
+    title: 'ADMIN ANNOUNCEMENT',
+    titleColor: '#fb923c'
   };
-  // Persist announcement as a system chat message (title = announcement title)
-  await saveChatMessage(chatMsg.username, chatMsg.message, announcement.title, '#ffd700', true);
-
-  // Emit both the announcement popup and a chat message for clients
-  io.emit('chat-message', chatMsg);
+  const persisted = await saveChatMessage(chatMsg.username, chatMsg.message, chatMsg.title, chatMsg.titleColor, false, false, true);
+  io.emit('admin-announcement', announcement);
+  io.emit('chat-message', persisted);
 
   res.json({ success: true, announcement });
+});
+
+app.get('/api/admin/shutdown', async (req, res) => {
+  const user = req.session?.username ? await findUser(req.session.username) : null;
+  if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+  res.json({ success: true, active: gameShutdown });
+});
+
+app.post('/api/admin/shutdown', async (req, res) => {
+  const user = req.session?.username ? await findUser(req.session.username) : null;
+  if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+  if (typeof req.body?.active !== 'boolean') {
+    return res.status(400).json({ success: false, error: 'Shutdown state must be true or false.' });
+  }
+  gameShutdown = req.body.active;
+  io.emit('shutdown-state', { active: gameShutdown, message: 'Update or Fix in progress please wait' });
+  res.json({ success: true, active: gameShutdown });
 });
 
 // Admin broadcast message to all players (short chat message)
@@ -1363,8 +1438,22 @@ io.use((socket, next) => {
 // Socket.IO connection handling
 io.on('connection', async (socket) => {
   console.log(`🔌 RNG 3 Player connected: ${socket.id}`);
+  const socketUsername = socket.request?.session?.username;
+  const socketUser = socketUsername ? await findUser(socketUsername) : null;
+  if (socketUser?.is_banned) {
+    socket.emit('player-banned', { reason: socketUser.ban_reason || '' });
+    setTimeout(() => socket.disconnect(true), 500).unref?.();
+    return;
+  }
+  socket.data.isAdmin = Boolean(socketUser?.is_admin);
+  socket.data.isBanned = false;
+  if (socketUsername) socket.join(`user:${normalizeUsername(socketUsername)}`);
   connectedUsers += 1;
   io.emit('online-count', connectedUsers);
+
+  if (gameShutdown && !socket.data.isAdmin) {
+    socket.emit('shutdown-state', { active: true, message: 'Update or Fix in progress please wait' });
+  }
 
   const history = await getRecentChatMessages(60);
   socket.emit('chat-history', history);
@@ -1394,6 +1483,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('chat-message', async (data) => {
+    if (gameShutdown || socket.data.isBanned) return;
     const text = String(data?.message || '').trim().slice(0, 500);
     if (!text) return;
     const username = socket.request?.session?.username || 'Guest';
@@ -1436,6 +1526,10 @@ io.on('connection', async (socket) => {
           timestamp: new Date().toISOString(),
           system: true
         });
+        return;
+      }
+      if (gameShutdown) {
+        respond({ success: false, error: 'Events are unavailable during shutdown.' });
         return;
       }
       const eventName = String(data?.eventName || '').trim().toLowerCase();
