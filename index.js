@@ -929,6 +929,7 @@ app.post('/api/spin', async (req, res) => {
       success: true,
       result: {
         ...result,
+        rollChance: (result.chance * (result.chance < 20 ? luckMultiplier : 1) / totalWeight) * 100,
         multiplier,
         luckMultiplier,
         reward: finalReward,
