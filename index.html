@@ -4816,6 +4816,148 @@
                 transition-duration: 0.01ms !important;
             }
         }
+        .game-container {
+            position: relative;
+            isolation: isolate;
+        }
+        .game-container::before {
+            position: fixed;
+            z-index: 0;
+            inset: 0;
+            background-image: linear-gradient(rgba(96, 165, 250, 0.11) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.11) 1px, transparent 1px);
+            background-size: 58px 58px;
+            content: '';
+            opacity: 0.22;
+            pointer-events: none;
+            animation: squareFieldDrift 19s linear infinite;
+        }
+        .game-header { z-index: 21; }
+        .game-main { position: relative; z-index: 1; }
+        body.starlight-surge .game-container::before {
+            background-image: linear-gradient(rgba(251, 191, 36, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(244, 114, 182, 0.2) 1px, transparent 1px);
+            background-size: 38px 38px;
+            opacity: 0.35;
+            animation-duration: 7s;
+        }
+        @keyframes squareFieldDrift {
+            from { background-position: 0 0, 0 0; }
+            to { background-position: 116px 116px, 116px 116px; }
+        }
+
+        .game-header {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 9px;
+            padding: 12px clamp(18px, 4vw, 48px);
+        }
+        .active-event-bar {
+            display: flex;
+            min-height: 34px;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 5px 12px;
+            border: 1px solid rgba(251, 191, 36, 0.34);
+            background: linear-gradient(90deg, rgba(120, 53, 15, 0.72), rgba(69, 26, 3, 0.86), rgba(120, 53, 15, 0.72));
+            color: #ffedd5;
+            font-size: 0.78rem;
+        }
+        .active-event-bar.hidden { display: none; }
+        .active-event-kicker { color: #fcd34d; font-size: 0.66rem; font-weight: 900; white-space: nowrap; }
+        .active-event-bar strong { color: #fff7ed; font-size: 0.86rem; }
+        #active-event-details { overflow-wrap: anywhere; }
+        .game-header-main {
+            display: grid;
+            grid-template-columns: minmax(0, auto) minmax(180px, 1fr) auto;
+            align-items: center;
+            gap: clamp(16px, 3vw, 42px);
+            min-width: 0;
+        }
+        .game-header-main .header-left { min-width: 0; gap: clamp(14px, 2vw, 30px); }
+        .game-title { font-size: 1.85rem; }
+        .game-header .user-info { min-width: 0; gap: 7px; }
+        .game-header .user-info .username { font-size: 1.45rem; line-height: 1.15; overflow-wrap: anywhere; }
+        .game-header-main .header-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+        .admin-headline {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            height: 42px;
+            padding: 0 12px;
+            overflow: hidden;
+            border: 1px solid rgba(125, 211, 252, 0.3);
+            background: rgba(7, 18, 37, 0.88);
+            box-shadow: inset 0 0 18px rgba(56, 189, 248, 0.08);
+        }
+        .admin-headline.hidden { display: none; }
+        .admin-headline-label { color: #7dd3fc; font-size: 0.64rem; font-weight: 900; white-space: nowrap; }
+        .admin-headline-window { min-width: 0; overflow: hidden; white-space: nowrap; }
+        .admin-headline-window span {
+            display: inline-block;
+            min-width: max-content;
+            color: #eff6ff;
+            font-size: 0.9rem;
+            font-weight: 700;
+            animation: headlineTravel 18s linear infinite;
+        }
+        .admin-headline:hover .admin-headline-window span { animation-play-state: paused; }
+        @keyframes headlineTravel {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
+
+        .headline-admin-form { display: grid; gap: 12px; }
+        .headline-admin-form label { display: grid; gap: 6px; color: #bfdbfe; font-size: 0.82rem; }
+        .headline-admin-form .headline-enabled-control { display: flex; align-items: center; gap: 9px; }
+        .headline-admin-form input[type="checkbox"] { width: 18px; height: 18px; accent-color: #38bdf8; }
+        .headline-admin-form input[type="text"] {
+            width: 100%;
+            min-height: 42px;
+            padding: 9px 11px;
+            border: 1px solid rgba(96, 165, 250, 0.34);
+            border-radius: 2px;
+            background: #071225;
+            color: #eff6ff;
+        }
+        .headline-admin-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .headline-admin-footer span { color: #93c5fd; font-size: 0.8rem; }
+
+        .realm-art-sea {
+            background: linear-gradient(180deg, #0b1b34, #075985 125%);
+        }
+        .realm-art-sea::before { content: none; }
+        .realm-art-sea .realm-sea-bubble {
+            top: auto;
+            bottom: -22px;
+            left: var(--bubble-left);
+            width: var(--bubble-size);
+            height: var(--bubble-size);
+            border: 1px solid rgba(224, 242, 254, 0.82);
+            border-radius: 50%;
+            background: rgba(186, 230, 253, 0.08);
+            box-shadow: inset -2px -2px 5px rgba(224, 242, 254, 0.24), 0 0 9px rgba(56, 189, 248, 0.28);
+            animation: realmBubbleRise var(--bubble-duration) var(--bubble-delay) ease-in infinite;
+        }
+        @keyframes realmBubbleRise {
+            0% { opacity: 0; transform: translateY(0) scale(0.75); }
+            15% { opacity: 0.8; }
+            85% { opacity: 0.5; }
+            100% { opacity: 0; transform: translateY(-178px) scale(1.15); }
+        }
+
+        @media (max-width: 760px) {
+            .game-header-main { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+            .game-header-main .header-left { flex-wrap: wrap; gap: 8px 14px; }
+            .game-title { font-size: 1.25rem; }
+            .game-header .user-info .username { font-size: 1.18rem; }
+            .game-header-main .header-right { grid-column: 2; grid-row: 1; }
+            .admin-headline { grid-column: 1 / -1; grid-row: 2; }
+            .active-event-bar { flex-wrap: wrap; gap: 4px 10px; padding: 7px 10px; }
+        }
+
     </style>
 </head>
 <body>
@@ -5001,16 +5143,27 @@
             <div class="rising-star" style="left: 95%;"></div>
         </div>
         <header class="game-header">
-            <div class="header-left">
-                <h1 class="game-title">17 News RNG 3</h1>
-                <div class="user-info">
-                    <span class="username" id="game-username">Player</span>
-                    <span class="coins" id="game-coins">🪙 0 coins</span>
-                </div>
+            <div class="active-event-bar hidden" id="active-event-bar" role="status" aria-live="polite">
+                <span class="active-event-kicker">LIVE EVENT</span>
+                <strong id="active-event-title"></strong>
+                <span id="active-event-details"></span>
             </div>
-            <div class="header-right">
-                <button class="btn admin-btn hidden" id="admin-btn">Admin Panel</button>
-                <button class="btn logout-btn" id="logout-btn">Logout</button>
+            <div class="game-header-main">
+                <div class="header-left">
+                    <h1 class="game-title">17 News RNG 3</h1>
+                    <div class="user-info">
+                        <span class="username" id="game-username">Player</span>
+                        <span class="coins" id="game-coins">🪙 0 coins</span>
+                    </div>
+                </div>
+                <div class="admin-headline hidden" id="admin-headline" aria-label="Admin headline">
+                    <span class="admin-headline-label">NOTICE</span>
+                    <div class="admin-headline-window"><span id="admin-headline-text-display"></span></div>
+                </div>
+                <div class="header-right">
+                    <button class="btn admin-btn hidden" id="admin-btn">Admin Panel</button>
+                    <button class="btn logout-btn" id="logout-btn">Logout</button>
+                </div>
             </div>
         </header>
 
@@ -5162,7 +5315,7 @@
             </header>
             <div class="realm-list">
                 <article class="realm-card realm-sea">
-                    <div class="realm-art realm-art-sea" aria-hidden="true"><span></span><i></i><b></b></div>
+                    <div class="realm-art realm-art-sea" aria-hidden="true"><span class="realm-sea-bubble" style="--bubble-left: 12%; --bubble-size: 10px; --bubble-delay: -1s; --bubble-duration: 5s"></span><span class="realm-sea-bubble" style="--bubble-left: 28%; --bubble-size: 17px; --bubble-delay: -3s; --bubble-duration: 7s"></span><span class="realm-sea-bubble" style="--bubble-left: 47%; --bubble-size: 8px; --bubble-delay: -2s; --bubble-duration: 4.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 63%; --bubble-size: 14px; --bubble-delay: -4s; --bubble-duration: 6s"></span><span class="realm-sea-bubble" style="--bubble-left: 82%; --bubble-size: 11px; --bubble-delay: -2.5s; --bubble-duration: 5.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 92%; --bubble-size: 19px; --bubble-delay: -5s; --bubble-duration: 7.5s"></span></div>
                     <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Sea Realm</h3><p>Deep currents, rare finds, and double luck on every draw.</p><span class="realm-status" id="sea-realm-status"></span><button class="btn" id="sea-realm-action" type="button">UNLOCK &amp; ENTER · 1 ESSENCE</button></div>
                 </article>
                 <article class="realm-card realm-coming" aria-disabled="true">
@@ -5216,6 +5369,16 @@
         </header>
 
         <div class="admin-content">
+            <div class="admin-section">
+                <h2>Moving Headline</h2>
+                <form class="headline-admin-form" id="admin-headline-form">
+                    <label class="headline-enabled-control"><input type="checkbox" id="admin-headline-enabled"> Show headline to players</label>
+                    <label for="admin-headline-text">Headline text</label>
+                    <input id="admin-headline-text" type="text" maxlength="220" placeholder="Enter the message players will see...">
+                    <div class="headline-admin-footer"><span id="admin-headline-status" role="status">Headline is off</span><button class="btn" type="submit">Save headline</button></div>
+                </form>
+            </div>
+
             <div class="admin-section">
                 <h2>Live Game Events</h2>
                 <div class="event-controls">
