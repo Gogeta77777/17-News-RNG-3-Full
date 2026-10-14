@@ -4948,6 +4948,125 @@
             100% { opacity: 0; transform: translateY(-178px) scale(1.15); }
         }
 
+        .background-container {
+            display: block;
+            z-index: 0;
+            opacity: 0.72;
+            pointer-events: none;
+        }
+        .background-container > .star,
+        .background-container > .rising-star,
+        .background-container > .wave { display: none; }
+        .geometric {
+            border: 1px solid rgba(94, 231, 209, 0.48);
+            background: transparent;
+            box-shadow: 0 0 12px rgba(94, 231, 209, 0.08), inset 0 0 8px rgba(94, 231, 209, 0.035);
+        }
+        body.starlight-surge .geometric {
+            border-color: rgba(251, 191, 36, 0.8);
+            box-shadow: 0 0 18px rgba(251, 191, 36, 0.2), inset 0 0 10px rgba(244, 114, 182, 0.12);
+            animation-duration: 6s !important;
+        }
+        .main-container { position: relative; z-index: 1; }
+        .auth-container {
+            background: rgba(7, 18, 37, 0.72);
+            backdrop-filter: blur(3px);
+        }
+
+        .roll-chance {
+            min-height: 20px;
+            margin-top: 7px;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        .roll-display.rarity-slot-tick { animation: raritySlotTick 90ms ease-out; }
+        @keyframes raritySlotTick {
+            from { opacity: 0.48; filter: blur(2px); transform: translateY(-13px); }
+            to { opacity: 1; filter: blur(0); transform: translateY(0); }
+        }
+
+        .rotating-shop-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .rotating-shop-heading h3 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px 12px; }
+        .shop-restock-copy { color: #94a3b8; font-size: 0.78rem; font-weight: 500; }
+        .shop-info-button {
+            flex: 0 0 34px;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(94, 231, 209, 0.52);
+            border-radius: 50%;
+            background: rgba(94, 231, 209, 0.1);
+            color: #a7f3e8;
+            font-size: 1.05rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .shop-info-button:hover { background: rgba(94, 231, 209, 0.22); }
+        .shop-guide-dialog {
+            width: min(560px, calc(100vw - 28px));
+            max-height: min(80vh, 620px);
+            padding: 0;
+            overflow: auto;
+            border: 1px solid rgba(94, 231, 209, 0.34);
+            border-top: 3px solid #5ee7d1;
+            border-radius: 4px;
+            background: #0b1b30;
+            color: #eff6ff;
+            box-shadow: 0 28px 90px rgba(0, 0, 0, 0.68);
+        }
+        .shop-guide-dialog::backdrop { background: rgba(2, 8, 20, 0.76); backdrop-filter: blur(5px); }
+        .shop-guide-dialog section { position: relative; padding: 24px; }
+        .shop-guide-kicker { color: #5ee7d1; font-size: 0.68rem; font-weight: 900; }
+        .shop-guide-dialog h2 { margin: 5px 42px 18px 0; font-size: 1.3rem; }
+        .shop-guide-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(226, 232, 240, 0.22);
+            background: rgba(255, 255, 255, 0.05);
+            color: #eff6ff;
+            font-size: 1.25rem;
+            cursor: pointer;
+        }
+        .shop-guide-items { display: grid; gap: 8px; }
+        .shop-guide-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid rgba(94, 231, 209, 0.16);
+            background: rgba(94, 231, 209, 0.045);
+        }
+        .shop-guide-item strong { color: #a7f3e8; }
+        .shop-guide-item span { color: #cbd5e1; font-size: 0.86rem; }
+        .shop-restock-notice {
+            position: fixed;
+            z-index: 1900;
+            right: 22px;
+            bottom: 22px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 5px 14px;
+            width: min(390px, calc(100vw - 28px));
+            padding: 15px 14px 15px 17px;
+            border: 1px solid rgba(94, 231, 209, 0.5);
+            border-left: 4px solid #5ee7d1;
+            background: #0b1b30;
+            color: #eff6ff;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+            animation: restockNoticeIn 260ms ease-out both;
+        }
+        .shop-restock-notice span { color: #5ee7d1; font-size: 0.66rem; font-weight: 900; }
+        .shop-restock-notice strong { grid-column: 1; font-size: 0.92rem; }
+        .shop-restock-dismiss { grid-column: 2; grid-row: 1 / span 2; width: 34px; height: 34px; border: 1px solid rgba(226, 232, 240, 0.2); background: transparent; color: #eff6ff; font-size: 1.25rem; cursor: pointer; }
+        @keyframes restockNoticeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         @media (max-width: 760px) {
             .game-header-main { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
             .game-header-main .header-left { flex-wrap: wrap; gap: 8px 14px; }
@@ -5051,8 +5170,8 @@
                     <p>✦ A rebuilt roll console, inventory, portal, chat, and admin desk.</p>
                 </div>
                 <div class="log-entry">
-                    <div class="date">Previous / Release 3.0</div>
-                    <p>Added global rarities, rotating shop stock, potion boosts, titles, portal progression, and multiplayer chat.</p>
+                    <div class="date">Previous / Release 0.5 / Testing Phase</div>
+                    <p>Preparing the UI, testing core systems, and getting everything ready.</p>
                 </div>
             </div>
         </div>
@@ -5183,6 +5302,7 @@
                         <div class="roll-display" id="roll-display" role="status" aria-live="polite">READY TO DRAW</div>
                         <div class="roll-meter" aria-hidden="true"><i></i><i></i><i></i></div>
                     </div>
+                    <div class="roll-chance" id="roll-chance-display">Chance: —</div>
                     <div class="potion-effects" id="potion-effects"></div>
                     <div class="roll-footer">
                         <div class="reward-display" id="reward-display">🪙 Reward: 0 coins</div>
@@ -5223,9 +5343,20 @@
                     <div class="tab-pane hidden" id="shop-tab">
                         <div class="shop-container">
                             <div class="rotating-shop">
-                                <h3>⭐ Rotating Shop (Restocks in <span id="shop-timer">10:00</span>)</h3>
+                                <div class="rotating-shop-heading">
+                                    <h3>Rotating Shop <span class="shop-restock-copy">Restocks in <span id="shop-timer">10:00</span></span></h3>
+                                    <button class="shop-info-button" id="shop-info-button" type="button" aria-label="Show all rotating shop items" title="Show all rotating shop items">?</button>
+                                </div>
                                 <div class="rotating-items" id="rotating-items"></div>
                             </div>
+                            <dialog class="shop-guide-dialog" id="rotating-shop-guide" aria-labelledby="rotating-shop-guide-title">
+                                <section>
+                                    <button class="shop-guide-close" id="close-rotating-shop-guide" type="button" aria-label="Close rotating stock guide">×</button>
+                                    <span class="shop-guide-kicker">STOCK ROTATION</span>
+                                    <h2 id="rotating-shop-guide-title">Possible shop items</h2>
+                                    <div class="shop-guide-items" id="rotating-shop-guide-items"></div>
+                                </section>
+                            </dialog>
                             <div class="potion-shop">
                                 <h3>🧪 Potions</h3>
                                 <div class="potions-list" id="potions-list"></div>
@@ -5345,6 +5476,7 @@
                     <div class="roll-status">
                         <div class="roll-label">DEEP SEA ROLL (2x Luck)</div>
                         <div class="roll-display" id="ds-roll-display">Ready to roll</div>
+                        <div class="roll-chance" id="ds-roll-chance-display">Chance: —</div>
                     </div>
                     <div class="roll-footer">
                         <div class="reward-display" id="ds-reward-display">🪙 Reward: 0 coins</div>
