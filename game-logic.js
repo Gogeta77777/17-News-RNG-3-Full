@@ -68,8 +68,12 @@ let eventCountdownTimer = null;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
-  rotatingShopIndex: Math.floor(Math.random() * ROTATING_SHOP_ITEMS.length),
-  shopLastRestock: Date.now(),
+  rotatingShopIndex: 0,
+  shopNextRestockAt: 0,
+  shopServerOffset: 0,
+  shopRotationSlot: null,
+  shopRefreshPending: false,
+  shopRetryAt: 0,
   deathSeaUnlocked: false,
   portalFragments: 0,
   seaEssence: 0,
@@ -234,25 +238,56 @@ function getRotatingShopItems() {
   return [ROTATING_SHOP_ITEMS[gameState.rotatingShopIndex]];
 }
 
+async function loadShopRotation() {
+  if (gameState.shopRefreshPending) return;
+  gameState.shopRefreshPending = true;
+  const response = await handleAPI('/api/shop/rotation');
+  const rotation = response.rotation;
+  const itemIndex = ROTATING_SHOP_ITEMS.findIndex(item => item.name === rotation?.name);
+  if (!response.success || !rotation || itemIndex < 0) {
+    gameState.shopRetryAt = Date.now() + 5000;
+    gameState.shopRefreshPending = false;
+    return;
+  }
+
+  const previousSlot = gameState.shopRotationSlot;
+  let storedSlot = null;
+  try {
+    const value = Number(localStorage.getItem('rng3-shop-rotation-slot'));
+    if (Number.isSafeInteger(value)) storedSlot = value;
+  } catch {}
+  gameState.rotatingShopIndex = itemIndex;
+  gameState.shopNextRestockAt = Number(rotation.nextRestockAt);
+  gameState.shopServerOffset = Number(rotation.serverTime) - Date.now();
+  gameState.shopRotationSlot = Number(rotation.slot);
+  gameState.shopRetryAt = 0;
+  try {
+    localStorage.setItem('rng3-shop-rotation-slot', String(gameState.shopRotationSlot));
+  } catch {}
+  renderRotatingShopItems();
+
+  const rotationChanged = previousSlot !== null
+    ? gameState.shopRotationSlot > previousSlot
+    : storedSlot !== null && gameState.shopRotationSlot > storedSlot;
+  if (rotationChanged && currentUser) showShopRestockNotice(ROTATING_SHOP_ITEMS[itemIndex]);
+  gameState.shopRefreshPending = false;
+  updateShopTimer();
+}
+
 function updateShopTimer() {
   const timer = document.getElementById('shop-timer');
   if (!timer) return;
-  const elapsed = Math.floor((Date.now() - gameState.shopLastRestock) / 1000);
-  if (elapsed >= 600) restockRotatingShop();
-  const updatedElapsed = Math.floor((Date.now() - gameState.shopLastRestock) / 1000);
-  const remaining = Math.max(0, 600 - updatedElapsed);
+  if (!gameState.shopNextRestockAt) {
+    timer.textContent = 'Syncing';
+    if (currentUser && Date.now() >= gameState.shopRetryAt) loadShopRotation();
+    return;
+  }
+  const remainingMilliseconds = Math.max(0, gameState.shopNextRestockAt - (Date.now() + gameState.shopServerOffset));
+  const remaining = Math.ceil(remainingMilliseconds / 1000);
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
   timer.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-function restockRotatingShop() {
-  const previousIndex = gameState.rotatingShopIndex;
-  const availableIndices = ROTATING_SHOP_ITEMS.map((item, index) => index).filter(index => index !== previousIndex);
-  gameState.rotatingShopIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-  gameState.shopLastRestock = Date.now();
-  renderRotatingShopItems();
-  if (currentUser) showShopRestockNotice(ROTATING_SHOP_ITEMS[gameState.rotatingShopIndex]);
+  if (remainingMilliseconds <= 0 && Date.now() >= gameState.shopRetryAt) loadShopRotation();
 }
 
 function showShopRestockNotice(item) {
@@ -388,6 +423,7 @@ function buyShopItem(itemName) {
       renderShop();
       showPopup(`Purchased ${itemName}!`);
     } else {
+      if (response.status === 409) loadShopRotation();
       showPopup(response.error || 'Purchase failed', 'error');
     }
   });
@@ -858,6 +894,7 @@ function updateUI(user) {
   renderTitles();
   renderInventory(user);
   renderRarityCatalog();
+  if (!gameState.shopNextRestockAt) loadShopRotation();
   renderShop();
   updatePortalUI();
   updatePotionDisplay();
@@ -889,6 +926,15 @@ function updatePortalUI() {
 }
 
 // ==================== CHAT SYSTEM ====================
+function formatChatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return '';
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (date.toDateString() === new Date().toDateString()) return time;
+  const day = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${day} · ${time}`;
+}
+
 function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false) {
   const chatMessages = document.getElementById('chat-messages');
   if (!chatMessages) return;
@@ -898,7 +944,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   msgEl.dataset.messageId = timestamp;
   if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
   
-  const time = new Date(timestamp).toLocaleTimeString();
+  const time = formatChatTimestamp(timestamp);
   
   if (isSystem) {
     msgEl.innerHTML = `
