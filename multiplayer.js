@@ -61,6 +61,10 @@ function initMultiplayer() {
     }
   });
 
+  socket.on('admin-headline', (data) => {
+    applyAdminHeadline(data || {});
+  });
+
   socket.on('announcement_popup', (data) => {
     if (data && data.title && data.content) showAdminAnnouncementBanner(data);
   });
