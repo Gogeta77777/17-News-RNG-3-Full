@@ -8,11 +8,13 @@
 
 require('dotenv').config();
 const express = require('express');
+const fs = require('fs/promises');
 const http = require('http');
 const { Server } = require('socket.io');
 const session = require('express-session');
 const MemoryStore = require('memorystore')(session);
 const path = require('path');
+const os = require('os');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const crypto = require('crypto');
@@ -69,6 +71,26 @@ const inMemoryStore = {
   users: {},
   chatMessages: []
 };
+
+const ROTATING_SHOP_ITEMS = [
+  { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
+  { name: 'Clover Leaf', cost: 500, rarity: 'common' },
+  { name: 'Sea Essence', cost: 300000, rarity: 'legendary' }
+];
+const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
+const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
+
+function getShopRotation(timestamp = Date.now()) {
+  const slot = Math.floor(timestamp / SHOP_ROTATION_INTERVAL_MS);
+  const itemIndex = slot % ROTATING_SHOP_ITEMS.length;
+  return {
+    ...ROTATING_SHOP_ITEMS[itemIndex],
+    itemIndex,
+    slot,
+    serverTime: timestamp,
+    nextRestockAt: (slot + 1) * SHOP_ROTATION_INTERVAL_MS
+  };
+}
 
 const TITLE_CATALOG = {
   owner: { name: 'Owner', color: '#fbbf24' },
@@ -333,6 +355,13 @@ async function ensureDatabase() {
     )
   `);
   await executeQuery(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      setting_key TEXT PRIMARY KEY,
+      setting_value JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await executeQuery(`
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS spins INTEGER NOT NULL DEFAULT 0,
@@ -380,6 +409,48 @@ const GAME_EVENTS = {
 let activeGameEvent = null;
 let activeGameEventTimeout = null;
 let adminHeadline = { active: false, text: '' };
+
+function normalizeAdminHeadline(value) {
+  const text = String(value?.text || '').trim().slice(0, 220);
+  return { active: Boolean(value?.active && text), text };
+}
+
+async function loadAdminHeadline() {
+  let storedValue = null;
+  if (pool) {
+    const result = await executeQuery('SELECT setting_value FROM app_settings WHERE setting_key = $1', ['admin_headline']);
+    storedValue = result.rows[0]?.setting_value || null;
+  } else {
+    try {
+      const settings = JSON.parse(await fs.readFile(LOCAL_SETTINGS_PATH, 'utf8'));
+      storedValue = settings.adminHeadline || null;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  if (storedValue) adminHeadline = normalizeAdminHeadline(storedValue);
+}
+
+async function persistAdminHeadline() {
+  if (pool) {
+    await executeQuery(
+      'INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES ($1, $2::jsonb, NOW()) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()',
+      ['admin_headline', JSON.stringify(adminHeadline)]
+    );
+    return;
+  }
+
+  let settings = {};
+  try {
+    settings = JSON.parse(await fs.readFile(LOCAL_SETTINGS_PATH, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  settings.adminHeadline = adminHeadline;
+  const temporaryPath = `${LOCAL_SETTINGS_PATH}.${process.pid}.tmp`;
+  await fs.writeFile(temporaryPath, JSON.stringify(settings), 'utf8');
+  await fs.rename(temporaryPath, LOCAL_SETTINGS_PATH);
+}
 
 function endActiveGameEvent() {
   if (!activeGameEvent) return;
@@ -1030,6 +1101,13 @@ app.post('/api/buy-potion', async (req, res) => {
   }
 });
 
+app.get('/api/shop/rotation', (req, res) => {
+  if (!req.session?.username) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  res.json({ success: true, rotation: getShopRotation() });
+});
+
 // Buy Shop Item
 app.post('/api/buy-shop-item', async (req, res) => {
   if (!req.session || !req.session.username) {
@@ -1037,16 +1115,11 @@ app.post('/api/buy-shop-item', async (req, res) => {
   }
 
   const { itemName } = req.body || {};
-  const itemCosts = {
-    'Portal Fragment': 15000,
-    'Clover Leaf': 500,
-    'Sea Essence': 300000
-  };
-
-  const cost = itemCosts[itemName];
-  if (!cost) {
-    return res.status(400).json({ success: false, error: 'Invalid item.' });
+  const rotation = getShopRotation();
+  if (itemName !== rotation.name) {
+    return res.status(409).json({ success: false, error: 'That item is no longer in stock.', rotation });
   }
+  const cost = rotation.cost;
 
   try {
     const user = await findUser(req.session.username);
@@ -1377,7 +1450,15 @@ app.post('/api/admin/headline', async (req, res) => {
   if (req.body.active && !text) {
     return res.status(400).json({ success: false, error: 'Enter headline text before enabling it.' });
   }
+  const previousHeadline = adminHeadline;
   adminHeadline = { active: req.body.active, text };
+  try {
+    await persistAdminHeadline();
+  } catch (error) {
+    adminHeadline = previousHeadline;
+    console.error('Headline persistence error:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Headline could not be saved. Please try again.' });
+  }
   io.emit('admin-headline', adminHeadline);
   res.json({ success: true, headline: adminHeadline });
 });
@@ -1603,6 +1684,7 @@ const PORT = process.env.PORT || 3000;
 async function startServer() {
   try {
     await ensureDatabase();
+    await loadAdminHeadline();
     server.listen(PORT, () => {
       console.log(`🚀 RNG 3 Server running on port ${PORT}`);
       console.log(`📅 Version: 3.0.0 - The Next Generation`);
