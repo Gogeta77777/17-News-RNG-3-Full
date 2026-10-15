@@ -33,9 +33,15 @@ const globalOptions = [
   { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true }
 ];
 
+const fishingGlobalOptions = [
+  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, fishingOnly: true }
+];
+
 const POTIONS = {
-  luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck' },
-  speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed' }
+  luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck', effectKey: 'luck' },
+  speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
+  depthfinder: { name: 'Depthfinder Tonic', cost: 9000, multiplier: 2, duration: 180, effect: 'fishing luck', effectKey: 'deep-luck' },
+  'steady-reel': { name: 'Steady Reel Elixir', cost: 6500, multiplier: 1.5, duration: 180, effect: 'reel timing window', effectKey: 'steady-reel' }
 };
 
 const ROTATING_SHOP_ITEMS = [
@@ -49,8 +55,9 @@ const TITLES = [
   { id: 'veteran', name: 'Veteran', color: '#38bdf8', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
-  { id: 'signal-cartographer', name: 'Signal Cartographer', color: '#22d3ee', requirement: 'spins:250', description: 'Complete 250 rolls' },
+  { id: 'locked-in', name: 'Locked In', color: '#22d3ee', requirement: 'spins:1000', description: 'Complete 1,000 rolls' },
   { id: 'endless-frequency', name: 'The Endless Frequency', color: '#60a5fa', requirement: 'spins:5000', description: 'Complete 5,000 rolls' },
+  { id: 'potato', name: 'Potato', color: '#8b5a2b', requirement: 'old-potato-sticker', description: 'Find an Old Potato Sticker in a Treasure Chest' },
   { id: 'collector', name: 'Rarity Collector', color: '#34d399', requirement: 'drops:10', description: 'Collect 10 rarity drops' },
   { id: 'global-headliner', name: 'Global Headliner', color: '#fb7185', requirement: 'global:1', description: 'Find a global rarity' },
   { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' }
@@ -63,8 +70,10 @@ const CODE_REWARDS = {
 // ==================== GAME STATE ====================
 let currentUser = null;
 let isEnteringDimension = false;
-let meteorShowerLayer = null;
-let eventCountdownTimer = null;
+let eventVisualLayer = null;
+let cameraShakeTimer = null;
+let cameraShakeEndTimer = null;
+let fishingTimers = [];
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -82,7 +91,7 @@ let gameState = {
   userTitles: [],
   activeTitle: null,
   potionInventory: { luck: 0, speed: 0 },
-  itemInventory: { fragments: 0, clovers: 0, essence: 0 }
+  itemInventory: { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
 };
 
 // ==================== TAGLINE CYCLING ====================
@@ -199,7 +208,8 @@ function applyPotion(potionType) {
   const potion = POTIONS[potionType];
   if (!potion) return;
 
-  gameState.activeEffects[potionType] = {
+  const effectKey = potion.effectKey || potionType;
+  gameState.activeEffects[effectKey] = {
     multiplier: potion.multiplier,
     duration: potion.duration,
     endTime: Date.now() + potion.duration * 1000,
@@ -221,7 +231,8 @@ function updatePotionDisplay() {
       delete gameState.activeEffects[type];
       return;
     }
-    const potion = POTIONS[type];
+    const potion = Object.values(POTIONS).find(option => (option.effectKey || option.type) === type);
+    if (!potion) return;
     const div = document.createElement('div');
     div.innerHTML = `✨ ${potion.name}: ${remaining}s`;
     container.appendChild(div);
@@ -354,7 +365,7 @@ function renderShop() {
     Object.entries(POTIONS).forEach(([key, potion]) => {
       const card = document.createElement('div');
       card.className = 'potion-card';
-      const emoji = key === 'luck' ? '🍀' : '⚡';
+      const emoji = key === 'luck' ? '🍀' : key === 'speed' ? '⚡' : key === 'depthfinder' ? '🧭' : '🎣';
       card.innerHTML = `
         <h4>${emoji} ${potion.name}</h4>
         <p>${potion.multiplier}x ${potion.effect} • ${potion.duration}s duration</p>
@@ -362,8 +373,8 @@ function renderShop() {
           <span>⚡ +${potion.multiplier}x ${potion.effect}</span>
           <span>⏱️ ${potion.duration}s active</span>
         </div>
-        <div class="potion-cost">🪙 ${formatCoins(potion.cost)} coins</div>
-        <button class="potion-buy-btn potion-buy">Buy Now</button>
+        <div class="potion-cost">${potion.vialCost ? `🧪 ${potion.vialCost} Empty Vial · ` : ''}🪙 ${formatCoins(potion.cost)} coins</div>
+        <button class="potion-buy-btn potion-buy">${potion.vialCost ? 'Craft' : 'Buy Now'}</button>
       `;
       card.querySelector('.potion-buy')?.addEventListener('click', () => buyPotion(key));
       potionsDiv.appendChild(card);
@@ -380,7 +391,7 @@ function buyPotion(potionType) {
   handleAPI('/api/buy-potion', { method: 'POST', body: { potionType } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
+      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 };
       updateUI(currentUser);
       showPopup(`Purchased ${POTIONS[potionType].name}! Added to inventory.`);
     } else {
@@ -398,7 +409,7 @@ function usePotion(potionType) {
   handleAPI('/api/use-potion', { method: 'POST', body: { potionType } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0 };
+      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 };
       updateUI(currentUser);
       applyPotion(potionType);
     } else {
@@ -502,10 +513,11 @@ function checkTitleUnlocks(user) {
   }
   const rarities = user.inventory?.rarities || {};
   const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
-  if ((Number(user.spins) || 0) >= 250) existing.add('signal-cartographer');
+  if ((Number(user.spins) || 0) >= 1000) existing.add('locked-in');
   if ((Number(user.spins) || 0) >= 5000) existing.add('endless-frequency');
   if (rarityTotal >= 10) existing.add('collector');
-  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if ((Number(user.items?.old_potato_sticker) || 0) >= 1) existing.add('potato');
   if (user.sea_realm_unlocked) existing.add('tidekeeper');
   gameState.userTitles = Array.from(existing);
 }
@@ -679,54 +691,215 @@ function enterDeepSea() {
     bubbleContainer.appendChild(bubble);
   }
 
-  // Setup Deep Sea roll
-  const deepSeaRollButton = document.getElementById('ds-roll-btn');
-  if (deepSeaRollButton && !deepSeaRollButton.dataset.bound) {
-    deepSeaRollButton.addEventListener('click', rollInDeepSea);
-    deepSeaRollButton.dataset.bound = 'true';
+  const fishingButton = document.getElementById('sea-fishing-action');
+  if (fishingButton && !fishingButton.dataset.bound) {
+    fishingButton.addEventListener('click', handleSeaFishingAction);
+    fishingButton.dataset.bound = 'true';
   }
-
-  showPopup('Welcome to the Deep Sea! 🌊 (2x Luck Boost Active)');
+  resetSeaFishingUI();
+  showPopup('The 4x-current Sea Realm is open.');
 }
 
-async function rollInDeepSea() {
-  const rollBtn = document.getElementById('ds-roll-btn');
-  const rollDisplay = document.getElementById('ds-roll-display');
-  const chanceDisplay = document.getElementById('ds-roll-chance-display');
+function clearFishingTimers() {
+  fishingTimers.forEach(timer => clearTimeout(timer));
+  fishingTimers = [];
+}
+
+function syncFishingClock(serverTime, requestStartedAt) {
+  const receivedAt = Date.now();
+  const requestMidpoint = (requestStartedAt + receivedAt) / 2;
+  gameState.fishingServerOffset = Number(serverTime) - requestMidpoint;
+  return receivedAt;
+}
+
+function resetSeaFishingUI(message = 'The line is ready.') {
+  const shouldCancel = ['waiting', 'reeling'].includes(gameState.fishingPhase);
+  clearFishingTimers();
+  gameState.fishingPhase = 'ready';
+  if (shouldCancel) handleAPI('/api/sea/fishing/cancel', { method: 'POST' });
+  const status = document.getElementById('sea-fishing-status');
+  const action = document.getElementById('sea-fishing-action');
+  const result = document.getElementById('sea-fishing-result');
+  const chance = document.getElementById('sea-fishing-chance');
+  const progress = document.getElementById('sea-fishing-progress');
+  const meter = document.getElementById('fishing-meter');
   const rewardDisplay = document.getElementById('ds-reward-display');
-  if (!rollBtn || !rollDisplay || !rewardDisplay) return;
+  if (status) status.textContent = message;
+  if (action) {
+    action.disabled = false;
+    action.textContent = 'CAST LINE';
+    action.classList.remove('fishing-action-bite');
+  }
+  if (result) result.textContent = 'Waiting for a catch';
+  if (chance) chance.textContent = 'Sea luck: 4x';
+  if (progress) progress.textContent = 'READY';
+  meter?.classList.remove('fishing-meter-live');
+  if (rewardDisplay) rewardDisplay.textContent = '🪙 Reward: 0 coins';
+}
 
-  setLoading(rollBtn, true, 'DIVING...');
-  rollDisplay.textContent = 'Reading the current...';
-  if (chanceDisplay) chanceDisplay.textContent = 'Chance: —';
+async function handleSeaFishingAction() {
+  if (gameState.fishingPhase === 'ready') return castSeaFishingLine();
+  if (gameState.fishingPhase === 'waiting') return hookSeaFish();
+  if (gameState.fishingPhase === 'reeling') return reelSeaFish();
+}
 
-  const response = await handleAPI('/api/spin', { method: 'POST', body: { dimension: 'deep-sea' } });
-  if (response.success && response.result && response.user) await animateRarityRoll(rollDisplay, response.result);
-  setLoading(rollBtn, false);
+async function castSeaFishingLine() {
+  const action = document.getElementById('sea-fishing-action');
+  const status = document.getElementById('sea-fishing-status');
+  const result = document.getElementById('sea-fishing-result');
+  const chance = document.getElementById('sea-fishing-chance');
+  const progress = document.getElementById('sea-fishing-progress');
+  if (!action || gameState.fishingPhase !== 'ready') return;
+  gameState.fishingPhase = 'casting';
+  action.disabled = true;
+  action.textContent = 'CASTING';
+  if (status) status.textContent = 'The float drifts into the deep...';
+  if (result) result.textContent = 'Line in the water';
+  if (chance) chance.textContent = 'Sea luck: 4x';
+  if (progress) progress.textContent = 'WAIT';
 
-  if (!response.success || !response.result || !response.user) {
-    rollDisplay.textContent = '❌ Dive Failed';
-    showPopup(response.error || 'Deep Sea roll failed', 'error');
+  const requestStartedAt = Date.now();
+  const response = await handleAPI('/api/sea/fishing/cast', { method: 'POST' });
+  if (!response.success || !response.fishing) {
+    resetSeaFishingUI(response.error || 'Could not cast the line.');
+    showPopup(response.error || 'Could not cast the line.', 'error');
     return;
   }
 
-  const result = response.result;
-  const multiplierDisplay = result.multiplier > 1 ? ` · ${result.multiplier}x coins` : '';
-  const luckDisplay = result.luckMultiplier > 1 ? ` · ${result.luckMultiplier}x luck` : '';
-  rollDisplay.style.color = getRarityDisplayColor(result);
-  rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
-  rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
-  if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
-  else rollDisplay.style.removeProperty('--roll-glow');
-  rollDisplay.textContent = `${result.name}${multiplierDisplay}${luckDisplay}`;
-  if (chanceDisplay) chanceDisplay.textContent = formatRollChance(result.rollChance);
-  rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
+  gameState.fishingPhase = 'waiting';
+  const receivedAt = syncFishingClock(response.fishing.serverTime, requestStartedAt);
+  action.textContent = 'WAIT FOR THE BITE';
+  const biteAt = Number(response.fishing.serverTime) + Number(response.fishing.biteInMs);
+  const biteDelay = Math.max(0, biteAt - (receivedAt + gameState.fishingServerOffset));
+  fishingTimers.push(setTimeout(() => {
+    if (gameState.fishingPhase !== 'waiting') return;
+    if (status) status.textContent = 'BITE! SET THE HOOK';
+    if (progress) progress.textContent = 'BITE';
+    action.disabled = false;
+    action.textContent = 'SET HOOK';
+    action.classList.add('fishing-action-bite');
+  }, biteDelay));
+  fishingTimers.push(setTimeout(() => {
+    if (gameState.fishingPhase === 'waiting') {
+      action.classList.remove('fishing-action-bite');
+      resetSeaFishingUI('The fish slipped away. Cast again.');
+    }
+  }, biteDelay + 2450));
+}
+
+async function hookSeaFish() {
+  const action = document.getElementById('sea-fishing-action');
+  const status = document.getElementById('sea-fishing-status');
+  const progress = document.getElementById('sea-fishing-progress');
+  action.disabled = true;
+  action.classList.remove('fishing-action-bite');
+  action.textContent = 'HOOK SET';
+  const requestStartedAt = Date.now();
+  const response = await handleAPI('/api/sea/fishing/hook', { method: 'POST' });
+  if (!response.success || !response.fishing) {
+    if (response.tooEarly) {
+      action.disabled = false;
+      action.textContent = 'SET HOOK';
+      return;
+    }
+    resetSeaFishingUI(response.error || 'The fish got away. Cast again.');
+    return;
+  }
+  clearFishingTimers();
+  syncFishingClock(response.fishing.serverTime, requestStartedAt);
+  if (status) status.textContent = 'Keep the line taut';
+  if (progress) progress.textContent = `REEL 1 / ${response.fishing.totalBeats}`;
+  scheduleFishingBeat(response.fishing);
+}
+
+function scheduleFishingBeat(fishing) {
+  const action = document.getElementById('sea-fishing-action');
+  const progress = document.getElementById('sea-fishing-progress');
+  const meter = document.getElementById('fishing-meter-needle');
+  document.getElementById('fishing-meter')?.classList.add('fishing-meter-live');
+  if (!action) return;
+  gameState.fishingPhase = 'reeling';
+  const targetAt = Number(fishing.targetAt) - gameState.fishingServerOffset;
+  const tolerance = Number(fishing.toleranceMs) || 650;
+  const untilTarget = Math.max(0, targetAt - Date.now());
+  const cycleDuration = Math.max(500, untilTarget * 2);
+  if (meter) {
+    meter.style.animation = 'none';
+    void meter.offsetWidth;
+    meter.style.animation = `fishingNeedleTravel ${cycleDuration}ms linear forwards`;
+  }
+  action.disabled = true;
+  action.textContent = 'REELING';
+  if (progress) progress.textContent = `REEL ${fishing.beat} / ${fishing.totalBeats}`;
+  fishingTimers.push(setTimeout(() => {
+    if (gameState.fishingPhase !== 'reeling') return;
+    action.disabled = false;
+    action.textContent = 'REEL NOW';
+  }, Math.max(0, untilTarget - tolerance)));
+  fishingTimers.push(setTimeout(() => {
+    if (gameState.fishingPhase === 'reeling') {
+      resetSeaFishingUI('The line went slack. Cast again.');
+    }
+  }, untilTarget + tolerance + 150));
+}
+
+async function reelSeaFish() {
+  const action = document.getElementById('sea-fishing-action');
+  if (!action || action.disabled) return;
+  action.disabled = true;
+  const requestStartedAt = Date.now();
+  const response = await handleAPI('/api/sea/fishing/tap', { method: 'POST' });
+  if (!response.success) {
+    if (response.tooEarly) {
+      action.disabled = false;
+      return;
+    }
+    resetSeaFishingUI(response.error || 'The fish escaped. Cast again.');
+    return;
+  }
+  clearFishingTimers();
+  if (response.fishing?.serverTime) syncFishingClock(response.fishing.serverTime, requestStartedAt);
+  if (response.fishing?.phase === 'reeling') {
+    scheduleFishingBeat(response.fishing);
+    return;
+  }
+  if (!response.result || !response.user) {
+    resetSeaFishingUI('The catch could not be recorded. Cast again.');
+    return;
+  }
+
+  const catchResult = response.result;
+  const status = document.getElementById('sea-fishing-status');
+  const result = document.getElementById('sea-fishing-result');
+  const chance = document.getElementById('sea-fishing-chance');
+  const progress = document.getElementById('sea-fishing-progress');
+  const meter = document.getElementById('fishing-meter');
+  const rewardDisplay = document.getElementById('ds-reward-display');
+  gameState.fishingPhase = 'caught';
+  meter?.classList.remove('fishing-meter-live');
+  if (status) status.textContent = 'CATCH SECURED';
+  if (progress) progress.textContent = catchResult.isItem ? 'CHEST' : 'LANDED';
+  if (result) result.textContent = catchResult.name;
+  if (chance) chance.textContent = formatRollChance(catchResult.rollChance);
+  if (rewardDisplay) rewardDisplay.textContent = `🪙 Reward: ${formatCoins(catchResult.reward)} coins`;
   currentUser = response.user;
   updateUI(currentUser);
-  showRewardPopup(`🪙 +${formatCoins(result.reward)} coins!`);
+  const actionButton = document.getElementById('sea-fishing-action');
+  if (actionButton) {
+    actionButton.disabled = false;
+    actionButton.textContent = 'CAST AGAIN';
+  }
+  gameState.fishingPhase = 'ready';
+  if (catchResult.isItem) showPopup('Treasure Chest caught. Open it from your Items inventory.');
+  else showPopup(`Caught ${catchResult.name}! +${formatCoins(catchResult.reward)} coins.`);
+  showRewardPopup(`+${formatCoins(catchResult.reward)} coins`);
 }
 
 function exitDeepSea() {
+  if (['waiting', 'reeling'].includes(gameState.fishingPhase)) {
+    handleAPI('/api/sea/fishing/cancel', { method: 'POST' });
+  }
+  clearFishingTimers();
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
@@ -771,7 +944,7 @@ function renderInventory(user) {
       rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🎲 No rare items yet. Roll to collect!</div>';
     } else {
       Object.entries(rarities).forEach(([key, count]) => {
-        const rarity = [...rarityOptions, ...globalOptions].find(r => r.key === key);
+        const rarity = [...rarityOptions, ...globalOptions, ...fishingGlobalOptions].find(r => r.key === key);
         if (!rarity) return;
         const card = document.createElement('div');
         const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
@@ -795,19 +968,19 @@ function renderInventory(user) {
   if (potGrid) {
     potGrid.innerHTML = '';
     const potions = currentUser?.potions || gameState.potionInventory;
-    const hasPotions = (potions.luck || 0) > 0 || (potions.speed || 0) > 0;
+    const hasPotions = Object.keys(POTIONS).some(key => (Number(potions[key]) || 0) > 0);
     if (!hasPotions) {
       potGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🧪 No potions. Buy some in the shop!</div>';
     } else {
-      Object.entries({ luck: 'Luck Potion I', speed: 'Speed Potion I' }).forEach(([key, name]) => {
+      Object.entries(POTIONS).forEach(([key, potion]) => {
         const count = potions[key] || 0;
         if (count <= 0) return;
-        const emoji = key === 'luck' ? '🍀' : '⚡';
+        const emoji = key === 'luck' ? '🍀' : key === 'speed' ? '⚡' : key === 'depthfinder' ? '🧭' : '🎣';
         const card = document.createElement('div');
         card.className = 'inventory-item';
         card.innerHTML = `
           <div>
-            <h4>${emoji} ${name}</h4>
+            <h4>${emoji} ${potion.name}</h4>
             <span>x${count} available</span>
           </div>
           <button class="btn potion-use" style="padding: 8px 12px; font-size: 0.85rem;">Use Now</button>
@@ -825,13 +998,17 @@ function renderInventory(user) {
     const items = [
       { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0, emoji: '🔮' },
       { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0, emoji: '🍀' },
-      { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' }
+      { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' },
+      { name: 'Treasure Chest', count: gameState.itemInventory.treasure_chest || 0, emoji: '🧰', openChest: true },
+      { name: 'Old Potato Sticker', count: gameState.itemInventory.old_potato_sticker || 0, emoji: '🏷️' },
+      { name: 'Empty Vial', count: gameState.itemInventory.empty_vial || 0, emoji: '🧪' }
     ];
     items.forEach(item => {
       if (item.count > 0) {
         const card = document.createElement('div');
         card.className = 'inventory-item';
-        card.innerHTML = `<div><h4>${item.emoji} ${item.name}</h4><span>${item.count}x available</span></div>`;
+        card.innerHTML = `<div><h4>${item.emoji} ${item.name}</h4><span>${item.count}x available</span></div>${item.openChest ? '<button class="btn open-treasure-chest" type="button">Open</button>' : ''}`;
+        card.querySelector('.open-treasure-chest')?.addEventListener('click', openTreasureChest);
         itemGrid.appendChild(card);
       }
     });
@@ -841,20 +1018,31 @@ function renderInventory(user) {
   }
 }
 
+async function openTreasureChest() {
+  const response = await handleAPI('/api/sea/open-treasure-chest', { method: 'POST' });
+  if (!response.success || !response.user) {
+    showPopup(response.error || 'Unable to open the Treasure Chest.', 'error');
+    return;
+  }
+  currentUser = response.user;
+  updateUI(currentUser);
+  showPopup('Found an Old Potato Sticker and an Empty Vial!');
+}
+
 function renderRarityCatalog() {
   const list = document.getElementById('rarity-catalog-list');
   if (!list) return;
   list.innerHTML = '';
 
-  [...rarityOptions, ...globalOptions]
+  [...rarityOptions, ...globalOptions, ...fishingGlobalOptions]
     .sort((left, right) => left.chance - right.chance)
     .forEach((rarity, index) => {
       const row = document.createElement('div');
       const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
-      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}`;
+      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.fishingOnly ? ' fishing-only-rarity' : ''}`;
       row.style.setProperty('--rarity-color', rarityColor);
       if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
-      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
+      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarity.fishingOnly ? '<small> SEA ONLY</small>' : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
       list.appendChild(row);
     });
 }
@@ -865,8 +1053,8 @@ function updateUI(user) {
   if (user.is_admin) setShutdownScreen(false);
   
   // Load game state from user
-  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0 };
-  gameState.potionInventory = user.potions || { luck: 0, speed: 0 };
+  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
+  gameState.potionInventory = user.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 };
   gameState.userTitles = user.titles || [];
   gameState.activeTitle = user.active_title || null;
   gameState.activeEffects = user.active_effects || {};
@@ -1079,12 +1267,12 @@ async function loadAdminUsers() {
           <button class="btn" type="submit">Save balance</button>
         </form>
         <form class="admin-adjust-form" data-adjustment="potion">
-          <label>Grant potion<select name="potion"><option value="luck">Luck</option><option value="speed">Speed</option></select></label>
+          <label>Grant potion<select name="potion">${Object.entries(POTIONS).map(([key, potion]) => `<option value="${key}">${escapeHtml(potion.name)}</option>`).join('')}</select></label>
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
         <form class="admin-adjust-form" data-adjustment="item">
-          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option></select></label>
+          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
@@ -1181,87 +1369,113 @@ async function loadAdminHeadline() {
   if (response.success) applyAdminHeadline(response.headline);
 }
 
-// ==================== THEME EVENTS ====================
+const LIVE_EVENT_PRESENTATION = {
+  'starlight-surge': { className: 'starlight-surge', startId: 'activate-starlight-surge', stopId: 'deactivate-starlight-surge' },
+  'meteor-shower': { className: 'meteor-shower-live', startId: 'activate-meteor-shower', stopId: 'deactivate-meteor-shower' },
+  'aurora-bloom': { className: 'aurora-bloom-live', startId: 'activate-aurora-bloom', stopId: 'deactivate-aurora-bloom' },
+  'golden-rush': { className: 'golden-rush-live', startId: 'activate-golden-rush', stopId: 'deactivate-golden-rush', shakeEveryMs: 18000 },
+  'abyssal-resonance': { className: 'abyssal-resonance-live', startId: 'activate-abyssal-resonance', stopId: 'deactivate-abyssal-resonance', shakeEveryMs: 26000 }
+};
+
+function triggerCameraShake() {
+  document.body.classList.remove('event-camera-shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('event-camera-shake');
+  clearTimeout(cameraShakeEndTimer);
+  cameraShakeEndTimer = setTimeout(() => document.body.classList.remove('event-camera-shake'), 720);
+}
+
+function clearEventVisuals() {
+  eventVisualLayer?.remove();
+  eventVisualLayer = null;
+  clearInterval(cameraShakeTimer);
+  clearTimeout(cameraShakeEndTimer);
+  cameraShakeTimer = null;
+  cameraShakeEndTimer = null;
+  document.body.classList.remove('event-camera-shake');
+  Object.values(LIVE_EVENT_PRESENTATION).forEach(event => document.body.classList.remove(event.className));
+}
+
+function createAdminEventVisual(eventName) {
+  clearEventVisuals();
+  const presentation = LIVE_EVENT_PRESENTATION[eventName];
+  if (!presentation) return;
+  document.body.classList.add(presentation.className);
+  const layer = document.createElement('div');
+  layer.className = `event-visual-layer event-visual-${eventName}`;
+  layer.setAttribute('aria-hidden', 'true');
+  const starfall = ['starlight-surge', 'meteor-shower', 'golden-rush'].includes(eventName);
+  if (starfall) {
+    for (let index = 0; index < 40; index += 1) {
+      const star = document.createElement('span');
+      star.className = eventName === 'golden-rush' ? 'event-falling-star event-falling-gold' : 'event-falling-star';
+      star.style.setProperty('--star-left', `${Math.random() * 100}%`);
+      star.style.setProperty('--star-delay', `${Math.random() * -12}s`);
+      star.style.setProperty('--star-duration', `${5 + Math.random() * 8}s`);
+      star.style.setProperty('--star-size', `${3 + Math.random() * 6}px`);
+      layer.appendChild(star);
+    }
+  }
+  if (eventName === 'aurora-bloom') {
+    for (let index = 0; index < 6; index += 1) {
+      const ribbon = document.createElement('span');
+      ribbon.className = 'event-aurora-ribbon';
+      ribbon.style.setProperty('--ribbon-offset', `${index * 12}%`);
+      ribbon.style.setProperty('--ribbon-delay', `${index * -2.5}s`);
+      layer.appendChild(ribbon);
+    }
+  }
+  if (eventName === 'abyssal-resonance') {
+    for (let index = 0; index < 24; index += 1) {
+      const bubble = document.createElement('span');
+      bubble.className = 'event-abyss-bubble';
+      bubble.style.setProperty('--bubble-left', `${Math.random() * 100}%`);
+      bubble.style.setProperty('--bubble-size', `${6 + Math.random() * 18}px`);
+      bubble.style.setProperty('--bubble-delay', `${Math.random() * -14}s`);
+      bubble.style.setProperty('--bubble-duration', `${8 + Math.random() * 10}s`);
+      layer.appendChild(bubble);
+    }
+  }
+  document.body.appendChild(layer);
+  eventVisualLayer = layer;
+  if (presentation.shakeEveryMs) {
+    triggerCameraShake();
+    cameraShakeTimer = setInterval(triggerCameraShake, presentation.shakeEveryMs);
+  }
+}
+
 function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const event = typeof eventData === 'string' ? { eventName: eventData, initiatedBy: legacyInitiatedBy } : eventData || {};
   const eventName = String(event.eventName || '').toLowerCase();
-  const isActive = event.active !== false;
-  const title = event.title || (eventName === 'starlight-surge' ? 'Starlight Surge' : 'Meteor Shower');
+  const presentation = LIVE_EVENT_PRESENTATION[eventName];
+  if (!presentation) return;
+  const active = event.active !== false;
+  const title = event.title || eventName.replaceAll('-', ' ');
+  const description = event.description || 'Special rewards are active';
   const status = document.getElementById(`${eventName}-status`);
-  const startButton = eventName === 'starlight-surge' ? document.getElementById('activate-starlight-surge') : document.getElementById('activate-meteor-shower');
-  const stopButton = eventName === 'starlight-surge' ? document.getElementById('deactivate-starlight-surge') : null;
+  const startButton = document.getElementById(presentation.startId);
+  const stopButton = document.getElementById(presentation.stopId);
 
-  if (eventName === 'starlight-surge') {
-    document.body.classList.toggle('starlight-surge', isActive);
-    if (startButton) startButton.hidden = isActive;
-    if (stopButton) stopButton.hidden = !isActive;
-  } else if (eventName === 'meteor-shower') {
-    if (isActive) {
-      createMeteorShower(event.durationSeconds || 90);
-      if (startButton) startButton.disabled = true;
-    } else {
-      meteorShowerLayer?.remove();
-      meteorShowerLayer = null;
-      if (startButton) startButton.disabled = false;
-    }
+  if (active) {
+    createAdminEventVisual(eventName);
+    if (startButton) startButton.hidden = true;
+    if (stopButton) stopButton.hidden = false;
+    if (status) status.textContent = `LIVE · ${description}`;
   } else {
-    return;
+    clearEventVisuals();
+    if (startButton) startButton.hidden = false;
+    if (stopButton) stopButton.hidden = true;
+    if (status) status.textContent = 'Ready · stays live until ended';
   }
 
-  clearInterval(eventCountdownTimer);
-  eventCountdownTimer = null;
   const eventBar = document.getElementById('active-event-bar');
   const eventTitle = document.getElementById('active-event-title');
   const eventDetails = document.getElementById('active-event-details');
-  if (status) {
-    if (!isActive) {
-      status.textContent = 'Ready';
-      eventBar?.classList.add('hidden');
-    } else {
-      const rewardText = eventName === 'starlight-surge' ? '2x coins per roll' : '+250 coins per roll';
-      const updateStatus = () => {
-        const remaining = event.expiresAt ? Math.max(0, Math.ceil((Number(event.expiresAt) - Date.now()) / 1000)) : event.durationSeconds || 0;
-        status.textContent = `ACTIVE · ${rewardText} · ${remaining}s`;
-        if (eventTitle) eventTitle.textContent = title;
-        if (eventDetails) {
-          const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
-          const seconds = (remaining % 60).toString().padStart(2, '0');
-          eventDetails.textContent = `${rewardText} · ${minutes}:${seconds} remaining`;
-        }
-        eventBar?.classList.remove('hidden');
-      };
-      updateStatus();
-      eventCountdownTimer = setInterval(updateStatus, 1000);
-    }
-  }
-
+  if (eventTitle) eventTitle.textContent = title;
+  if (eventDetails) eventDetails.textContent = active ? description : '';
+  eventBar?.classList.toggle('hidden', !active);
   const initiatedBy = event.initiatedBy || 'Admin';
-  showPopup(isActive ? `${title} activated by ${initiatedBy}!` : `${title} ended.`, '#38bdf8');
-}
-
-function createMeteorShower(durationSeconds) {
-  meteorShowerLayer?.remove();
-  const layer = document.createElement('div');
-  layer.className = 'meteor-layer';
-  layer.setAttribute('aria-hidden', 'true');
-
-  for (let index = 0; index < 18; index += 1) {
-    const meteor = document.createElement('span');
-    meteor.className = 'event-meteor';
-    meteor.style.setProperty('--meteor-left', `${Math.random() * 100}%`);
-    meteor.style.setProperty('--meteor-delay', `${Math.random() * 6}s`);
-    meteor.style.setProperty('--meteor-duration', `${2.8 + Math.random() * 2.6}s`);
-    layer.appendChild(meteor);
-  }
-
-  document.body.appendChild(layer);
-  meteorShowerLayer = layer;
-  setTimeout(() => {
-    if (meteorShowerLayer === layer) {
-      layer.remove();
-      meteorShowerLayer = null;
-    }
-  }, durationSeconds * 1000);
+  showPopup(active ? `${title} activated by ${initiatedBy}!` : `${title} ended.`, active ? '#38bdf8' : '#64748b');
 }
 
 // ==================== CHAT API ====================
@@ -1668,16 +1882,10 @@ document.addEventListener('DOMContentLoaded', () => {
     applyAdminHeadline(response.headline);
     showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
   });
-  
-  // Server-authoritative, timed reward events.
-  document.getElementById('activate-starlight-surge')?.addEventListener('click', () => {
-    triggerAdminEvent('starlight-surge');
-  });
-  document.getElementById('deactivate-starlight-surge')?.addEventListener('click', () => {
-    triggerAdminEvent('starlight-surge', 'stop');
-  });
-  document.getElementById('activate-meteor-shower')?.addEventListener('click', () => {
-    triggerAdminEvent('meteor-shower');
+
+  Object.entries(LIVE_EVENT_PRESENTATION).forEach(([eventName, presentation]) => {
+    document.getElementById(presentation.startId)?.addEventListener('click', () => triggerAdminEvent(eventName));
+    document.getElementById(presentation.stopId)?.addEventListener('click', () => triggerAdminEvent(eventName, 'stop'));
   });
   
   // Broadcast button
