@@ -5111,31 +5111,54 @@
         .fishing-waterline::after { top: 25px; animation-delay: -3.5s; opacity: 0.48; }
         .fishing-meter {
             position: relative;
-            height: 18px;
+            height: 42px;
             margin: 25px 0 18px;
             overflow: hidden;
             border: 1px solid rgba(103, 232, 249, 0.24);
-            background: #04121f;
+            background: linear-gradient(180deg, #04121f, #06233a);
         }
-        .fishing-meter-target {
+        .fishing-progress-fill {
+            position: absolute;
+            z-index: 0;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 4px;
+            background: #5ee7d1;
+            box-shadow: 0 0 12px #22d3ee;
+            transition: width 90ms linear;
+        }
+        .fishing-bar {
             position: absolute;
             z-index: 1;
-            top: 0;
-            bottom: 0;
-            left: calc(50% - 9%);
-            width: 18%;
-            background: rgba(94, 234, 212, 0.18);
-            box-shadow: inset 0 0 16px rgba(94, 234, 212, 0.35);
+            top: 5px;
+            bottom: 7px;
+            left: 50%;
+            width: 24%;
+            transform: translateX(-50%);
+            border: 1px solid #5ee7d1;
+            border-radius: 3px;
+            background: rgba(45, 212, 191, 0.2);
+            box-shadow: 0 0 14px rgba(45, 212, 191, 0.24), inset 0 0 12px rgba(45, 212, 191, 0.12);
+            transition: box-shadow 100ms, background 100ms;
         }
-        .fishing-meter-needle {
+        .fishing-bar-moving {
+            background: rgba(94, 234, 212, 0.36);
+            box-shadow: 0 0 19px rgba(45, 212, 191, 0.56), inset 0 0 14px rgba(94, 234, 212, 0.2);
+        }
+        .fishing-fish {
             position: absolute;
             z-index: 2;
-            top: -3px;
-            bottom: -3px;
-            left: 0;
-            width: 3px;
-            background: #f0fdff;
-            box-shadow: 0 0 10px 2px #22d3ee;
+            top: 50%;
+            left: 50%;
+            width: 15px;
+            height: 15px;
+            transform: translate(-50%, -50%) rotate(45deg);
+            border: 2px solid #f0fdff;
+            border-radius: 50% 50% 50% 2px;
+            background: #22d3ee;
+            box-shadow: 0 0 14px 3px rgba(34, 211, 238, 0.64);
+            transition: left 70ms linear;
         }
         .fishing-meter-live { border-color: rgba(94, 234, 212, 0.68); box-shadow: 0 0 18px rgba(34, 211, 238, 0.2); }
         .fishing-readout { display: grid; gap: 5px; min-height: 82px; }
@@ -5144,8 +5167,22 @@
         .sea-fishing-chance { color: #94a3b8; font-size: 0.76rem; }
         .fishing-reward { color: #cbd5e1; font-size: 0.9rem; }
         .fishing-action { min-width: 180px; }
+        .fishing-actions { display: flex; align-items: center; gap: 10px; }
+        .fishing-hold-control {
+            min-height: 48px;
+            padding: 0 14px;
+            border: 1px solid rgba(103, 232, 249, 0.35);
+            border-radius: 3px;
+            background: rgba(8, 47, 73, 0.92);
+            color: #a5f3fc;
+            font-size: 0.74rem;
+            font-weight: 900;
+            touch-action: none;
+            user-select: none;
+        }
+        .fishing-hold-control:active,
+        .fishing-hold-active { background: rgba(34, 211, 238, 0.26); box-shadow: 0 0 18px rgba(34, 211, 238, 0.24); }
         .fishing-action-bite { animation: bitePulse 550ms ease-in-out infinite alternate; }
-        @keyframes fishingNeedleTravel { from { left: 0; } to { left: calc(100% - 3px); } }
         @keyframes fishingWaterDrift { from { transform: translateX(-5%) skewX(-4deg); } to { transform: translateX(5%) skewX(4deg); } }
         @keyframes bitePulse { to { box-shadow: 0 0 28px rgba(34, 211, 238, 0.78); filter: brightness(1.3); } }
 
@@ -5217,6 +5254,26 @@
         .event-item.event-abyssal { border-color: rgba(34, 211, 238, 0.44); background: linear-gradient(140deg, #07354b, #0b1b34); }
         .fishing-only-rarity small { color: #67e8f9; font-size: 0.56rem; font-weight: 900; }
         .admin-user-tools select option { background: #0b1b34; }
+        .potion-inventory-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 14px;
+        }
+        .potion-inventory-copy { display: grid; min-width: 0; gap: 5px; }
+        .potion-inventory-copy h4 { overflow-wrap: anywhere; }
+        .potion-inventory-copy span { font-size: 0.8rem; }
+        .potion-use {
+            display: grid;
+            min-width: 94px;
+            min-height: 40px;
+            place-items: center;
+            justify-self: end;
+            align-self: center;
+            margin: 0;
+            padding: 7px 12px;
+            white-space: nowrap;
+        }
         .update-archive {
             margin-top: 18px;
             border-top: 1px solid rgba(191, 219, 254, 0.15);
@@ -5233,6 +5290,8 @@
 
         @media (max-width: 560px) {
             .fishing-panel-footer { align-items: stretch; flex-direction: column; }
+            .fishing-actions { flex-direction: column; align-items: stretch; }
+            .fishing-hold-control { min-height: 54px; }
             .fishing-action { width: 100%; }
             .sea-fishing-result { overflow-wrap: anywhere; }
         }
@@ -5648,8 +5707,9 @@
                     </div>
                     <div class="fishing-waterline" aria-hidden="true"><span></span></div>
                     <div class="fishing-meter" id="fishing-meter">
-                        <span class="fishing-meter-target" aria-hidden="true"></span>
-                        <span class="fishing-meter-needle" id="fishing-meter-needle" aria-hidden="true"></span>
+                        <span class="fishing-progress-fill" id="fishing-progress-fill" aria-hidden="true"></span>
+                        <span class="fishing-bar" id="fishing-bar" aria-hidden="true"></span>
+                        <span class="fishing-fish" id="fishing-fish" aria-hidden="true"></span>
                     </div>
                     <div class="fishing-readout">
                         <p class="sea-fishing-status" id="sea-fishing-status" role="status" aria-live="polite">The line is ready.</p>
@@ -5658,7 +5718,10 @@
                     </div>
                     <div class="fishing-panel-footer">
                         <span class="fishing-reward" id="ds-reward-display">🪙 Reward: 0 coins</span>
-                        <button class="roll-btn fishing-action" id="sea-fishing-action" type="button">CAST LINE</button>
+                        <div class="fishing-actions">
+                            <button class="fishing-hold-control" id="sea-reel-hold" type="button" aria-label="Hold to move the fishing bar">HOLD TO MOVE</button>
+                            <button class="roll-btn fishing-action" id="sea-fishing-action" type="button">CAST LINE</button>
+                        </div>
                     </div>
                 </div>
             </div>
