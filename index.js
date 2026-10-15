@@ -241,6 +241,43 @@ function selectWeightedOption(options, luckMultiplier = 1) {
   };
 }
 
+function getFishingFishPosition(session, timestamp) {
+  const elapsed = Math.max(0, timestamp - session.reelStartedAt);
+  const wave = 0.5 + 0.31 * Math.sin(elapsed / 1050) + 0.16 * Math.sin(elapsed / 480);
+  return Math.max(0.04, Math.min(0.96, wave));
+}
+
+function advanceFishingReel(session, timestamp) {
+  let cursor = session.simulationAt;
+  while (cursor < timestamp) {
+    const step = Math.min(40, timestamp - cursor);
+    const direction = session.spacePressed ? 1 : -1;
+    const speed = session.spacePressed ? 0.00072 : 0.00052;
+    session.barPosition = Math.max(0.02, Math.min(0.98, session.barPosition + direction * speed * step));
+    const fishPosition = getFishingFishPosition(session, cursor + step);
+    const isInside = Math.abs(fishPosition - session.barPosition) <= session.barWidth / 2;
+    session.progressMs = isInside
+      ? Math.min(4000, session.progressMs + step)
+      : Math.max(0, session.progressMs - step * 0.72);
+    cursor += step;
+  }
+  session.simulationAt = timestamp;
+  session.fishPosition = getFishingFishPosition(session, timestamp);
+  return session;
+}
+
+function getFishingReelState(session, timestamp = Date.now()) {
+  return {
+    phase: 'reeling',
+    barPosition: session.barPosition,
+    fishPosition: getFishingFishPosition(session, timestamp),
+    barWidth: session.barWidth,
+    progressMs: Math.round(session.progressMs),
+    requiredProgressMs: 4000,
+    serverTime: timestamp
+  };
+}
+
 async function executeQuery(text, params = []) {
   if (!pool) throw new Error('Database unavailable');
   return pool.query(text, params);
@@ -1361,22 +1398,14 @@ app.post('/api/sea/fishing/hook', (req, res) => {
   }
 
   session.phase = 'reeling';
-  session.totalBeats = 4;
-  session.beat = 0;
-  session.toleranceMs = Math.round(650 * getActiveEffectMultiplier(key, 'steady-reel'));
-  session.targetAt = now + 1000 + Math.floor(Math.random() * 450);
-  session.expiresAt = session.targetAt + session.toleranceMs + 6500;
-  res.json({
-    success: true,
-    fishing: {
-      phase: 'reeling',
-      beat: 1,
-      totalBeats: session.totalBeats,
-      targetAt: session.targetAt,
-      toleranceMs: session.toleranceMs,
-      serverTime: now
-    }
-  });
+  session.reelStartedAt = now;
+  session.simulationAt = now;
+  session.progressMs = 0;
+  session.barPosition = 0.5;
+  session.barWidth = Math.min(0.38, 0.24 * getActiveEffectMultiplier(key, 'steady-reel'));
+  session.spacePressed = false;
+  session.expiresAt = now + 30000;
+  return res.json({ success: true, fishing: getFishingReelState(session, now) });
 });
 
 app.post('/api/sea/fishing/cancel', (req, res) => {
@@ -1385,7 +1414,7 @@ app.post('/api/sea/fishing/cancel', (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/sea/fishing/tap', async (req, res) => {
+app.post('/api/sea/fishing/input', (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   const key = normalizeUsername(req.session.username);
   const session = activeFishingSessions.get(key);
@@ -1393,75 +1422,85 @@ app.post('/api/sea/fishing/tap', async (req, res) => {
   if (!session || session.phase !== 'reeling') {
     return res.status(409).json({ success: false, error: 'There is no active reel challenge.' });
   }
-  if (now < session.targetAt - session.toleranceMs) {
-    return res.status(409).json({ success: false, tooEarly: true, error: 'Wait for the reel marker.' });
-  }
-  if (now > session.targetAt + session.toleranceMs || now > session.expiresAt) {
+  advanceFishingReel(session, now);
+  if (now > session.expiresAt) {
     activeFishingSessions.delete(key);
-    return res.status(408).json({ success: false, error: 'The fish slipped the hook. Cast again.' });
+    return res.status(408).json({ success: false, error: 'The fish escaped. Cast again.' });
+  }
+  session.spacePressed = Boolean(req.body?.pressed);
+  res.json({ success: true, fishing: getFishingReelState(session, now) });
+});
+
+async function finishFishingCatch(username, key) {
+  const user = await findUser(username);
+  if (!user?.sea_realm_unlocked) {
+    return { status: 403, payload: { success: false, error: 'Sea Realm access is required to complete a catch.' } };
+  }
+  const luckMultiplier = getLuckMultiplier(username, 'deep-sea');
+  const selection = selectWeightedOption(FISHING_OPTIONS, luckMultiplier);
+  const result = selection.result;
+  const inventory = normalizeInventory(user.inventory);
+  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
+  if (result.isItem) {
+    items.treasure_chest = (Number(items.treasure_chest) || 0) + 1;
+  } else {
+    inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
   }
 
-  session.beat += 1;
-  if (session.beat < session.totalBeats) {
-    session.targetAt = now + 1000 + Math.floor(Math.random() * 550);
-    session.expiresAt = session.targetAt + session.toleranceMs + 1000;
-    return res.json({
-      success: true,
-      fishing: {
-        phase: 'reeling',
-        beat: session.beat + 1,
-        totalBeats: session.totalBeats,
-        targetAt: session.targetAt,
-        toleranceMs: session.toleranceMs,
-        serverTime: now
-      }
-    });
+  const event = getActiveGameEvent();
+  const reward = Math.round(result.reward * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
+  const coins = Number(user.coins || 0) + reward;
+  const titles = getUnlockedTitles({ ...user, inventory, items, coins });
+  await updateUser(username, {
+    inventory: JSON.stringify(inventory),
+    items: JSON.stringify(items),
+    coins,
+    titles: JSON.stringify(titles)
+  });
+
+  if (result.isGlobal) {
+    const message = `${user.username} caught ${result.name} while fishing!`;
+    const chatRecord = await saveChatMessage(user.username, message, result.name, result.glowColor || result.color, false, true);
+    io.emit('chat-message', chatRecord);
   }
 
-  activeFishingSessions.delete(key);
-  try {
-    const user = await findUser(req.session.username);
-    if (!user?.sea_realm_unlocked) {
-      return res.status(403).json({ success: false, error: 'Sea Realm access is required to complete a catch.' });
-    }
-    const luckMultiplier = getLuckMultiplier(req.session.username, 'deep-sea');
-    const selection = selectWeightedOption(FISHING_OPTIONS, luckMultiplier);
-    const result = selection.result;
-    const inventory = normalizeInventory(user.inventory);
-    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
-    if (result.isItem) {
-      items.treasure_chest = (Number(items.treasure_chest) || 0) + 1;
-    } else {
-      inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
-    }
-
-    const event = getActiveGameEvent();
-    const reward = Math.round(result.reward * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
-    const coins = Number(user.coins || 0) + reward;
-    const titles = getUnlockedTitles({ ...user, inventory, items, coins });
-    await updateUser(req.session.username, {
-      inventory: JSON.stringify(inventory),
-      items: JSON.stringify(items),
-      coins,
-      titles: JSON.stringify(titles)
-    });
-
-    if (result.isGlobal) {
-      const message = `${user.username} caught ${result.name} while fishing!`;
-      const chatRecord = await saveChatMessage(user.username, message, result.name, result.glowColor || result.color, false, true);
-      io.emit('chat-message', chatRecord);
-    }
-
-    const updatedUser = await findUser(req.session.username);
-    res.json({
+  const updatedUser = await findUser(username);
+  return {
+    status: 200,
+    payload: {
       success: true,
       fishing: { phase: 'caught' },
       result: { ...result, rollChance: selection.rollChance, luckMultiplier, reward },
       user: sanitizeUser(updatedUser)
-    });
+    }
+  };
+}
+
+app.post('/api/sea/fishing/tick', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const username = req.session.username;
+  const key = normalizeUsername(username);
+  const session = activeFishingSessions.get(key);
+  const now = Date.now();
+  if (!session || session.phase !== 'reeling') {
+    return res.status(409).json({ success: false, error: 'There is no active reel challenge.' });
+  }
+  advanceFishingReel(session, now);
+  if (now > session.expiresAt) {
+    activeFishingSessions.delete(key);
+    return res.status(408).json({ success: false, error: 'The fish escaped. Cast again.' });
+  }
+  if (session.progressMs < 4000) {
+    return res.json({ success: true, fishing: getFishingReelState(session, now) });
+  }
+
+  activeFishingSessions.delete(key);
+  try {
+    const outcome = await finishFishingCatch(username, key);
+    return res.status(outcome.status).json(outcome.payload);
   } catch (error) {
     console.error('Fishing catch error:', error.message || error);
-    res.status(503).json({ success: false, error: 'Your catch could not be saved. Try fishing again.' });
+    return res.status(503).json({ success: false, error: 'Your catch could not be saved. Try fishing again.' });
   }
 });
 
