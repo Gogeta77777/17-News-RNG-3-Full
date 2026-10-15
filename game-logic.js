@@ -40,8 +40,8 @@ const fishingGlobalOptions = [
 const POTIONS = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck', effectKey: 'luck' },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
-  depthfinder: { name: 'Depthfinder Tonic', cost: 9000, multiplier: 2, duration: 180, effect: 'fishing luck', effectKey: 'deep-luck' },
-  'steady-reel': { name: 'Steady Reel Elixir', cost: 6500, multiplier: 1.5, duration: 180, effect: 'reel timing window', effectKey: 'steady-reel' }
+  depthfinder: { name: 'Depthfinder Tonic', cost: 9000, vialCost: 1, multiplier: 2, duration: 180, effect: 'fishing luck', effectKey: 'deep-luck' },
+  'steady-reel': { name: 'Steady Reel Elixir', cost: 6500, vialCost: 1, multiplier: 1.5, duration: 180, effect: 'reel timing window', effectKey: 'steady-reel' }
 };
 
 const ROTATING_SHOP_ITEMS = [
@@ -74,6 +74,10 @@ let eventVisualLayer = null;
 let cameraShakeTimer = null;
 let cameraShakeEndTimer = null;
 let fishingTimers = [];
+let fishingTickTimer = null;
+let fishingTickPending = false;
+let fishingInputPending = false;
+let queuedFishingInput = null;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -83,6 +87,7 @@ let gameState = {
   shopRotationSlot: null,
   shopRefreshPending: false,
   shopRetryAt: 0,
+  fishingServerPressed: false,
   deathSeaUnlocked: false,
   portalFragments: 0,
   seaEssence: 0,
@@ -696,6 +701,7 @@ function enterDeepSea() {
     fishingButton.addEventListener('click', handleSeaFishingAction);
     fishingButton.dataset.bound = 'true';
   }
+  bindFishingControls();
   resetSeaFishingUI();
   showPopup('The 4x-current Sea Realm is open.');
 }
@@ -703,6 +709,11 @@ function enterDeepSea() {
 function clearFishingTimers() {
   fishingTimers.forEach(timer => clearTimeout(timer));
   fishingTimers = [];
+  clearInterval(fishingTickTimer);
+  fishingTickTimer = null;
+  fishingTickPending = false;
+  fishingInputPending = false;
+  queuedFishingInput = null;
 }
 
 function syncFishingClock(serverTime, requestStartedAt) {
@@ -712,10 +723,72 @@ function syncFishingClock(serverTime, requestStartedAt) {
   return receivedAt;
 }
 
+function bindFishingControls() {
+  if (document.documentElement.dataset.fishingControlsBound) return;
+  document.addEventListener('keydown', event => {
+    if (gameState.currentDimension !== 'deep-sea' || event.code !== 'Space') return;
+    event.preventDefault();
+    if (!event.repeat) setFishingBarMovement(true);
+  });
+  document.addEventListener('keyup', event => {
+    if (gameState.currentDimension === 'deep-sea' && event.code === 'Space') {
+      event.preventDefault();
+      setFishingBarMovement(false);
+    }
+  });
+  window.addEventListener('blur', () => setFishingBarMovement(false));
+
+  const holdButton = document.getElementById('sea-reel-hold');
+  if (holdButton && !holdButton.dataset.bound) {
+    holdButton.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      holdButton.setPointerCapture?.(event.pointerId);
+      setFishingBarMovement(true);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave', 'lostpointercapture'].forEach(type => {
+      holdButton.addEventListener(type, () => setFishingBarMovement(false));
+    });
+    holdButton.dataset.bound = 'true';
+  }
+  document.documentElement.dataset.fishingControlsBound = 'true';
+}
+
+async function setFishingBarMovement(pressed) {
+  if (gameState.fishingPhase !== 'reeling' || Boolean(gameState.fishingSpacePressed) === pressed) return;
+  gameState.fishingSpacePressed = pressed;
+  document.getElementById('sea-reel-hold')?.classList.toggle('fishing-hold-active', pressed);
+  if (fishingInputPending) {
+    queuedFishingInput = pressed;
+    return;
+  }
+  fishingInputPending = true;
+  const requestStartedAt = Date.now();
+  const response = await handleAPI('/api/sea/fishing/input', { method: 'POST', body: { pressed } });
+  fishingInputPending = false;
+  if (gameState.fishingPhase !== 'reeling') return;
+  if (response.success && response.fishing) {
+    gameState.fishingServerPressed = pressed;
+    syncFishingClock(response.fishing.serverTime, requestStartedAt);
+    renderFishingReelState(response.fishing);
+  } else if (!response.success && response.status !== 409) {
+    resetSeaFishingUI(response.error || 'The fish escaped. Cast again.');
+  }
+  if (queuedFishingInput !== null) {
+    const nextPressed = queuedFishingInput;
+    queuedFishingInput = null;
+    if (gameState.fishingServerPressed !== nextPressed) {
+      gameState.fishingSpacePressed = !nextPressed;
+      setFishingBarMovement(nextPressed);
+    }
+  }
+}
+
 function resetSeaFishingUI(message = 'The line is ready.') {
   const shouldCancel = ['waiting', 'reeling'].includes(gameState.fishingPhase);
   clearFishingTimers();
   gameState.fishingPhase = 'ready';
+  gameState.fishingSpacePressed = false;
+  gameState.fishingServerPressed = false;
   if (shouldCancel) handleAPI('/api/sea/fishing/cancel', { method: 'POST' });
   const status = document.getElementById('sea-fishing-status');
   const action = document.getElementById('sea-fishing-action');
@@ -724,6 +797,9 @@ function resetSeaFishingUI(message = 'The line is ready.') {
   const progress = document.getElementById('sea-fishing-progress');
   const meter = document.getElementById('fishing-meter');
   const rewardDisplay = document.getElementById('ds-reward-display');
+  const bar = document.getElementById('fishing-bar');
+  const fish = document.getElementById('fishing-fish');
+  const fill = document.getElementById('fishing-progress-fill');
   if (status) status.textContent = message;
   if (action) {
     action.disabled = false;
@@ -734,13 +810,20 @@ function resetSeaFishingUI(message = 'The line is ready.') {
   if (chance) chance.textContent = 'Sea luck: 4x';
   if (progress) progress.textContent = 'READY';
   meter?.classList.remove('fishing-meter-live');
+  if (bar) {
+    bar.style.left = '50%';
+    bar.style.width = '24%';
+    bar.classList.remove('fishing-bar-moving');
+  }
+  if (fish) fish.style.left = '50%';
+  if (fill) fill.style.width = '0%';
+  document.getElementById('sea-reel-hold')?.classList.remove('fishing-hold-active');
   if (rewardDisplay) rewardDisplay.textContent = '🪙 Reward: 0 coins';
 }
 
 async function handleSeaFishingAction() {
   if (gameState.fishingPhase === 'ready') return castSeaFishingLine();
   if (gameState.fishingPhase === 'waiting') return hookSeaFish();
-  if (gameState.fishingPhase === 'reeling') return reelSeaFish();
 }
 
 async function castSeaFishingLine() {
@@ -806,61 +889,51 @@ async function hookSeaFish() {
     return;
   }
   clearFishingTimers();
-  syncFishingClock(response.fishing.serverTime, requestStartedAt);
-  if (status) status.textContent = 'Keep the line taut';
-  if (progress) progress.textContent = `REEL 1 / ${response.fishing.totalBeats}`;
-  scheduleFishingBeat(response.fishing);
-}
-
-function scheduleFishingBeat(fishing) {
-  const action = document.getElementById('sea-fishing-action');
-  const progress = document.getElementById('sea-fishing-progress');
-  const meter = document.getElementById('fishing-meter-needle');
-  document.getElementById('fishing-meter')?.classList.add('fishing-meter-live');
-  if (!action) return;
   gameState.fishingPhase = 'reeling';
-  const targetAt = Number(fishing.targetAt) - gameState.fishingServerOffset;
-  const tolerance = Number(fishing.toleranceMs) || 650;
-  const untilTarget = Math.max(0, targetAt - Date.now());
-  const cycleDuration = Math.max(500, untilTarget * 2);
-  if (meter) {
-    meter.style.animation = 'none';
-    void meter.offsetWidth;
-    meter.style.animation = `fishingNeedleTravel ${cycleDuration}ms linear forwards`;
-  }
-  action.disabled = true;
-  action.textContent = 'REELING';
-  if (progress) progress.textContent = `REEL ${fishing.beat} / ${fishing.totalBeats}`;
-  fishingTimers.push(setTimeout(() => {
-    if (gameState.fishingPhase !== 'reeling') return;
-    action.disabled = false;
-    action.textContent = 'REEL NOW';
-  }, Math.max(0, untilTarget - tolerance)));
-  fishingTimers.push(setTimeout(() => {
-    if (gameState.fishingPhase === 'reeling') {
-      resetSeaFishingUI('The line went slack. Cast again.');
-    }
-  }, untilTarget + tolerance + 150));
+  gameState.fishingSpacePressed = false;
+  gameState.fishingServerPressed = false;
+  syncFishingClock(response.fishing.serverTime, requestStartedAt);
+  renderFishingReelState(response.fishing);
+  if (status) status.textContent = 'Hold Space to move the bar. Keep the fish inside for 4 seconds.';
+  if (progress) progress.textContent = '0.0 / 4.0 s';
+  fishingTickTimer = setInterval(tickFishingReel, 100);
 }
 
-async function reelSeaFish() {
+function renderFishingReelState(fishing) {
+  const bar = document.getElementById('fishing-bar');
+  const fish = document.getElementById('fishing-fish');
+  const fill = document.getElementById('fishing-progress-fill');
+  const progress = document.getElementById('sea-fishing-progress');
   const action = document.getElementById('sea-fishing-action');
-  if (!action || action.disabled) return;
-  action.disabled = true;
+  gameState.fishingPhase = 'reeling';
+  if (bar) {
+    bar.style.left = `${Number(fishing.barPosition) * 100}%`;
+    bar.style.width = `${Number(fishing.barWidth) * 100}%`;
+    bar.classList.toggle('fishing-bar-moving', Boolean(gameState.fishingSpacePressed));
+  }
+  if (fish) fish.style.left = `${Number(fishing.fishPosition) * 100}%`;
+  if (fill) fill.style.width = `${Math.min(100, Number(fishing.progressMs) / 4000 * 100)}%`;
+  if (progress) progress.textContent = `${(Number(fishing.progressMs) / 1000).toFixed(1)} / 4.0 s`;
+  if (action) {
+    action.disabled = true;
+    action.textContent = 'REELING';
+  }
+}
+
+async function tickFishingReel() {
+  if (fishingTickPending || gameState.fishingPhase !== 'reeling') return;
+  fishingTickPending = true;
   const requestStartedAt = Date.now();
-  const response = await handleAPI('/api/sea/fishing/tap', { method: 'POST' });
+  const response = await handleAPI('/api/sea/fishing/tick', { method: 'POST' });
+  fishingTickPending = false;
+  if (gameState.fishingPhase !== 'reeling') return;
   if (!response.success) {
-    if (response.tooEarly) {
-      action.disabled = false;
-      return;
-    }
     resetSeaFishingUI(response.error || 'The fish escaped. Cast again.');
     return;
   }
-  clearFishingTimers();
   if (response.fishing?.serverTime) syncFishingClock(response.fishing.serverTime, requestStartedAt);
   if (response.fishing?.phase === 'reeling') {
-    scheduleFishingBeat(response.fishing);
+    renderFishingReelState(response.fishing);
     return;
   }
   if (!response.result || !response.user) {
@@ -890,6 +963,8 @@ async function reelSeaFish() {
     actionButton.textContent = 'CAST AGAIN';
   }
   gameState.fishingPhase = 'ready';
+  gameState.fishingSpacePressed = false;
+  gameState.fishingServerPressed = false;
   if (catchResult.isItem) showPopup('Treasure Chest caught. Open it from your Items inventory.');
   else showPopup(`Caught ${catchResult.name}! +${formatCoins(catchResult.reward)} coins.`);
   showRewardPopup(`+${formatCoins(catchResult.reward)} coins`);
@@ -977,13 +1052,13 @@ function renderInventory(user) {
         if (count <= 0) return;
         const emoji = key === 'luck' ? '🍀' : key === 'speed' ? '⚡' : key === 'depthfinder' ? '🧭' : '🎣';
         const card = document.createElement('div');
-        card.className = 'inventory-item';
+        card.className = 'inventory-item potion-inventory-item';
         card.innerHTML = `
-          <div>
+          <div class="potion-inventory-copy">
             <h4>${emoji} ${potion.name}</h4>
             <span>x${count} available</span>
           </div>
-          <button class="btn potion-use" style="padding: 8px 12px; font-size: 0.85rem;">Use Now</button>
+          <button class="btn potion-use" type="button">Use Now</button>
         `;
         card.querySelector('.potion-use')?.addEventListener('click', () => usePotion(key));
         potGrid.appendChild(card);
