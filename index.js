@@ -80,7 +80,7 @@ const ROTATING_SHOP_ITEMS = [
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
-  { key: '17-news', name: '17 News', chance: 66.2, reward: 150, color: '#0f172a' },
+  { key: '17-news', name: '17 News', chance: 66.13, reward: 150, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
   { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450, color: '#166534' },
   { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450, color: '#0d9488' },
@@ -94,24 +94,21 @@ const CORE_RARITIES = [
   { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 2250, color: '#facc15' },
   { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 3333, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
   { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 5000, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
-  { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' }
+  { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' },
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', chance: 0.07, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#4ade80' }
 ];
-const FISHING_RARITIES = [
-  ...CORE_RARITIES,
-  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, fishingOnly: true }
-];
-const FISHING_OPTIONS = [
-  ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 65.65 } : rarity),
+const DIVE_OPTIONS = [
+  ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 64.08 } : rarity),
   { key: 'treasure-chest', name: 'Treasure Chest', chance: 0.5, reward: 350, isItem: true, color: '#fbbf24' },
-  FISHING_RARITIES[FISHING_RARITIES.length - 1]
+  { key: 'potion-cache', name: 'Potion Cache', chance: 1.5, reward: 0, isItem: true, itemType: 'potion', color: '#a3e635' },
+  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true }
 ];
 const POTION_CATALOG = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effectKey: 'luck', effect: 'luck' },
+  'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effectKey: 'luck', effect: 'luck' },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effectKey: 'speed', effect: 'speed' },
-  depthfinder: { name: 'Depthfinder Tonic', cost: 9000, vialCost: 1, multiplier: 2, duration: 180, effectKey: 'deep-luck', effect: 'fishing luck' },
-  'steady-reel': { name: 'Steady Reel Elixir', cost: 6500, vialCost: 1, multiplier: 1.5, duration: 180, effectKey: 'steady-reel', effect: 'reel timing window' }
 };
-const activeFishingSessions = new Map();
+const activeDiveSessions = new Map();
 
 function getShopRotation(timestamp = Date.now()) {
   const slot = Math.floor(timestamp / SHOP_ROTATION_INTERVAL_MS);
@@ -127,6 +124,7 @@ function getShopRotation(timestamp = Date.now()) {
 
 const TITLE_CATALOG = {
   owner: { name: 'Owner', color: '#fbbf24' },
+  admin: { name: 'Admin', color: '#fb7185' },
   veteran: { name: 'Veteran', color: '#38bdf8' },
   millionaire: { name: 'Millionaire', color: '#4ade80' },
   portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
@@ -147,7 +145,7 @@ function getUnlockedTitles(user) {
   const titles = new Set(normalizeList(user?.titles));
   const rarities = normalizeInventory(user?.inventory).rarities;
   const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
-  const hasGlobalDrop = ['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter'].some(key => Number(rarities[key]) > 0);
+  const hasGlobalDrop = ['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0);
   const spins = Number(user?.spins) || 0;
   const items = normalizeRecord(user?.items);
 
@@ -203,7 +201,14 @@ function getUserActiveEffects(username) {
 function setUserActiveEffect(username, effectType, data) {
   const key = normalizeUsername(username);
   const existing = activeEffectsStore[key] || {};
-  existing[effectType] = data;
+  const now = Date.now();
+  const current = existing[effectType]?.endTime > now ? existing[effectType] : null;
+  const remainingMs = current ? current.endTime - now : 0;
+  existing[effectType] = {
+    ...data,
+    multiplier: Math.max(1, Number(current?.multiplier) || 1) * Math.max(1, Number(data.multiplier) || 1),
+    endTime: now + remainingMs + Math.max(0, Number(data.endTime) - now)
+  };
   activeEffectsStore[key] = existing;
   return existing[effectType];
 }
@@ -241,41 +246,14 @@ function selectWeightedOption(options, luckMultiplier = 1) {
   };
 }
 
-function getFishingFishPosition(session, timestamp) {
-  const elapsed = Math.max(0, timestamp - session.reelStartedAt);
-  const wave = 0.5 + 0.31 * Math.sin(elapsed / 1050) + 0.16 * Math.sin(elapsed / 480);
-  return Math.max(0.04, Math.min(0.96, wave));
-}
-
-function advanceFishingReel(session, timestamp) {
-  let cursor = session.simulationAt;
-  while (cursor < timestamp) {
-    const step = Math.min(40, timestamp - cursor);
-    const direction = session.spacePressed ? 1 : -1;
-    const speed = session.spacePressed ? 0.00072 : 0.00052;
-    session.barPosition = Math.max(0.02, Math.min(0.98, session.barPosition + direction * speed * step));
-    const fishPosition = getFishingFishPosition(session, cursor + step);
-    const isInside = Math.abs(fishPosition - session.barPosition) <= session.barWidth / 2;
-    session.progressMs = isInside
-      ? Math.min(4000, session.progressMs + step)
-      : Math.max(0, session.progressMs - step * 0.72);
-    cursor += step;
-  }
-  session.simulationAt = timestamp;
-  session.fishPosition = getFishingFishPosition(session, timestamp);
-  return session;
-}
-
-function getFishingReelState(session, timestamp = Date.now()) {
-  return {
-    phase: 'reeling',
-    barPosition: session.barPosition,
-    fishPosition: getFishingFishPosition(session, timestamp),
-    barWidth: session.barWidth,
-    progressMs: Math.round(session.progressMs),
-    requiredProgressMs: 4000,
-    serverTime: timestamp
-  };
+function createDiveSession() {
+  const nodes = Array.from({ length: 10 }, (_, index) => ({
+    id: `cache-${index}-${crypto.randomBytes(3).toString('hex')}`,
+    x: 8 + Math.random() * 84,
+    y: 10 + Math.random() * 80,
+    collected: false
+  }));
+  return { x: 50, y: 50, nodes, lastMovedAt: Date.now() };
 }
 
 async function executeQuery(text, params = []) {
@@ -318,7 +296,7 @@ async function findUser(username) {
     if (!result.rows.length) return null;
     const user = result.rows[0];
     const inventory = normalizeInventory(user.inventory);
-    const potions = normalizeRecord(user.potions, { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 });
+    const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
     const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
     const titles = getUnlockedTitles({ ...user, inventory });
     return {
@@ -347,7 +325,7 @@ async function findUser(username) {
     ...stored,
     inventory: normalizeInventory(stored.inventory),
     achievements: normalizeList(stored.achievements),
-    potions: normalizeRecord(stored.potions, { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 }),
+    potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, speed: 0 }),
     items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }),
     titles: getUnlockedTitles(stored),
     is_admin: isAdministratorUser(stored),
@@ -374,7 +352,7 @@ async function saveUser(user) {
         user.spins,
         JSON.stringify(user.inventory),
         JSON.stringify(user.achievements),
-        JSON.stringify(user.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 }),
+        JSON.stringify(user.potions || { luck: 0, 'luck-ii': 0, speed: 0 }),
         JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }),
         JSON.stringify(user.titles || []),
         user.active_title || null,
@@ -422,7 +400,7 @@ async function ensureDatabase() {
       inventory JSONB NOT NULL DEFAULT '{}'::jsonb,
       achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       is_admin BOOLEAN NOT NULL DEFAULT false,
-      potions JSONB NOT NULL DEFAULT '{"luck":0,"speed":0,"depthfinder":0,"steady-reel":0}'::jsonb,
+      potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
       items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0}'::jsonb,
       titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       active_title TEXT,
@@ -461,7 +439,7 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{"rarities":{}}'::jsonb,
       ADD COLUMN IF NOT EXISTS achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false,
-      ADD COLUMN IF NOT EXISTS potions JSONB NOT NULL DEFAULT '{"luck":0,"speed":0,"depthfinder":0,"steady-reel":0}'::jsonb,
+      ADD COLUMN IF NOT EXISTS potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
       ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0}'::jsonb,
       ADD COLUMN IF NOT EXISTS titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS active_title TEXT,
@@ -489,32 +467,21 @@ const GAME_EVENTS = {
     title: 'Starlight Surge',
     coinMultiplier: 2,
     bonusCoins: 0,
-    description: '2x coin rewards'
+    luckMultiplier: 2,
+    description: '2x coins and 2x luck'
   },
   'meteor-shower': {
     title: 'Meteor Shower',
-    coinMultiplier: 1,
-    bonusCoins: 250,
-    description: '+250 coins per roll'
-  },
-  'aurora-bloom': {
-    title: 'Aurora Bloom',
     coinMultiplier: 2,
-    bonusCoins: 400,
-    description: '2x coins and +400 bonus coins per roll'
-  },
-  'golden-rush': {
-    title: 'Golden Rush',
-    coinMultiplier: 3,
-    bonusCoins: 250,
-    description: '3x coins and +250 bonus coins per roll'
+    bonusCoins: 300,
+    description: '2x coins and +300 bonus coins per roll'
   },
   'abyssal-resonance': {
     title: 'Abyssal Resonance',
-    coinMultiplier: 1,
-    bonusCoins: 0,
-    luckMultiplier: 2,
-    description: '2x luck, amplified to 8x in the Sea Realm'
+    coinMultiplier: 2,
+    bonusCoins: 250,
+    luckMultiplier: 3,
+    description: '3x luck and +250 bonus coins, amplified in the Sea Realm'
   }
 };
 
@@ -710,7 +677,16 @@ const apiLimiter = rateLimit({
   max: 100,
   message: { success: false, message: 'Too many requests. Please slow down.' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: req => req.originalUrl.split('?')[0] === '/api/sea/dive/move'
+});
+const diveMoveLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 360,
+  message: { success: false, error: 'Submarine controls are moving too quickly.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: req => `dive:${normalizeUsername(req.session?.username)}`
 });
 
 // Body parsing
@@ -886,7 +862,7 @@ app.post('/api/register', async (req, res) => {
     spins: 0,
     inventory: { rarities: {} },
     achievements: [],
-    potions: { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 },
+    potions: { luck: 0, 'luck-ii': 0, speed: 0 },
     items: { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 },
     titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
     portal_unlocked: false,
@@ -1023,7 +999,7 @@ app.post('/api/spin', async (req, res) => {
 
   const dimension = String(req.body?.dimension || '').toLowerCase();
   if (dimension === 'deep-sea') {
-    return res.status(400).json({ success: false, error: 'Use the fishing rod in the Sea Realm.' });
+    return res.status(400).json({ success: false, error: 'Use the submarine dive controls in the Sea Realm.' });
   }
   const luckMultiplier = getLuckMultiplier(req.session.username, dimension);
   const selection = selectWeightedOption(CORE_RARITIES, luckMultiplier);
@@ -1352,156 +1328,90 @@ app.post('/api/enter-dimension', async (req, res) => {
   }
 });
 
-app.post('/api/sea/fishing/cast', async (req, res) => {
+app.post('/api/sea/dive/start', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   try {
     const user = await findUser(req.session.username);
     if (!user?.sea_realm_unlocked) {
-      return res.status(403).json({ success: false, error: 'Unlock the Sea Realm before fishing.' });
+      return res.status(403).json({ success: false, error: 'Unlock the Sea Realm before diving.' });
     }
-
     const key = normalizeUsername(req.session.username);
-    const now = Date.now();
-    const current = activeFishingSessions.get(key);
-    if (current && now <= current.expiresAt) {
-      return res.status(409).json({ success: false, error: 'A fishing attempt is already in progress.' });
+    let session = activeDiveSessions.get(key);
+    if (!session || session.nodes.every(node => node.collected)) {
+      session = createDiveSession();
+      activeDiveSessions.set(key, session);
     }
+    res.json({ success: true, dive: { x: session.x, y: session.y, nodes: session.nodes, remaining: session.nodes.filter(node => !node.collected).length } });
+  } catch (error) {
+    console.error('Dive start error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to start the dive.' });
+  }
+});
 
-    const biteInMs = 3500 + Math.floor(Math.random() * 2500);
-    activeFishingSessions.set(key, {
-      phase: 'waiting',
-      biteAt: now + biteInMs,
-      hookDeadline: now + biteInMs + 2400,
-      expiresAt: now + biteInMs + 2400
+app.post('/api/sea/dive/move', diveMoveLimiter, async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const key = normalizeUsername(req.session.username);
+  const session = activeDiveSessions.get(key);
+  if (!session) return res.status(409).json({ success: false, error: 'Start a dive before moving.' });
+  const now = Date.now();
+  const keys = Array.isArray(req.body?.keys) ? req.body.keys : [];
+  const input = new Set(keys.map(value => String(value).toLowerCase()).filter(value => ['w', 'a', 's', 'd'].includes(value)));
+  let horizontal = Number(input.has('d')) - Number(input.has('a'));
+  let vertical = Number(input.has('s')) - Number(input.has('w'));
+  if (horizontal && vertical) {
+    horizontal *= Math.SQRT1_2;
+    vertical *= Math.SQRT1_2;
+  }
+  const elapsedSeconds = Math.min(0.4, Math.max(0, now - session.lastMovedAt) / 1000);
+  session.lastMovedAt = now;
+  session.x = Math.max(4, Math.min(96, session.x + horizontal * elapsedSeconds * 30));
+  session.y = Math.max(5, Math.min(95, session.y + vertical * elapsedSeconds * 30));
+
+  const node = session.nodes.find(candidate => !candidate.collected && Math.hypot(candidate.x - session.x, candidate.y - session.y) <= 5.5);
+  let result = null;
+  let updatedUser = null;
+  if (node) {
+    node.collected = true;
+    const username = req.session.username;
+    const user = await findUser(username);
+    const selection = selectWeightedOption(DIVE_OPTIONS, getLuckMultiplier(username, 'deep-sea'));
+    result = { ...selection.result, rollChance: selection.rollChance };
+    const inventory = normalizeInventory(user.inventory);
+    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
+    const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
+    if (result.itemType === 'potion') {
+      const potionType = ['luck', 'luck-ii', 'speed'][Math.floor(Math.random() * 3)];
+      potions[potionType] = (Number(potions[potionType]) || 0) + 1;
+      result.name = `${POTION_CATALOG[potionType].name} Cache`;
+      result.potionType = potionType;
+    } else if (result.key === 'treasure-chest') {
+      items.treasure_chest = (Number(items.treasure_chest) || 0) + 1;
+    } else {
+      inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
+    }
+    const event = getActiveGameEvent();
+    const reward = Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
+    const coins = Number(user.coins || 0) + reward;
+    result.reward = reward;
+    const titles = getUnlockedTitles({ ...user, inventory, items, coins });
+    await updateUser(username, {
+      inventory: JSON.stringify(inventory),
+      items: JSON.stringify(items),
+      potions: JSON.stringify(potions),
+      coins,
+      titles: JSON.stringify(titles)
     });
-    res.json({ success: true, fishing: { phase: 'waiting', biteInMs, serverTime: now } });
-  } catch (error) {
-    console.error('Fishing cast error:', error.message || error);
-    res.status(503).json({ success: false, error: 'Unable to cast right now.' });
-  }
-});
-
-app.post('/api/sea/fishing/hook', (req, res) => {
-  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  const key = normalizeUsername(req.session.username);
-  const session = activeFishingSessions.get(key);
-  const now = Date.now();
-  if (!session || session.phase !== 'waiting') {
-    return res.status(409).json({ success: false, error: 'Cast your line before reeling.' });
-  }
-  if (now < session.biteAt) {
-    return res.status(409).json({ success: false, tooEarly: true, error: 'Not yet. Watch for the bite!' });
-  }
-  if (now > session.hookDeadline) {
-    activeFishingSessions.delete(key);
-    return res.status(408).json({ success: false, error: 'The fish got away. Cast again.' });
-  }
-
-  session.phase = 'reeling';
-  session.reelStartedAt = now;
-  session.simulationAt = now;
-  session.progressMs = 0;
-  session.barPosition = 0.5;
-  session.barWidth = Math.min(0.38, 0.24 * getActiveEffectMultiplier(key, 'steady-reel'));
-  session.spacePressed = false;
-  session.expiresAt = now + 30000;
-  return res.json({ success: true, fishing: getFishingReelState(session, now) });
-});
-
-app.post('/api/sea/fishing/cancel', (req, res) => {
-  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  activeFishingSessions.delete(normalizeUsername(req.session.username));
-  res.json({ success: true });
-});
-
-app.post('/api/sea/fishing/input', (req, res) => {
-  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  const key = normalizeUsername(req.session.username);
-  const session = activeFishingSessions.get(key);
-  const now = Date.now();
-  if (!session || session.phase !== 'reeling') {
-    return res.status(409).json({ success: false, error: 'There is no active reel challenge.' });
-  }
-  advanceFishingReel(session, now);
-  if (now > session.expiresAt) {
-    activeFishingSessions.delete(key);
-    return res.status(408).json({ success: false, error: 'The fish escaped. Cast again.' });
-  }
-  session.spacePressed = Boolean(req.body?.pressed);
-  res.json({ success: true, fishing: getFishingReelState(session, now) });
-});
-
-async function finishFishingCatch(username, key) {
-  const user = await findUser(username);
-  if (!user?.sea_realm_unlocked) {
-    return { status: 403, payload: { success: false, error: 'Sea Realm access is required to complete a catch.' } };
-  }
-  const luckMultiplier = getLuckMultiplier(username, 'deep-sea');
-  const selection = selectWeightedOption(FISHING_OPTIONS, luckMultiplier);
-  const result = selection.result;
-  const inventory = normalizeInventory(user.inventory);
-  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
-  if (result.isItem) {
-    items.treasure_chest = (Number(items.treasure_chest) || 0) + 1;
-  } else {
-    inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
-  }
-
-  const event = getActiveGameEvent();
-  const reward = Math.round(result.reward * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
-  const coins = Number(user.coins || 0) + reward;
-  const titles = getUnlockedTitles({ ...user, inventory, items, coins });
-  await updateUser(username, {
-    inventory: JSON.stringify(inventory),
-    items: JSON.stringify(items),
-    coins,
-    titles: JSON.stringify(titles)
-  });
-
-  if (result.isGlobal) {
-    const message = `${user.username} caught ${result.name} while fishing!`;
-    const chatRecord = await saveChatMessage(user.username, message, result.name, result.glowColor || result.color, false, true);
-    io.emit('chat-message', chatRecord);
-  }
-
-  const updatedUser = await findUser(username);
-  return {
-    status: 200,
-    payload: {
-      success: true,
-      fishing: { phase: 'caught' },
-      result: { ...result, rollChance: selection.rollChance, luckMultiplier, reward },
-      user: sanitizeUser(updatedUser)
+    updatedUser = await findUser(username);
+    if (result.isGlobal) {
+      const chatRecord = await saveChatMessage(user.username, `${user.username} discovered ${result.name} while diving!`, result.name, result.glowColor || result.color, false, true);
+      io.emit('chat-message', chatRecord);
     }
-  };
-}
-
-app.post('/api/sea/fishing/tick', async (req, res) => {
-  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  const username = req.session.username;
-  const key = normalizeUsername(username);
-  const session = activeFishingSessions.get(key);
-  const now = Date.now();
-  if (!session || session.phase !== 'reeling') {
-    return res.status(409).json({ success: false, error: 'There is no active reel challenge.' });
   }
-  advanceFishingReel(session, now);
-  if (now > session.expiresAt) {
-    activeFishingSessions.delete(key);
-    return res.status(408).json({ success: false, error: 'The fish escaped. Cast again.' });
-  }
-  if (session.progressMs < 4000) {
-    return res.json({ success: true, fishing: getFishingReelState(session, now) });
-  }
-
-  activeFishingSessions.delete(key);
-  try {
-    const outcome = await finishFishingCatch(username, key);
-    return res.status(outcome.status).json(outcome.payload);
-  } catch (error) {
-    console.error('Fishing catch error:', error.message || error);
-    return res.status(503).json({ success: false, error: 'Your catch could not be saved. Try fishing again.' });
-  }
+  res.json({
+    success: true,
+    dive: { x: session.x, y: session.y, nodes: session.nodes, remaining: session.nodes.filter(candidate => !candidate.collected).length },
+    result: result ? { ...result, user: sanitizeUser(updatedUser) } : null
+  });
 });
 
 app.post('/api/sea/open-treasure-chest', async (req, res) => {
@@ -1565,7 +1475,7 @@ app.post('/api/admin/users/:username', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Player not found.' });
     }
 
-    const { type, amount, potion, item, banned, reason } = req.body || {};
+    const { type, amount, potion, item, banned, reason, grant } = req.body || {};
     let updates;
     if (type === 'ban') {
       if (target.is_admin || normalizeUsername(target.username) === normalizeUsername(admin.username)) {
@@ -1578,6 +1488,17 @@ app.post('/api/admin/users/:username', async (req, res) => {
         is_banned: banned,
         ban_reason: banned ? String(reason || '').trim().slice(0, 250) : ''
       };
+    } else if (type === 'title') {
+      if (normalizeUsername(admin.username) !== 'mr_fernanski') {
+        return res.status(403).json({ success: false, error: 'Only Mr Fernanski can grant the Admin title.' });
+      }
+      if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether to grant the Admin title.' });
+      const titles = getUnlockedTitles(target).filter(title => title !== 'admin');
+      if (grant) titles.push('admin');
+      updates = {
+        titles: JSON.stringify(titles),
+        ...(!grant && target.active_title === 'admin' ? { active_title: null } : {})
+      };
     } else {
       const quantity = Number(amount);
       if (!Number.isSafeInteger(quantity) || quantity < 0) {
@@ -1589,7 +1510,7 @@ app.post('/api/admin/users/:username', async (req, res) => {
         }
         updates = { coins: quantity };
       } else if (type === 'potion' && Object.prototype.hasOwnProperty.call(POTION_CATALOG, potion) && quantity >= 1 && quantity <= 99) {
-        const potions = normalizeRecord(target.potions, { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 });
+        const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
         potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
         updates = { potions: JSON.stringify(potions) };
       } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
@@ -1620,6 +1541,121 @@ app.post('/api/admin/users/:username', async (req, res) => {
   } catch (error) {
     console.error('Admin player update error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to update player. Check the database and try again.' });
+  }
+});
+
+app.post('/api/admin/global-drop', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const admin = await findUser(req.session.username);
+    if (!admin?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+    const type = String(req.body?.type || '');
+    const key = String(req.body?.key || '');
+    const amount = Number(req.body?.amount);
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 99) {
+      return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
+    }
+
+    const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem);
+    const itemKeys = ['fragments', 'clovers', 'essence', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
+    if (!((type === 'rarity' && rarity) || (type === 'potion' && POTION_CATALOG[key]) || (type === 'item' && itemKeys.includes(key)))) {
+      return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
+    }
+
+    const targets = pool
+      ? (await executeQuery('SELECT * FROM users')).rows
+      : Object.values(inMemoryStore.users);
+    for (const target of targets) {
+      const updates = {};
+      if (type === 'rarity') {
+        const inventory = normalizeInventory(target.inventory);
+        inventory.rarities[key] = Math.min(999, (Number(inventory.rarities[key]) || 0) + amount);
+        updates.inventory = JSON.stringify(inventory);
+        updates.titles = JSON.stringify(getUnlockedTitles({ ...target, inventory }));
+      } else if (type === 'potion') {
+        const potions = normalizeRecord(target.potions);
+        potions[key] = Math.min(999, (Number(potions[key]) || 0) + amount);
+        updates.potions = JSON.stringify(potions);
+      } else {
+        const items = normalizeRecord(target.items);
+        items[key] = Math.min(999, (Number(items[key]) || 0) + amount);
+        updates.items = JSON.stringify(items);
+        updates.titles = JSON.stringify(getUnlockedTitles({ ...target, items }));
+      }
+      await updateUser(target.username, updates);
+    }
+
+    const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : key.replaceAll('_', ' ');
+    const announcement = `Admin ${admin.username} granted ${amount} × ${name} to every player.`;
+    const chatRecord = await saveChatMessage('System', announcement, 'GLOBAL DROP', '#fbbf24', true, true);
+    io.emit('chat-message', chatRecord);
+    io.emit('global-drop', { type, key, amount, name });
+    return res.json({ success: true, count: targets.length, name, amount });
+  } catch (error) {
+    console.error('Global drop error:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Unable to grant the global drop.' });
+  }
+});
+
+app.get('/api/mini-admin/overview', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const viewer = await findUser(req.session.username);
+    if (!viewer || (!viewer.is_admin && !getUnlockedTitles(viewer).includes('admin'))) {
+      return res.status(403).json({ success: false, error: 'The Admin title is required.' });
+    }
+    const users = pool
+      ? (await executeQuery('SELECT * FROM users ORDER BY username ASC')).rows
+      : Object.values(inMemoryStore.users);
+    const sockets = await io.fetchSockets();
+    const online = new Map();
+    sockets.forEach(socket => {
+      const username = socket.request?.session?.username;
+      if (username) online.set(normalizeUsername(username), socket.data.activity || 'In the lobby');
+    });
+    const roster = users.map(user => {
+      const safe = sanitizeUser(user);
+      return {
+        username: safe.username,
+        online: online.has(normalizeUsername(safe.username)),
+        activity: online.get(normalizeUsername(safe.username)) || 'Offline',
+        coins: safe.coins,
+        spins: safe.spins,
+        inventoryTotal: safe.inventoryTotal
+      };
+    });
+    res.json({ success: true, users: roster, onlineCount: online.size, activeEvent: getActiveGameEvent() });
+  } catch (error) {
+    console.error('Mini admin overview error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to load player activity.' });
+  }
+});
+
+app.post('/api/mini-admin/event', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user || (!user.is_admin && !getUnlockedTitles(user).includes('admin'))) {
+      return res.status(403).json({ success: false, error: 'The Admin title is required.' });
+    }
+    const eventName = String(req.body?.eventName || '');
+    const action = req.body?.action === 'stop' ? 'stop' : 'start';
+    if (!['starlight-surge', 'abyssal-resonance'].includes(eventName)) {
+      return res.status(400).json({ success: false, error: 'This event is not available in Mini Operations.' });
+    }
+    if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
+    if (action === 'stop') {
+      if (activeGameEvent?.eventName !== eventName || activeGameEvent.initiatedBy !== user.username) {
+        return res.status(403).json({ success: false, error: 'You can only end your own active event.' });
+      }
+      stopGameEvent(eventName);
+      return res.json({ success: true, stopped: true });
+    }
+    const event = startGameEvent(eventName, user.username);
+    res.json({ success: true, event: { title: event.title } });
+  } catch (error) {
+    console.error('Mini admin event error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to manage this event.' });
   }
 });
 
@@ -1853,6 +1889,14 @@ io.on('connection', async (socket) => {
       version: '3.0.0',
       features: ['New Mechanics', 'Enhanced UI', 'Community Features']
     });
+  });
+
+  socket.on('player-activity', activity => {
+    if (!socket.request?.session?.username || socket.data.isBanned) return;
+    const safeActivity = String(activity || '').trim().slice(0, 64);
+    if (['At the RNG console', 'Diving in the Sea Realm', 'Browsing inventory', 'Using the shop', 'Browsing titles', 'In chat', 'Viewing settings'].includes(safeActivity)) {
+      socket.data.activity = safeActivity;
+    }
   });
 
   socket.on('chat-message', async (data) => {
