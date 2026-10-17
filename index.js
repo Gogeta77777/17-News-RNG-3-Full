@@ -247,13 +247,25 @@ function selectWeightedOption(options, luckMultiplier = 1) {
 }
 
 function createDiveSession() {
+  const now = Date.now();
   const nodes = Array.from({ length: 10 }, (_, index) => ({
     id: `cache-${index}-${crypto.randomBytes(3).toString('hex')}`,
     x: 8 + Math.random() * 84,
     y: 10 + Math.random() * 80,
     collected: false
   }));
-  return { x: 50, y: 50, nodes, lastMovedAt: Date.now() };
+  return { x: 50, y: 50, heading: 0, nodes, target: null, lastMovedAt: now, cooldownUntil: now + 60000 };
+}
+
+function getDiveState(session) {
+  return {
+    x: session.x,
+    y: session.y,
+    heading: session.heading,
+    nodes: session.nodes,
+    remaining: session.nodes.filter(node => !node.collected).length,
+    cooldownUntil: session.cooldownUntil
+  };
 }
 
 async function executeQuery(text, params = []) {
@@ -1337,11 +1349,15 @@ app.post('/api/sea/dive/start', async (req, res) => {
     }
     const key = normalizeUsername(req.session.username);
     let session = activeDiveSessions.get(key);
+    const now = Date.now();
+    if (session?.nodes.every(node => node.collected) && now < session.cooldownUntil) {
+      return res.status(429).json({ success: false, cooldownUntil: session.cooldownUntil, dive: getDiveState(session), error: 'New dives are available once per minute.' });
+    }
     if (!session || session.nodes.every(node => node.collected)) {
       session = createDiveSession();
       activeDiveSessions.set(key, session);
     }
-    res.json({ success: true, dive: { x: session.x, y: session.y, nodes: session.nodes, remaining: session.nodes.filter(node => !node.collected).length } });
+    res.json({ success: true, dive: getDiveState(session) });
   } catch (error) {
     console.error('Dive start error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to start the dive.' });
@@ -1354,20 +1370,47 @@ app.post('/api/sea/dive/move', diveMoveLimiter, async (req, res) => {
   const session = activeDiveSessions.get(key);
   if (!session) return res.status(409).json({ success: false, error: 'Start a dive before moving.' });
   const now = Date.now();
-  const keys = Array.isArray(req.body?.keys) ? req.body.keys : [];
-  const input = new Set(keys.map(value => String(value).toLowerCase()).filter(value => ['w', 'a', 's', 'd'].includes(value)));
-  let horizontal = Number(input.has('d')) - Number(input.has('a'));
-  let vertical = Number(input.has('s')) - Number(input.has('w'));
-  if (horizontal && vertical) {
-    horizontal *= Math.SQRT1_2;
-    vertical *= Math.SQRT1_2;
+  const target = req.body?.target;
+  if (target && Number.isFinite(Number(target.x)) && Number.isFinite(Number(target.y))) {
+    session.target = {
+      x: Math.max(4, Math.min(96, Number(target.x))),
+      y: Math.max(5, Math.min(95, Number(target.y)))
+    };
   }
   const elapsedSeconds = Math.min(0.4, Math.max(0, now - session.lastMovedAt) / 1000);
   session.lastMovedAt = now;
-  session.x = Math.max(4, Math.min(96, session.x + horizontal * elapsedSeconds * 30));
-  session.y = Math.max(5, Math.min(95, session.y + vertical * elapsedSeconds * 30));
+  const previousX = session.x;
+  const previousY = session.y;
+  let reachedTarget = false;
+  if (session.target) {
+    const deltaX = session.target.x - session.x;
+    const deltaY = session.target.y - session.y;
+    const distance = Math.hypot(deltaX, deltaY);
+    const step = Math.min(distance, elapsedSeconds * 48);
+    if (distance > 0.1) session.heading = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+    if (distance <= step || distance < 0.1) {
+      session.x = session.target.x;
+      session.y = session.target.y;
+      session.target = null;
+      reachedTarget = true;
+    } else if (distance > 0) {
+      session.x += deltaX / distance * step;
+      session.y += deltaY / distance * step;
+    }
+  }
 
-  const node = session.nodes.find(candidate => !candidate.collected && Math.hypot(candidate.x - session.x, candidate.y - session.y) <= 5.5);
+  const travelX = session.x - previousX;
+  const travelY = session.y - previousY;
+  const travelLengthSquared = travelX * travelX + travelY * travelY;
+  const node = session.nodes.find(candidate => {
+    if (candidate.collected) return false;
+    const projection = travelLengthSquared
+      ? Math.max(0, Math.min(1, ((candidate.x - previousX) * travelX + (candidate.y - previousY) * travelY) / travelLengthSquared))
+      : 0;
+    const closestX = previousX + projection * travelX;
+    const closestY = previousY + projection * travelY;
+    return Math.hypot(candidate.x - closestX, candidate.y - closestY) <= 5.5;
+  });
   let result = null;
   let updatedUser = null;
   if (node) {
@@ -1407,9 +1450,10 @@ app.post('/api/sea/dive/move', diveMoveLimiter, async (req, res) => {
       io.emit('chat-message', chatRecord);
     }
   }
+  if (session.nodes.every(candidate => candidate.collected)) session.target = null;
   res.json({
     success: true,
-    dive: { x: session.x, y: session.y, nodes: session.nodes, remaining: session.nodes.filter(candidate => !candidate.collected).length },
+    dive: { ...getDiveState(session), reachedTarget },
     result: result ? { ...result, user: sanitizeUser(updatedUser) } : null
   });
 });
