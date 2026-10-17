@@ -74,11 +74,8 @@ let isEnteringDimension = false;
 let eventVisualLayer = null;
 let cameraShakeTimer = null;
 let cameraShakeEndTimer = null;
-let diveMoveTimer = null;
 let diveCooldownTimer = null;
-let diveMovePending = false;
-let diveTarget = null;
-let diveDragging = false;
+let diveCollectPending = false;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -623,7 +620,9 @@ function renderRealmSelector() {
   const essence = Number(gameState.itemInventory.essence) || 0;
   action.textContent = unlocked ? 'ENTER REALM' : 'UNLOCK & ENTER · 1 ESSENCE';
   action.disabled = !unlocked && essence < 1;
-  status.textContent = unlocked ? 'Permanently unlocked · entry is free' : `${essence} Sea Essence available · unlock costs 1`;
+  const cooldownMs = gameState.dive?.remaining === 0 ? Math.max(0, Number(gameState.dive.cooldownUntil) - Date.now()) : 0;
+  const cooldownText = cooldownMs ? ` · New dive in ${formatDiveTime(cooldownMs)}` : '';
+  status.textContent = unlocked ? `Permanently unlocked · entry is free${cooldownText}` : `${essence} Sea Essence available · unlock costs 1`;
 }
 
 async function enterOrUnlockSeaRealm() {
@@ -684,43 +683,11 @@ function enterDeepSea() {
 
   bindDiveControls();
   startDive();
-  showPopup('Submarine launched. Follow the sonar signals.');
+  showPopup('Click the sonar signals to collect them.');
 }
 
 function bindDiveControls() {
   if (document.documentElement.dataset.diveControlsBound) return;
-  const map = document.getElementById('dive-map');
-  const readMapTarget = event => {
-    const bounds = map.getBoundingClientRect();
-    return {
-      x: Math.max(4, Math.min(96, (event.clientX - bounds.left) / bounds.width * 100)),
-      y: Math.max(5, Math.min(95, (event.clientY - bounds.top) / bounds.height * 100))
-    };
-  };
-  map?.addEventListener('pointerdown', event => {
-    if (gameState.currentDimension !== 'deep-sea' || !gameState.dive?.remaining || event.button > 0) return;
-    event.preventDefault();
-    diveDragging = true;
-    map.setPointerCapture?.(event.pointerId);
-    diveTarget = readMapTarget(event);
-    ensureDiveMoveLoop();
-  });
-  map?.addEventListener('pointermove', event => {
-    if (diveDragging) {
-      diveTarget = readMapTarget(event);
-      ensureDiveMoveLoop();
-    }
-  });
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
-    map?.addEventListener(type, () => {
-      diveDragging = false;
-      if (!diveTarget) {
-        clearInterval(diveMoveTimer);
-        diveMoveTimer = null;
-      }
-    });
-  });
-  window.addEventListener('blur', () => { diveDragging = false; });
   document.getElementById('dive-rescan')?.addEventListener('click', startDive);
   document.documentElement.dataset.diveControlsBound = 'true';
 }
@@ -728,7 +695,6 @@ function bindDiveControls() {
 async function startDive() {
   const response = await handleAPI('/api/sea/dive/start', { method: 'POST' });
   if (!response.success && response.status === 429 && response.dive) {
-    diveTarget = null;
     renderDiveMap(response.dive);
     return;
   }
@@ -736,58 +702,72 @@ async function startDive() {
     showPopup(response.error || 'Unable to start the dive.', 'error');
     return;
   }
-  diveTarget = null;
   gameState.dive = null;
   renderDiveMap(response.dive);
-  clearInterval(diveMoveTimer);
-  diveMoveTimer = null;
-}
-
-function ensureDiveMoveLoop() {
-  if (!diveMoveTimer) diveMoveTimer = setInterval(moveDiveSubmarine, 300);
 }
 
 function renderDiveMap(dive) {
   const map = document.getElementById('dive-map');
-  const submarine = document.getElementById('submarine');
-  if (!map || !submarine) return;
+  if (!map) return;
   const rebuildNodes = !gameState.dive || gameState.dive.nodes.map(node => node.id).join() !== dive.nodes.map(node => node.id).join();
   gameState.dive = dive;
-  submarine.style.left = `${dive.x}%`;
-  submarine.style.top = `${dive.y}%`;
-  submarine.style.setProperty('--sub-heading', `${Number(dive.heading) || 0}deg`);
   if (rebuildNodes) {
     map.querySelectorAll('.dive-cache').forEach(node => node.remove());
     dive.nodes.forEach(node => {
-      const marker = document.createElement('span');
+      const marker = document.createElement('button');
+      marker.type = 'button';
       marker.className = 'dive-cache';
       marker.dataset.nodeId = node.id;
       marker.style.left = `${node.x}%`;
       marker.style.top = `${node.y}%`;
-      marker.setAttribute('aria-label', 'Sonar signal');
+      marker.setAttribute('aria-label', `Collect sonar signal ${node.id.slice(0, 8)}`);
       marker.textContent = '✧';
+      marker.addEventListener('click', () => collectDiveSignal(node.id, marker));
       map.appendChild(marker);
     });
   }
-  dive.nodes.forEach(node => map.querySelector(`[data-node-id="${node.id}"]`)?.classList.toggle('collected', node.collected));
+  dive.nodes.forEach(node => {
+    const marker = map.querySelector(`[data-node-id="${node.id}"]`);
+    marker?.classList.toggle('collected', node.collected);
+    if (marker) {
+      marker.disabled = node.collected;
+      marker.textContent = node.collected ? '✓' : '✧';
+    }
+  });
   const remaining = document.getElementById('dive-remaining');
   const status = document.getElementById('dive-status');
-  const rescan = document.getElementById('dive-rescan');
   if (remaining) remaining.textContent = `${dive.remaining} SIGNAL${dive.remaining === 1 ? '' : 'S'} LEFT`;
-  if (status) status.textContent = dive.remaining ? 'Sonar has marked nearby energy signatures.' : 'Area swept. Launch a fresh dive to chart a new route.';
+  if (status) status.textContent = dive.remaining ? 'Click any signal to recover its contents.' : 'All signals recovered. Wait two minutes before your next dive.';
   updateDiveCooldown(dive);
+}
+
+function formatDiveTime(milliseconds) {
+  const seconds = Math.ceil(Math.max(0, milliseconds) / 1000);
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 function updateDiveCooldown(dive = gameState.dive) {
   const rescan = document.getElementById('dive-rescan');
   const status = document.getElementById('dive-status');
-  if (!rescan || !dive) return;
+  if (!dive) return;
   const remainingMs = Math.max(0, Number(dive.cooldownUntil) - Date.now());
-  const seconds = Math.ceil(remainingMs / 1000);
-  const formatTime = value => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-  rescan.disabled = dive.remaining > 0 || remainingMs > 0;
-  rescan.textContent = dive.remaining > 0 ? 'AREA IN PROGRESS' : remainingMs > 0 ? `NEW DIVE · ${formatTime(seconds)}` : 'NEW DIVE';
-  if (dive.remaining === 0 && remainingMs > 0 && status) status.textContent = `Dive complete. Another dive is ready in ${formatTime(seconds)}.`;
+  const timeText = formatDiveTime(remainingMs);
+  if (rescan) {
+    rescan.disabled = dive.remaining > 0 || remainingMs > 0;
+    rescan.textContent = dive.remaining > 0 ? 'COLLECT ALL SIGNALS' : remainingMs > 0 ? `NEW DIVE · ${timeText}` : 'NEW DIVE';
+  }
+  if (dive.remaining === 0 && status) {
+    status.textContent = remainingMs > 0
+      ? `All signals recovered. Wait two minutes; ${timeText} remaining.`
+      : 'All signals recovered. Your next dive is ready.';
+  }
+  const realmStatus = document.getElementById('sea-realm-status');
+  if (realmStatus && gameState.seaRealmUnlocked) {
+    const nextDive = dive.remaining === 0
+      ? remainingMs > 0 ? ` · New dive in ${timeText}` : ' · New dive is ready'
+      : '';
+    realmStatus.textContent = `Permanently unlocked · entry is free${nextDive}`;
+  }
   clearInterval(diveCooldownTimer);
   diveCooldownTimer = null;
   if (dive.remaining === 0 && remainingMs > 0) {
@@ -795,44 +775,35 @@ function updateDiveCooldown(dive = gameState.dive) {
   }
 }
 
-async function moveDiveSubmarine() {
-  if (diveMovePending || gameState.currentDimension !== 'deep-sea' || !gameState.dive || !diveTarget) return;
-  diveMovePending = true;
+async function collectDiveSignal(nodeId, marker) {
+  if (diveCollectPending || marker.disabled) return;
+  diveCollectPending = true;
+  marker.disabled = true;
+  marker.classList.add('collecting');
   try {
-    const sentTarget = { ...diveTarget };
-    const response = await handleAPI('/api/sea/dive/move', { method: 'POST', body: { target: sentTarget } });
-    if (!response.success || !response.dive) {
-      if (response.status !== 409) showPopup(response.error || 'Dive connection lost.', 'error');
+    const response = await handleAPI('/api/sea/dive/collect', { method: 'POST', body: { nodeId } });
+    if (!response.success || !response.dive || !response.result) {
+      marker.disabled = false;
+      marker.classList.remove('collecting');
+      showPopup(response.error || 'Unable to collect that signal.', 'error');
       return;
     }
     renderDiveMap(response.dive);
-    const targetUnchanged = diveTarget && Math.abs(diveTarget.x - sentTarget.x) < 0.1 && Math.abs(diveTarget.y - sentTarget.y) < 0.1;
-    if (response.dive.remaining === 0 || (response.dive.reachedTarget && targetUnchanged)) diveTarget = null;
-    if (!diveTarget) {
-      clearInterval(diveMoveTimer);
-      diveMoveTimer = null;
-    }
-    if (response.result) {
-      const result = response.result;
-      currentUser = result.user;
-      updateUI(currentUser);
-      document.getElementById('dive-result').textContent = `${result.name} · ${formatRollChance(result.rollChance)}`;
-      if (result.itemType === 'potion') showPopup(`Found ${result.name}; added to your potion inventory.`);
-      else if (result.key === 'treasure-chest') showPopup(`Treasure Chest recovered! +${formatCoins(result.reward)} coins.`);
-      else showPopup(`Recovered ${result.name}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
-    }
+    const result = response.result;
+    currentUser = result.user;
+    updateUI(currentUser);
+    document.getElementById('dive-result').textContent = `${result.name} · ${formatRollChance(result.rollChance)}`;
+    if (result.itemType === 'potion') showPopup(`Found ${result.name}; added to your potion inventory.`);
+    else if (result.key === 'treasure-chest') showPopup(`Treasure Chest recovered! +${formatCoins(result.reward)} coins.`);
+    else showPopup(`Recovered ${result.name}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
   } finally {
-    diveMovePending = false;
+    diveCollectPending = false;
   }
 }
 
 function exitDeepSea() {
-  clearInterval(diveMoveTimer);
-  diveMoveTimer = null;
   clearInterval(diveCooldownTimer);
   diveCooldownTimer = null;
-  diveTarget = null;
-  diveDragging = false;
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
