@@ -4901,20 +4901,18 @@
             background: linear-gradient(180deg, #0b1b34, #075985 125%);
         }
         .realm-art-sea::before { content: none; }
-        .realm-art-sea .realm-submarine {
-            top: 54%;
+        .realm-art-sea .realm-sonar {
+            top: 48%;
             left: 50%;
-            width: 61px;
-            height: 26px;
-            border: 2px solid #fef08a;
-            border-radius: 55% 45% 44% 56%;
-            background: linear-gradient(180deg, #facc15, #ca8a04);
-            box-shadow: 0 0 20px rgba(250, 204, 21, 0.48);
-            animation: realmSubHover 3.8s ease-in-out infinite;
+            width: 76px;
+            height: 76px;
+            border: 1px solid rgba(190, 242, 100, 0.7);
+            border-radius: 50%;
+            box-shadow: 0 0 0 12px rgba(163, 230, 53, 0.08), 0 0 0 25px rgba(34, 211, 238, 0.08), inset 0 0 20px rgba(163, 230, 53, 0.12);
+            animation: sonarPulse 3s ease-out infinite;
         }
-        .realm-art-sea .realm-submarine::before { top: -9px; left: 23px; width: 9px; height: 9px; border: 1px solid #fef08a; border-bottom: 0; border-radius: 5px 5px 0 0; }
-        .realm-art-sea .realm-submarine::after { right: -8px; width: 8px; height: 11px; background: #eab308; clip-path: polygon(0 0, 100% 25%, 100% 75%, 0 100%); }
-        @keyframes realmSubHover { 50% { transform: translate(-50%, calc(-50% - 5px)); } }
+        .realm-art-sea .realm-sonar::after { inset: 17px; border: 1px solid rgba(190, 242, 100, 0.55); border-radius: 50%; }
+        @keyframes sonarPulse { 50% { opacity: 0.58; transform: translate(-50%, -50%) scale(0.92); } }
         .realm-art-sea .realm-sea-bubble {
             top: auto;
             bottom: -22px;
@@ -5102,13 +5100,10 @@
             height: clamp(300px, 51vh, 540px);
             overflow: hidden;
             isolation: isolate;
-            cursor: grab;
-            touch-action: none;
-            user-select: none;
+            touch-action: manipulation;
             border: 1px solid rgba(103, 232, 249, 0.3);
             background: radial-gradient(ellipse at 76% 25%, rgba(34, 197, 94, 0.18), transparent 22%), radial-gradient(ellipse at 24% 74%, rgba(14, 165, 233, 0.2), transparent 26%), linear-gradient(145deg, #071d2b, #08273c 55%, #061829);
         }
-        .dive-map:active { cursor: grabbing; }
         .dive-map::before,
         .dive-map::after {
             position: absolute;
@@ -5132,45 +5127,25 @@
             position: absolute;
             z-index: 1;
             display: grid;
-            width: 25px;
-            height: 25px;
+            width: 56px;
+            height: 56px;
+            padding: 0;
             place-items: center;
             transform: translate(-50%, -50%);
-            border: 1px solid rgba(190, 242, 100, 0.72);
+            border: 2px solid rgba(190, 242, 100, 0.78);
             border-radius: 50%;
             background: rgba(132, 204, 22, 0.18);
             color: #d9f99d;
-            font-size: 1.05rem;
+            font-size: 1.5rem;
             text-shadow: 0 0 12px #a3e635;
             box-shadow: 0 0 15px rgba(163, 230, 53, 0.25);
             animation: sonarPing 2.8s ease-out infinite;
-            pointer-events: none;
+            cursor: pointer;
+            touch-action: manipulation;
         }
-        .dive-cache.collected { opacity: 0.16; animation: none; }
-        .submarine {
-            position: absolute;
-            z-index: 2;
-            display: grid;
-            width: 76px;
-            height: 38px;
-            place-items: center;
-            transform: translate(-50%, -50%) rotate(var(--sub-heading, 0deg));
-            border: 2px solid #c2e8e8;
-            border-radius: 54% 48% 46% 54%;
-            background: linear-gradient(180deg, #c4dcda 0%, #6d9695 42%, #375e65 72%, #213f4d 100%);
-            box-shadow: 0 7px 12px rgba(0, 0, 0, 0.42), 0 0 20px rgba(103, 232, 249, 0.38), inset 0 2px 3px rgba(255, 255, 255, 0.6), inset 0 -4px 5px rgba(8, 47, 73, 0.7);
-            transition: left 95ms linear, top 95ms linear, transform 140ms ease-out;
-            pointer-events: none;
-        }
-        .submarine-hull-mark { position: absolute; left: 23px; color: #e3f5ee; font-size: 0.42rem; font-weight: 900; letter-spacing: 0.08em; text-shadow: 0 1px 2px #183746; }
-        .submarine-canopy { position: absolute; top: -12px; left: 32px; width: 17px; height: 14px; border: 2px solid #d9f3ef; border-bottom: 0; border-radius: 9px 9px 0 0; background: linear-gradient(120deg, #7dd3fc, #164e63); box-shadow: inset 2px 0 rgba(255,255,255,.45); }
-        .submarine-porthole { position: absolute; top: 9px; width: 7px; height: 7px; border: 1px solid #e0fbff; border-radius: 50%; background: #0e7490; box-shadow: 0 0 5px rgba(125, 211, 252, 0.6); }
-        .submarine-porthole:nth-of-type(3) { left: 8px; }
-        .submarine-porthole:nth-of-type(4) { left: 18px; }
-        .submarine-porthole:nth-of-type(5) { left: 53px; }
-        .submarine-lamp { position: absolute; right: -4px; width: 8px; height: 8px; border: 1px solid #fef3c7; border-radius: 50%; background: #fde68a; box-shadow: 0 0 11px 4px rgba(253, 230, 138, 0.68); }
-        .submarine-thruster { position: absolute; left: -11px; width: 10px; height: 13px; border: 1px solid #b6d5d4; border-radius: 3px 0 0 3px; background: linear-gradient(90deg, #193d4b, #668d8d); }
-        .submarine-tailfin { position: absolute; right: -11px; width: 11px; height: 18px; border: 1px solid #b6d5d4; background: linear-gradient(90deg, #416e75, #183c4b); clip-path: polygon(0 0, 100% 22%, 100% 78%, 0 100%); }
+        .dive-cache:hover,
+        .dive-cache:focus-visible { outline: 2px solid #ecfccb; outline-offset: 3px; background: rgba(163, 230, 53, 0.38); }
+        .dive-cache.collected { opacity: 0.2; animation: none; cursor: default; }
         .dive-status-row { min-height: 42px; flex-wrap: wrap; }
         .dive-status { margin: 0; color: #a5f3fc; font-size: 0.82rem; }
         .dive-result { color: #f8fafc; font-size: 0.9rem; text-align: right; }
@@ -5678,8 +5653,8 @@
             </header>
             <div class="realm-list">
                 <article class="realm-card realm-sea">
-                    <div class="realm-art realm-art-sea" aria-hidden="true"><span class="realm-sea-bubble" style="--bubble-left: 12%; --bubble-size: 10px; --bubble-delay: -1s; --bubble-duration: 5s"></span><span class="realm-sea-bubble" style="--bubble-left: 28%; --bubble-size: 17px; --bubble-delay: -3s; --bubble-duration: 7s"></span><span class="realm-sea-bubble" style="--bubble-left: 47%; --bubble-size: 8px; --bubble-delay: -2s; --bubble-duration: 4.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 63%; --bubble-size: 14px; --bubble-delay: -4s; --bubble-duration: 6s"></span><span class="realm-sea-bubble" style="--bubble-left: 82%; --bubble-size: 11px; --bubble-delay: -2.5s; --bubble-duration: 5.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 92%; --bubble-size: 19px; --bubble-delay: -5s; --bubble-duration: 7.5s"></span><i class="realm-submarine"></i></div>
-                    <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Sea Realm</h3><p>Pilot a submarine through the abyss, follow sonar signals, and recover rare finds.</p><span class="realm-status" id="sea-realm-status"></span><button class="btn" id="sea-realm-action" type="button">UNLOCK &amp; ENTER · 1 ESSENCE</button></div>
+                    <div class="realm-art realm-art-sea" aria-hidden="true"><span class="realm-sea-bubble" style="--bubble-left: 12%; --bubble-size: 10px; --bubble-delay: -1s; --bubble-duration: 5s"></span><span class="realm-sea-bubble" style="--bubble-left: 28%; --bubble-size: 17px; --bubble-delay: -3s; --bubble-duration: 7s"></span><span class="realm-sea-bubble" style="--bubble-left: 47%; --bubble-size: 8px; --bubble-delay: -2s; --bubble-duration: 4.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 63%; --bubble-size: 14px; --bubble-delay: -4s; --bubble-duration: 6s"></span><span class="realm-sea-bubble" style="--bubble-left: 82%; --bubble-size: 11px; --bubble-delay: -2.5s; --bubble-duration: 5.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 92%; --bubble-size: 19px; --bubble-delay: -5s; --bubble-duration: 7.5s"></span><i class="realm-sonar"></i></div>
+                    <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Sea Realm</h3><p>Click spaced sonar signals to recover rarities, potions, and treasure.</p><span class="realm-status" id="sea-realm-status"></span><button class="btn" id="sea-realm-action" type="button">UNLOCK &amp; ENTER · 1 ESSENCE</button></div>
                 </article>
                 <article class="realm-card realm-coming" aria-disabled="true">
                     <div class="realm-art realm-art-unknown" aria-label="Unknown realm" role="img"><span class="realm-question-logo">?</span></div>
@@ -5696,7 +5671,7 @@
     <!-- Deep Sea Dimension -->
     <div class="dimension-container hidden" id="deep-sea-dimension">
         <div class="dimension-header">
-            <h1>Sea Realm <span class="sea-realm-luck">SUBMARINE DIVE</span></h1>
+            <h1>Sea Realm <span class="sea-realm-luck">SONAR SIGNALS</span></h1>
             <button class="btn" id="exit-dimension">Exit Realm</button>
         </div>
         <div class="dimension-main">
@@ -5709,13 +5684,8 @@
                         <div><span class="dive-kicker">ABYSSAL SURVEY</span><h2>Chart the unknown</h2></div>
                         <span class="dive-remaining" id="dive-remaining">10 SIGNALS LEFT</span>
                     </div>
-                    <div class="dive-map" id="dive-map" role="application" aria-label="Draggable sonar map of the Sea Realm">
+                    <div class="dive-map" id="dive-map" role="group" aria-label="Sea Realm sonar signals">
                         <div class="dive-grid" aria-hidden="true"></div>
-                        <div class="submarine" id="submarine" aria-label="Your submarine">
-                            <span class="submarine-hull-mark">A-17</span><span class="submarine-canopy"></span>
-                            <span class="submarine-porthole"></span><span class="submarine-porthole"></span><span class="submarine-porthole"></span>
-                            <span class="submarine-lamp"></span><i class="submarine-thruster"></i><b class="submarine-tailfin"></b>
-                        </div>
                     </div>
                     <div class="dive-status-row">
                         <p class="dive-status" id="dive-status" role="status" aria-live="polite">Launching sonar...</p>
