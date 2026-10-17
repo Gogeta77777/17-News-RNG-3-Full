@@ -13,7 +13,7 @@ let taglineTimer = null;
 let taglineRun = 0;
 
 const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 66.2, color: '#0f172a' },
+  { key: '17-news', name: '17 News', reward: 150, chance: 66.13, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
   { key: 'daniel-poole', name: 'Daniel Poole', reward: 450, chance: 4, color: '#166534' },
   { key: 'dominik-procter', name: 'Dominik Procter', reward: 450, chance: 3, color: '#0d9488' },
@@ -24,7 +24,8 @@ const rarityOptions = [
   { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
   { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
   { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
+  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' },
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 9500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true }
 ];
 
 const globalOptions = [
@@ -33,15 +34,14 @@ const globalOptions = [
   { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true }
 ];
 
-const fishingGlobalOptions = [
-  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, fishingOnly: true }
+const diveGlobalOptions = [
+  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true }
 ];
 
 const POTIONS = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck', effectKey: 'luck' },
+  'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effect: 'luck', effectKey: 'luck' },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
-  depthfinder: { name: 'Depthfinder Tonic', cost: 9000, vialCost: 1, multiplier: 2, duration: 180, effect: 'fishing luck', effectKey: 'deep-luck' },
-  'steady-reel': { name: 'Steady Reel Elixir', cost: 6500, vialCost: 1, multiplier: 1.5, duration: 180, effect: 'reel timing window', effectKey: 'steady-reel' }
 };
 
 const ROTATING_SHOP_ITEMS = [
@@ -52,6 +52,7 @@ const ROTATING_SHOP_ITEMS = [
 
 const TITLES = [
   { id: 'owner', name: 'Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
+  { id: 'admin', name: 'Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks Mini Operations' },
   { id: 'veteran', name: 'Veteran', color: '#38bdf8', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
@@ -73,11 +74,9 @@ let isEnteringDimension = false;
 let eventVisualLayer = null;
 let cameraShakeTimer = null;
 let cameraShakeEndTimer = null;
-let fishingTimers = [];
-let fishingTickTimer = null;
-let fishingTickPending = false;
-let fishingInputPending = false;
-let queuedFishingInput = null;
+let diveMoveTimer = null;
+let diveMovePending = false;
+const diveKeys = new Set();
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -87,7 +86,7 @@ let gameState = {
   shopRotationSlot: null,
   shopRefreshPending: false,
   shopRetryAt: 0,
-  fishingServerPressed: false,
+  dive: null,
   deathSeaUnlocked: false,
   portalFragments: 0,
   seaEssence: 0,
@@ -95,7 +94,7 @@ let gameState = {
   seaRealmUnlocked: false,
   userTitles: [],
   activeTitle: null,
-  potionInventory: { luck: 0, speed: 0 },
+  potionInventory: { luck: 0, 'luck-ii': 0, speed: 0 },
   itemInventory: { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
 };
 
@@ -209,22 +208,6 @@ async function handleAPI(url, options = {}) {
 }
 
 // ==================== POTION SYSTEM ====================
-function applyPotion(potionType) {
-  const potion = POTIONS[potionType];
-  if (!potion) return;
-
-  const effectKey = potion.effectKey || potionType;
-  gameState.activeEffects[effectKey] = {
-    multiplier: potion.multiplier,
-    duration: potion.duration,
-    endTime: Date.now() + potion.duration * 1000,
-    started: Date.now()
-  };
-
-  updatePotionDisplay();
-  showPopup(`${potion.name} activated! +${potion.multiplier}x ${potion.effect} for ${potion.duration}s`);
-}
-
 function updatePotionDisplay() {
   const container = document.getElementById('potion-effects');
   if (!container) return;
@@ -236,10 +219,9 @@ function updatePotionDisplay() {
       delete gameState.activeEffects[type];
       return;
     }
-    const potion = Object.values(POTIONS).find(option => (option.effectKey || option.type) === type);
-    if (!potion) return;
     const div = document.createElement('div');
-    div.innerHTML = `✨ ${potion.name}: ${remaining}s`;
+    const effectName = type === 'luck' ? 'Luck' : type === 'speed' ? 'Speed' : type;
+    div.textContent = `${effectName} effect · ${Number(effect.multiplier) || 1}× · ${remaining}s`;
     container.appendChild(div);
   });
 }
@@ -370,7 +352,7 @@ function renderShop() {
     Object.entries(POTIONS).forEach(([key, potion]) => {
       const card = document.createElement('div');
       card.className = 'potion-card';
-      const emoji = key === 'luck' ? '🍀' : key === 'speed' ? '⚡' : key === 'depthfinder' ? '🧭' : '🎣';
+      const emoji = key.startsWith('luck') ? '🍀' : '⚡';
       card.innerHTML = `
         <h4>${emoji} ${potion.name}</h4>
         <p>${potion.multiplier}x ${potion.effect} • ${potion.duration}s duration</p>
@@ -396,7 +378,7 @@ function buyPotion(potionType) {
   handleAPI('/api/buy-potion', { method: 'POST', body: { potionType } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 };
+      gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
       updateUI(currentUser);
       showPopup(`Purchased ${POTIONS[potionType].name}! Added to inventory.`);
     } else {
@@ -414,9 +396,9 @@ function usePotion(potionType) {
   handleAPI('/api/use-potion', { method: 'POST', body: { potionType } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 };
+      gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
       updateUI(currentUser);
-      applyPotion(potionType);
+      showPopup(`${POTIONS[potionType].name} used. Matching luck and time effects stack.`);
     } else {
       showPopup(response.error || 'Unable to use potion', 'error');
     }
@@ -521,7 +503,7 @@ function checkTitleUnlocks(user) {
   if ((Number(user.spins) || 0) >= 1000) existing.add('locked-in');
   if ((Number(user.spins) || 0) >= 5000) existing.add('endless-frequency');
   if (rarityTotal >= 10) existing.add('collector');
-  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
   if ((Number(user.items?.old_potato_sticker) || 0) >= 1) existing.add('potato');
   if (user.sea_realm_unlocked) existing.add('tidekeeper');
   gameState.userTitles = Array.from(existing);
@@ -682,6 +664,7 @@ function enterDeepSea() {
   const dsDiv = document.getElementById('deep-sea-dimension');
   dsDiv.classList.remove('hidden');
   gameState.currentDimension = 'deep-sea';
+  window.updatePlayerActivity?.('Diving in the Sea Realm');
 
   // Generate bubbles
   const bubbleContainer = document.querySelector('.bubbles');
@@ -696,288 +679,115 @@ function enterDeepSea() {
     bubbleContainer.appendChild(bubble);
   }
 
-  const fishingButton = document.getElementById('sea-fishing-action');
-  if (fishingButton && !fishingButton.dataset.bound) {
-    fishingButton.addEventListener('click', handleSeaFishingAction);
-    fishingButton.dataset.bound = 'true';
-  }
-  bindFishingControls();
-  resetSeaFishingUI();
-  showPopup('The 4x-current Sea Realm is open.');
+  bindDiveControls();
+  startDive();
+  showPopup('Submarine launched. Follow the sonar signals.');
 }
 
-function clearFishingTimers() {
-  fishingTimers.forEach(timer => clearTimeout(timer));
-  fishingTimers = [];
-  clearInterval(fishingTickTimer);
-  fishingTickTimer = null;
-  fishingTickPending = false;
-  fishingInputPending = false;
-  queuedFishingInput = null;
-}
-
-function syncFishingClock(serverTime, requestStartedAt) {
-  const receivedAt = Date.now();
-  const requestMidpoint = (requestStartedAt + receivedAt) / 2;
-  gameState.fishingServerOffset = Number(serverTime) - requestMidpoint;
-  return receivedAt;
-}
-
-function bindFishingControls() {
-  if (document.documentElement.dataset.fishingControlsBound) return;
+function bindDiveControls() {
+  if (document.documentElement.dataset.diveControlsBound) return;
+  const directions = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
   document.addEventListener('keydown', event => {
-    if (gameState.currentDimension !== 'deep-sea' || event.code !== 'Space') return;
+    const direction = directions[event.code];
+    if (gameState.currentDimension !== 'deep-sea' || !direction || event.target.matches('input, textarea, select')) return;
     event.preventDefault();
-    if (!event.repeat) setFishingBarMovement(true);
+    diveKeys.add(direction);
   });
   document.addEventListener('keyup', event => {
-    if (gameState.currentDimension === 'deep-sea' && event.code === 'Space') {
-      event.preventDefault();
-      setFishingBarMovement(false);
-    }
+    const direction = directions[event.code];
+    if (direction) diveKeys.delete(direction);
   });
-  window.addEventListener('blur', () => setFishingBarMovement(false));
-
-  const holdButton = document.getElementById('sea-reel-hold');
-  if (holdButton && !holdButton.dataset.bound) {
-    holdButton.addEventListener('pointerdown', event => {
+  window.addEventListener('blur', () => diveKeys.clear());
+  document.querySelectorAll('[data-dive-key]').forEach(button => {
+    const direction = button.dataset.diveKey;
+    button.addEventListener('pointerdown', event => {
       event.preventDefault();
-      holdButton.setPointerCapture?.(event.pointerId);
-      setFishingBarMovement(true);
+      button.setPointerCapture?.(event.pointerId);
+      diveKeys.add(direction);
     });
-    ['pointerup', 'pointercancel', 'pointerleave', 'lostpointercapture'].forEach(type => {
-      holdButton.addEventListener(type, () => setFishingBarMovement(false));
-    });
-    holdButton.dataset.bound = 'true';
-  }
-  document.documentElement.dataset.fishingControlsBound = 'true';
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => button.addEventListener(type, () => diveKeys.delete(direction)));
+  });
+  document.getElementById('dive-rescan')?.addEventListener('click', startDive);
+  document.documentElement.dataset.diveControlsBound = 'true';
 }
 
-async function setFishingBarMovement(pressed) {
-  if (gameState.fishingPhase !== 'reeling' || Boolean(gameState.fishingSpacePressed) === pressed) return;
-  gameState.fishingSpacePressed = pressed;
-  document.getElementById('sea-reel-hold')?.classList.toggle('fishing-hold-active', pressed);
-  if (fishingInputPending) {
-    queuedFishingInput = pressed;
+async function startDive() {
+  const response = await handleAPI('/api/sea/dive/start', { method: 'POST' });
+  if (!response.success || !response.dive) {
+    showPopup(response.error || 'Unable to start the dive.', 'error');
     return;
   }
-  fishingInputPending = true;
-  const requestStartedAt = Date.now();
-  const response = await handleAPI('/api/sea/fishing/input', { method: 'POST', body: { pressed } });
-  fishingInputPending = false;
-  if (gameState.fishingPhase !== 'reeling') return;
-  if (response.success && response.fishing) {
-    gameState.fishingServerPressed = pressed;
-    syncFishingClock(response.fishing.serverTime, requestStartedAt);
-    renderFishingReelState(response.fishing);
-  } else if (!response.success && response.status !== 409) {
-    resetSeaFishingUI(response.error || 'The fish escaped. Cast again.');
+  gameState.dive = null;
+  renderDiveMap(response.dive);
+  clearInterval(diveMoveTimer);
+  diveMoveTimer = setInterval(moveDiveSubmarine, 300);
+}
+
+function renderDiveMap(dive) {
+  const map = document.getElementById('dive-map');
+  const submarine = document.getElementById('submarine');
+  if (!map || !submarine) return;
+  const rebuildNodes = !gameState.dive || gameState.dive.nodes.map(node => node.id).join() !== dive.nodes.map(node => node.id).join();
+  gameState.dive = dive;
+  submarine.style.left = `${dive.x}%`;
+  submarine.style.top = `${dive.y}%`;
+  if (rebuildNodes) {
+    map.querySelectorAll('.dive-cache').forEach(node => node.remove());
+    dive.nodes.forEach(node => {
+      const marker = document.createElement('span');
+      marker.className = 'dive-cache';
+      marker.dataset.nodeId = node.id;
+      marker.style.left = `${node.x}%`;
+      marker.style.top = `${node.y}%`;
+      marker.setAttribute('aria-label', 'Sonar signal');
+      marker.textContent = '✧';
+      map.appendChild(marker);
+    });
   }
-  if (queuedFishingInput !== null) {
-    const nextPressed = queuedFishingInput;
-    queuedFishingInput = null;
-    if (gameState.fishingServerPressed !== nextPressed) {
-      gameState.fishingSpacePressed = !nextPressed;
-      setFishingBarMovement(nextPressed);
-    }
+  dive.nodes.forEach(node => map.querySelector(`[data-node-id="${node.id}"]`)?.classList.toggle('collected', node.collected));
+  const remaining = document.getElementById('dive-remaining');
+  const status = document.getElementById('dive-status');
+  const rescan = document.getElementById('dive-rescan');
+  if (remaining) remaining.textContent = `${dive.remaining} SIGNAL${dive.remaining === 1 ? '' : 'S'} LEFT`;
+  if (status) status.textContent = dive.remaining ? 'Sonar has marked nearby energy signatures.' : 'Area swept. Launch a fresh dive to chart a new route.';
+  if (rescan) {
+    rescan.disabled = dive.remaining > 0;
+    rescan.textContent = dive.remaining ? 'AREA SWEPT' : 'NEW DIVE';
   }
 }
 
-function resetSeaFishingUI(message = 'The line is ready.') {
-  const shouldCancel = ['waiting', 'reeling'].includes(gameState.fishingPhase);
-  clearFishingTimers();
-  gameState.fishingPhase = 'ready';
-  gameState.fishingSpacePressed = false;
-  gameState.fishingServerPressed = false;
-  if (shouldCancel) handleAPI('/api/sea/fishing/cancel', { method: 'POST' });
-  const status = document.getElementById('sea-fishing-status');
-  const action = document.getElementById('sea-fishing-action');
-  const result = document.getElementById('sea-fishing-result');
-  const chance = document.getElementById('sea-fishing-chance');
-  const progress = document.getElementById('sea-fishing-progress');
-  const meter = document.getElementById('fishing-meter');
-  const rewardDisplay = document.getElementById('ds-reward-display');
-  const bar = document.getElementById('fishing-bar');
-  const fish = document.getElementById('fishing-fish');
-  const fill = document.getElementById('fishing-progress-fill');
-  if (status) status.textContent = message;
-  if (action) {
-    action.disabled = false;
-    action.textContent = 'CAST LINE';
-    action.classList.remove('fishing-action-bite');
-  }
-  if (result) result.textContent = 'Waiting for a catch';
-  if (chance) chance.textContent = 'Sea luck: 4x';
-  if (progress) progress.textContent = 'READY';
-  meter?.classList.remove('fishing-meter-live');
-  if (bar) {
-    bar.style.left = '50%';
-    bar.style.width = '24%';
-    bar.classList.remove('fishing-bar-moving');
-  }
-  if (fish) fish.style.left = '50%';
-  if (fill) fill.style.width = '0%';
-  document.getElementById('sea-reel-hold')?.classList.remove('fishing-hold-active');
-  if (rewardDisplay) rewardDisplay.textContent = '🪙 Reward: 0 coins';
-}
-
-async function handleSeaFishingAction() {
-  if (gameState.fishingPhase === 'ready') return castSeaFishingLine();
-  if (gameState.fishingPhase === 'waiting') return hookSeaFish();
-}
-
-async function castSeaFishingLine() {
-  const action = document.getElementById('sea-fishing-action');
-  const status = document.getElementById('sea-fishing-status');
-  const result = document.getElementById('sea-fishing-result');
-  const chance = document.getElementById('sea-fishing-chance');
-  const progress = document.getElementById('sea-fishing-progress');
-  if (!action || gameState.fishingPhase !== 'ready') return;
-  gameState.fishingPhase = 'casting';
-  action.disabled = true;
-  action.textContent = 'CASTING';
-  if (status) status.textContent = 'The float drifts into the deep...';
-  if (result) result.textContent = 'Line in the water';
-  if (chance) chance.textContent = 'Sea luck: 4x';
-  if (progress) progress.textContent = 'WAIT';
-
-  const requestStartedAt = Date.now();
-  const response = await handleAPI('/api/sea/fishing/cast', { method: 'POST' });
-  if (!response.success || !response.fishing) {
-    resetSeaFishingUI(response.error || 'Could not cast the line.');
-    showPopup(response.error || 'Could not cast the line.', 'error');
-    return;
-  }
-
-  gameState.fishingPhase = 'waiting';
-  const receivedAt = syncFishingClock(response.fishing.serverTime, requestStartedAt);
-  action.textContent = 'WAIT FOR THE BITE';
-  const biteAt = Number(response.fishing.serverTime) + Number(response.fishing.biteInMs);
-  const biteDelay = Math.max(0, biteAt - (receivedAt + gameState.fishingServerOffset));
-  fishingTimers.push(setTimeout(() => {
-    if (gameState.fishingPhase !== 'waiting') return;
-    if (status) status.textContent = 'BITE! SET THE HOOK';
-    if (progress) progress.textContent = 'BITE';
-    action.disabled = false;
-    action.textContent = 'SET HOOK';
-    action.classList.add('fishing-action-bite');
-  }, biteDelay));
-  fishingTimers.push(setTimeout(() => {
-    if (gameState.fishingPhase === 'waiting') {
-      action.classList.remove('fishing-action-bite');
-      resetSeaFishingUI('The fish slipped away. Cast again.');
-    }
-  }, biteDelay + 2450));
-}
-
-async function hookSeaFish() {
-  const action = document.getElementById('sea-fishing-action');
-  const status = document.getElementById('sea-fishing-status');
-  const progress = document.getElementById('sea-fishing-progress');
-  action.disabled = true;
-  action.classList.remove('fishing-action-bite');
-  action.textContent = 'HOOK SET';
-  const requestStartedAt = Date.now();
-  const response = await handleAPI('/api/sea/fishing/hook', { method: 'POST' });
-  if (!response.success || !response.fishing) {
-    if (response.tooEarly) {
-      action.disabled = false;
-      action.textContent = 'SET HOOK';
+async function moveDiveSubmarine() {
+  if (diveMovePending || gameState.currentDimension !== 'deep-sea' || !gameState.dive || !diveKeys.size) return;
+  diveMovePending = true;
+  try {
+    const response = await handleAPI('/api/sea/dive/move', { method: 'POST', body: { keys: [...diveKeys] } });
+    if (!response.success || !response.dive) {
+      if (response.status !== 409) showPopup(response.error || 'Dive connection lost.', 'error');
       return;
     }
-    resetSeaFishingUI(response.error || 'The fish got away. Cast again.');
-    return;
+    renderDiveMap(response.dive);
+    if (response.result) {
+      const result = response.result;
+      currentUser = result.user;
+      updateUI(currentUser);
+      document.getElementById('dive-result').textContent = `${result.name} · ${formatRollChance(result.rollChance)}`;
+      if (result.itemType === 'potion') showPopup(`Found ${result.name}; added to your potion inventory.`);
+      else if (result.key === 'treasure-chest') showPopup(`Treasure Chest recovered! +${formatCoins(result.reward)} coins.`);
+      else showPopup(`Recovered ${result.name}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
+    }
+  } finally {
+    diveMovePending = false;
   }
-  clearFishingTimers();
-  gameState.fishingPhase = 'reeling';
-  gameState.fishingSpacePressed = false;
-  gameState.fishingServerPressed = false;
-  syncFishingClock(response.fishing.serverTime, requestStartedAt);
-  renderFishingReelState(response.fishing);
-  if (status) status.textContent = 'Hold Space to move the bar. Keep the fish inside for 4 seconds.';
-  if (progress) progress.textContent = '0.0 / 4.0 s';
-  fishingTickTimer = setInterval(tickFishingReel, 100);
-}
-
-function renderFishingReelState(fishing) {
-  const bar = document.getElementById('fishing-bar');
-  const fish = document.getElementById('fishing-fish');
-  const fill = document.getElementById('fishing-progress-fill');
-  const progress = document.getElementById('sea-fishing-progress');
-  const action = document.getElementById('sea-fishing-action');
-  gameState.fishingPhase = 'reeling';
-  if (bar) {
-    bar.style.left = `${Number(fishing.barPosition) * 100}%`;
-    bar.style.width = `${Number(fishing.barWidth) * 100}%`;
-    bar.classList.toggle('fishing-bar-moving', Boolean(gameState.fishingSpacePressed));
-  }
-  if (fish) fish.style.left = `${Number(fishing.fishPosition) * 100}%`;
-  if (fill) fill.style.width = `${Math.min(100, Number(fishing.progressMs) / 4000 * 100)}%`;
-  if (progress) progress.textContent = `${(Number(fishing.progressMs) / 1000).toFixed(1)} / 4.0 s`;
-  if (action) {
-    action.disabled = true;
-    action.textContent = 'REELING';
-  }
-}
-
-async function tickFishingReel() {
-  if (fishingTickPending || gameState.fishingPhase !== 'reeling') return;
-  fishingTickPending = true;
-  const requestStartedAt = Date.now();
-  const response = await handleAPI('/api/sea/fishing/tick', { method: 'POST' });
-  fishingTickPending = false;
-  if (gameState.fishingPhase !== 'reeling') return;
-  if (!response.success) {
-    resetSeaFishingUI(response.error || 'The fish escaped. Cast again.');
-    return;
-  }
-  if (response.fishing?.serverTime) syncFishingClock(response.fishing.serverTime, requestStartedAt);
-  if (response.fishing?.phase === 'reeling') {
-    renderFishingReelState(response.fishing);
-    return;
-  }
-  if (!response.result || !response.user) {
-    resetSeaFishingUI('The catch could not be recorded. Cast again.');
-    return;
-  }
-
-  const catchResult = response.result;
-  const status = document.getElementById('sea-fishing-status');
-  const result = document.getElementById('sea-fishing-result');
-  const chance = document.getElementById('sea-fishing-chance');
-  const progress = document.getElementById('sea-fishing-progress');
-  const meter = document.getElementById('fishing-meter');
-  const rewardDisplay = document.getElementById('ds-reward-display');
-  gameState.fishingPhase = 'caught';
-  meter?.classList.remove('fishing-meter-live');
-  if (status) status.textContent = 'CATCH SECURED';
-  if (progress) progress.textContent = catchResult.isItem ? 'CHEST' : 'LANDED';
-  if (result) result.textContent = catchResult.name;
-  if (chance) chance.textContent = formatRollChance(catchResult.rollChance);
-  if (rewardDisplay) rewardDisplay.textContent = `🪙 Reward: ${formatCoins(catchResult.reward)} coins`;
-  currentUser = response.user;
-  updateUI(currentUser);
-  const actionButton = document.getElementById('sea-fishing-action');
-  if (actionButton) {
-    actionButton.disabled = false;
-    actionButton.textContent = 'CAST AGAIN';
-  }
-  gameState.fishingPhase = 'ready';
-  gameState.fishingSpacePressed = false;
-  gameState.fishingServerPressed = false;
-  if (catchResult.isItem) showPopup('Treasure Chest caught. Open it from your Items inventory.');
-  else showPopup(`Caught ${catchResult.name}! +${formatCoins(catchResult.reward)} coins.`);
-  showRewardPopup(`+${formatCoins(catchResult.reward)} coins`);
 }
 
 function exitDeepSea() {
-  if (['waiting', 'reeling'].includes(gameState.fishingPhase)) {
-    handleAPI('/api/sea/fishing/cancel', { method: 'POST' });
-  }
-  clearFishingTimers();
+  clearInterval(diveMoveTimer);
+  diveMoveTimer = null;
+  diveKeys.clear();
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
+  window.updatePlayerActivity?.('At the RNG console');
 }
 
 // ==================== CODE REDEMPTION ====================
@@ -1019,7 +829,7 @@ function renderInventory(user) {
       rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🎲 No rare items yet. Roll to collect!</div>';
     } else {
       Object.entries(rarities).forEach(([key, count]) => {
-        const rarity = [...rarityOptions, ...globalOptions, ...fishingGlobalOptions].find(r => r.key === key);
+        const rarity = [...rarityOptions, ...globalOptions, ...diveGlobalOptions].find(r => r.key === key);
         if (!rarity) return;
         const card = document.createElement('div');
         const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
@@ -1050,7 +860,7 @@ function renderInventory(user) {
       Object.entries(POTIONS).forEach(([key, potion]) => {
         const count = potions[key] || 0;
         if (count <= 0) return;
-        const emoji = key === 'luck' ? '🍀' : key === 'speed' ? '⚡' : key === 'depthfinder' ? '🧭' : '🎣';
+        const emoji = key.startsWith('luck') ? '🍀' : '⚡';
         const card = document.createElement('div');
         card.className = 'inventory-item potion-inventory-item';
         card.innerHTML = `
@@ -1109,15 +919,15 @@ function renderRarityCatalog() {
   if (!list) return;
   list.innerHTML = '';
 
-  [...rarityOptions, ...globalOptions, ...fishingGlobalOptions]
+  [...rarityOptions, ...globalOptions, ...diveGlobalOptions]
     .sort((left, right) => left.chance - right.chance)
     .forEach((rarity, index) => {
       const row = document.createElement('div');
       const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
-      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.fishingOnly ? ' fishing-only-rarity' : ''}`;
+      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.diveOnly ? ' dive-only-rarity' : ''}`;
       row.style.setProperty('--rarity-color', rarityColor);
       if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
-      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarity.fishingOnly ? '<small> SEA ONLY</small>' : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
+      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarity.diveOnly ? '<small> SEA ONLY</small>' : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
       list.appendChild(row);
     });
 }
@@ -1129,7 +939,7 @@ function updateUI(user) {
   
   // Load game state from user
   gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
-  gameState.potionInventory = user.potions || { luck: 0, speed: 0, depthfinder: 0, 'steady-reel': 0 };
+  gameState.potionInventory = user.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
   gameState.userTitles = user.titles || [];
   gameState.activeTitle = user.active_title || null;
   gameState.activeEffects = user.active_effects || {};
@@ -1144,8 +954,9 @@ function updateUI(user) {
   // Show admin button if user is admin
   const adminBtn = document.getElementById('admin-btn');
   if (adminBtn) {
-    if (user.is_admin) {
+    if (user.is_admin || (user.titles || []).includes('admin')) {
       adminBtn.classList.remove('hidden');
+      adminBtn.textContent = user.is_admin ? 'Admin Panel' : 'Mini Operations';
     } else {
       adminBtn.classList.add('hidden');
     }
@@ -1162,6 +973,22 @@ function updateUI(user) {
   updatePortalUI();
   updatePotionDisplay();
   renderRealmSelector();
+  syncCurrentActivity();
+}
+
+function syncCurrentActivity() {
+  if (gameState.currentDimension === 'deep-sea') {
+    window.updatePlayerActivity?.('Diving in the Sea Realm');
+    return;
+  }
+  const activityByTab = {
+    inventory: 'Browsing inventory',
+    shop: 'Using the shop',
+    titles: 'Browsing titles',
+    chat: 'In chat',
+    settings: 'Viewing settings'
+  };
+  window.updatePlayerActivity?.(activityByTab[document.querySelector('.content-tab.active')?.dataset.tab] || 'At the RNG console');
 }
 
 function updatePortalUI() {
@@ -1351,6 +1178,7 @@ async function loadAdminUsers() {
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
+        ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
       </div>
       <form class="admin-ban-form">
         <label>Ban reason<input class="ban-reason" type="text" maxlength="250" placeholder="Optional reason" ${user.is_admin ? 'disabled' : ''}></label>
@@ -1371,6 +1199,19 @@ async function loadAdminUsers() {
         return;
       }
       showPopup(banned ? `${user.username} has been banned.` : `${user.username} has been unbanned.`);
+      loadAdminUsers();
+    });
+    row.querySelector('.admin-title-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST',
+        body: { type: 'title', grant: !(user.titles || []).includes('admin') }
+      });
+      if (!result.success) {
+        showPopup(result.error || 'Unable to update title.', 'error');
+        return;
+      }
+      showPopup(`${(user.titles || []).includes('admin') ? 'Revoked' : 'Granted'} the Admin title ${user.username === currentUser.username ? 'for your account' : `for ${user.username}`}.`);
       loadAdminUsers();
     });
     row.querySelectorAll('.admin-adjust-form').forEach(form => {
@@ -1411,6 +1252,88 @@ async function loadAdminUsers() {
   }
 }
 
+let miniAdminActiveEvent = null;
+let miniAdminRefreshTimer = null;
+
+async function loadMiniAdminOverview() {
+  const roster = document.getElementById('mini-user-roster');
+  const status = document.getElementById('mini-ops-status');
+  if (!roster || !(currentUser?.is_admin || (currentUser?.titles || []).includes('admin'))) return;
+  const response = await handleAPI('/api/mini-admin/overview');
+  if (!response.success) {
+    if (status) status.textContent = response.error || 'Unable to load player activity.';
+    return;
+  }
+  miniAdminActiveEvent = response.activeEvent;
+  if (status) status.textContent = `${response.onlineCount} online · Active event: ${response.activeEvent?.title || 'none'}`;
+  roster.innerHTML = response.users.map(user => `
+    <div class="mini-user-row">
+      <span class="mini-user-presence ${user.online ? 'online' : ''}" aria-hidden="true"></span>
+      <strong>${escapeHtml(user.username)}</strong>
+      <span>${escapeHtml(user.activity)}</span>
+      <small>${formatCoins(user.coins)} coins · ${user.spins} rolls</small>
+    </div>
+  `).join('') || '<p class="admin-empty-state">No player records yet.</p>';
+  const stop = document.querySelector('[data-mini-stop]');
+  if (stop) stop.disabled = !response.activeEvent || response.activeEvent.initiatedBy !== currentUser.username;
+}
+
+function renderGlobalDropOptions() {
+  const typeSelect = document.getElementById('global-drop-type');
+  const keySelect = document.getElementById('global-drop-key');
+  if (!typeSelect || !keySelect) return;
+  const optionsByType = {
+    rarity: [...rarityOptions, ...globalOptions, ...diveGlobalOptions].filter(option => !option.isItem),
+    potion: Object.entries(POTIONS).map(([key, potion]) => ({ key, name: potion.name })),
+    item: [
+      { key: 'fragments', name: 'Portal Fragment' }, { key: 'clovers', name: 'Clover Leaf' },
+      { key: 'essence', name: 'Sea Essence' }, { key: 'old_potato_sticker', name: 'Old Potato Sticker' },
+      { key: 'empty_vial', name: 'Empty Vial' }, { key: 'treasure_chest', name: 'Treasure Chest' }
+    ]
+  };
+  const seen = new Set();
+  keySelect.innerHTML = optionsByType[typeSelect.value].filter(option => {
+    if (seen.has(option.key)) return false;
+    seen.add(option.key);
+    return true;
+  }).map(option => `<option value="${escapeHtml(option.key)}">${escapeHtml(option.name)}</option>`).join('');
+}
+
+function setupAdminTools() {
+  const typeSelect = document.getElementById('global-drop-type');
+  typeSelect?.addEventListener('change', renderGlobalDropOptions);
+  renderGlobalDropOptions();
+  document.getElementById('global-drop-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const fields = new FormData(event.currentTarget);
+    const response = await handleAPI('/api/admin/global-drop', {
+      method: 'POST',
+      body: { type: fields.get('type'), key: fields.get('key'), amount: Number(fields.get('amount')) }
+    });
+    if (!response.success) {
+      showPopup(response.error || 'Unable to send the global drop.', 'error');
+      return;
+    }
+    showPopup(`${response.amount} × ${response.name} granted to ${response.count} accounts.`);
+  });
+  document.querySelectorAll('[data-mini-event]').forEach(button => button.addEventListener('click', async () => {
+    const response = await handleAPI('/api/mini-admin/event', {
+      method: 'POST', body: { eventName: button.dataset.miniEvent, action: 'start' }
+    });
+    if (!response.success) showPopup(response.error || 'Unable to launch mini event.', 'error');
+    else showPopup(`${response.event.title} is live.`);
+    loadMiniAdminOverview();
+  }));
+  document.querySelector('[data-mini-stop]')?.addEventListener('click', async () => {
+    const response = await handleAPI('/api/mini-admin/event', {
+      method: 'POST', body: { eventName: miniAdminActiveEvent?.eventName, action: 'stop' }
+    });
+    if (!response.success) showPopup(response.error || 'Unable to end mini event.', 'error');
+    else showPopup(`${miniAdminActiveEvent?.title || 'Event'} ended.`);
+    loadMiniAdminOverview();
+  });
+}
+
 async function loadShutdownState() {
   if (!currentUser?.is_admin) return;
   const response = await handleAPI('/api/admin/shutdown');
@@ -1447,8 +1370,6 @@ async function loadAdminHeadline() {
 const LIVE_EVENT_PRESENTATION = {
   'starlight-surge': { className: 'starlight-surge', startId: 'activate-starlight-surge', stopId: 'deactivate-starlight-surge' },
   'meteor-shower': { className: 'meteor-shower-live', startId: 'activate-meteor-shower', stopId: 'deactivate-meteor-shower' },
-  'aurora-bloom': { className: 'aurora-bloom-live', startId: 'activate-aurora-bloom', stopId: 'deactivate-aurora-bloom' },
-  'golden-rush': { className: 'golden-rush-live', startId: 'activate-golden-rush', stopId: 'deactivate-golden-rush', shakeEveryMs: 18000 },
   'abyssal-resonance': { className: 'abyssal-resonance-live', startId: 'activate-abyssal-resonance', stopId: 'deactivate-abyssal-resonance', shakeEveryMs: 26000 }
 };
 
@@ -1479,25 +1400,16 @@ function createAdminEventVisual(eventName) {
   const layer = document.createElement('div');
   layer.className = `event-visual-layer event-visual-${eventName}`;
   layer.setAttribute('aria-hidden', 'true');
-  const starfall = ['starlight-surge', 'meteor-shower', 'golden-rush'].includes(eventName);
+  const starfall = ['starlight-surge', 'meteor-shower'].includes(eventName);
   if (starfall) {
     for (let index = 0; index < 40; index += 1) {
       const star = document.createElement('span');
-      star.className = eventName === 'golden-rush' ? 'event-falling-star event-falling-gold' : 'event-falling-star';
+      star.className = 'event-falling-star';
       star.style.setProperty('--star-left', `${Math.random() * 100}%`);
       star.style.setProperty('--star-delay', `${Math.random() * -12}s`);
       star.style.setProperty('--star-duration', `${5 + Math.random() * 8}s`);
       star.style.setProperty('--star-size', `${3 + Math.random() * 6}px`);
       layer.appendChild(star);
-    }
-  }
-  if (eventName === 'aurora-bloom') {
-    for (let index = 0; index < 6; index += 1) {
-      const ribbon = document.createElement('span');
-      ribbon.className = 'event-aurora-ribbon';
-      ribbon.style.setProperty('--ribbon-offset', `${index * 12}%`);
-      ribbon.style.setProperty('--ribbon-delay', `${index * -2.5}s`);
-      layer.appendChild(ribbon);
     }
   }
   if (eventName === 'abyssal-resonance') {
@@ -1630,6 +1542,7 @@ async function handleLogin(e) {
       setupPortalUI();
       setupRollButton();
       updateUI(currentUser);
+      window.updatePlayerActivity?.('At the RNG console');
       e.target.reset();
     } else {
       throw new Error(data.error || data.message || 'Login failed');
@@ -1687,6 +1600,7 @@ async function handleRegister(e) {
       setupPortalUI();
       setupRollButton();
       updateUI(currentUser);
+      window.updatePlayerActivity?.('At the RNG console');
       e.target.reset();
     } else {
       throw new Error(data.error || data.message || 'Registration failed');
@@ -1714,6 +1628,7 @@ async function loadSession() {
     window.loadChatFallback?.();
     showGamePage();
     updateUI(response.user);
+    window.updatePlayerActivity?.('At the RNG console');
     setupPortalUI();
     setupRollButton();
   }
@@ -1899,6 +1814,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tabPane.classList.remove('hidden');
         tabPane.classList.add('active');
       }
+      syncCurrentActivity();
     });
   });
 
@@ -1919,17 +1835,33 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Admin panel controls
   document.getElementById('admin-btn')?.addEventListener('click', () => {
-    if (currentUser && currentUser.is_admin) {
+    if (currentUser && (currentUser.is_admin || (currentUser.titles || []).includes('admin'))) {
+      const panel = document.getElementById('admin-panel');
+      const isMini = !currentUser.is_admin;
+      panel?.classList.toggle('mini-admin', isMini);
+      const heading = panel?.querySelector('.admin-header h1');
+      if (heading) heading.textContent = isMini ? 'Mini Operations' : 'Admin Control Center';
+      document.getElementById('refresh-admin-users')?.classList.toggle('hidden', isMini);
       showPage('admin-panel');
-      loadAdminUsers();
-      loadShutdownState();
-      loadAdminHeadline();
+      if (currentUser.is_admin) {
+        loadAdminUsers();
+        loadShutdownState();
+        loadAdminHeadline();
+      }
+      loadMiniAdminOverview();
+      clearInterval(miniAdminRefreshTimer);
+      miniAdminRefreshTimer = setInterval(loadMiniAdminOverview, 10000);
     } else {
       showPopup('Admin access denied', 'error');
     }
   });
-  document.getElementById('back-to-game')?.addEventListener('click', () => showPage('game'));
+  document.getElementById('back-to-game')?.addEventListener('click', () => {
+    document.getElementById('admin-panel')?.classList.remove('mini-admin');
+    if (miniAdminRefreshTimer) clearInterval(miniAdminRefreshTimer);
+    showPage('game');
+  });
   document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
+  setupAdminTools();
   document.getElementById('shutdown-toggle')?.addEventListener('click', async () => {
     const active = document.getElementById('shutdown-toggle').textContent === 'Begin shutdown';
     if (active && !confirm('Put the game into maintenance mode for every player?')) return;
