@@ -248,20 +248,25 @@ function selectWeightedOption(options, luckMultiplier = 1) {
 
 function createDiveSession() {
   const now = Date.now();
-  const nodes = Array.from({ length: 10 }, (_, index) => ({
-    id: `cache-${index}-${crypto.randomBytes(3).toString('hex')}`,
-    x: 8 + Math.random() * 84,
-    y: 10 + Math.random() * 80,
+  const positions = [];
+  for (const y of [16, 50, 84]) {
+    for (const x of [12, 37, 63, 88]) positions.push({ x, y });
+  }
+  for (let index = positions.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [positions[index], positions[swapIndex]] = [positions[swapIndex], positions[index]];
+  }
+  const nodes = positions.slice(0, 10).map(({ x, y }, index) => ({
+    id: `signal-${index}-${crypto.randomBytes(3).toString('hex')}`,
+    x: x + (Math.random() - 0.5) * 6,
+    y: y + (Math.random() - 0.5) * 6,
     collected: false
   }));
-  return { x: 50, y: 50, heading: 0, nodes, target: null, lastMovedAt: now, cooldownUntil: now + 60000 };
+  return { nodes, cooldownUntil: now + 120000 };
 }
 
 function getDiveState(session) {
   return {
-    x: session.x,
-    y: session.y,
-    heading: session.heading,
     nodes: session.nodes,
     remaining: session.nodes.filter(node => !node.collected).length,
     cooldownUntil: session.cooldownUntil
@@ -690,15 +695,6 @@ const apiLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: req => req.originalUrl.split('?')[0] === '/api/sea/dive/move'
-});
-const diveMoveLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 360,
-  message: { success: false, error: 'Submarine controls are moving too quickly.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: req => `dive:${normalizeUsername(req.session?.username)}`
 });
 
 // Body parsing
@@ -1011,7 +1007,7 @@ app.post('/api/spin', async (req, res) => {
 
   const dimension = String(req.body?.dimension || '').toLowerCase();
   if (dimension === 'deep-sea') {
-    return res.status(400).json({ success: false, error: 'Use the submarine dive controls in the Sea Realm.' });
+    return res.status(400).json({ success: false, error: 'Click sonar signals in the Sea Realm to collect rewards.' });
   }
   const luckMultiplier = getLuckMultiplier(req.session.username, dimension);
   const selection = selectWeightedOption(CORE_RARITIES, luckMultiplier);
@@ -1351,7 +1347,7 @@ app.post('/api/sea/dive/start', async (req, res) => {
     let session = activeDiveSessions.get(key);
     const now = Date.now();
     if (session?.nodes.every(node => node.collected) && now < session.cooldownUntil) {
-      return res.status(429).json({ success: false, cooldownUntil: session.cooldownUntil, dive: getDiveState(session), error: 'New dives are available once per minute.' });
+      return res.status(429).json({ success: false, cooldownUntil: session.cooldownUntil, dive: getDiveState(session), error: 'You must wait two minutes between dives.' });
     }
     if (!session || session.nodes.every(node => node.collected)) {
       session = createDiveSession();
@@ -1364,98 +1360,51 @@ app.post('/api/sea/dive/start', async (req, res) => {
   }
 });
 
-app.post('/api/sea/dive/move', diveMoveLimiter, async (req, res) => {
+app.post('/api/sea/dive/collect', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   const key = normalizeUsername(req.session.username);
   const session = activeDiveSessions.get(key);
-  if (!session) return res.status(409).json({ success: false, error: 'Start a dive before moving.' });
-  const now = Date.now();
-  const target = req.body?.target;
-  if (target && Number.isFinite(Number(target.x)) && Number.isFinite(Number(target.y))) {
-    session.target = {
-      x: Math.max(4, Math.min(96, Number(target.x))),
-      y: Math.max(5, Math.min(95, Number(target.y)))
-    };
-  }
-  const elapsedSeconds = Math.min(0.4, Math.max(0, now - session.lastMovedAt) / 1000);
-  session.lastMovedAt = now;
-  const previousX = session.x;
-  const previousY = session.y;
-  let reachedTarget = false;
-  if (session.target) {
-    const deltaX = session.target.x - session.x;
-    const deltaY = session.target.y - session.y;
-    const distance = Math.hypot(deltaX, deltaY);
-    const step = Math.min(distance, elapsedSeconds * 48);
-    if (distance > 0.1) session.heading = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-    if (distance <= step || distance < 0.1) {
-      session.x = session.target.x;
-      session.y = session.target.y;
-      session.target = null;
-      reachedTarget = true;
-    } else if (distance > 0) {
-      session.x += deltaX / distance * step;
-      session.y += deltaY / distance * step;
-    }
-  }
+  if (!session) return res.status(409).json({ success: false, error: 'Start a dive before collecting signals.' });
+  const node = session.nodes.find(candidate => candidate.id === String(req.body?.nodeId || '') && !candidate.collected);
+  if (!node) return res.status(409).json({ success: false, error: 'That signal was already collected or is no longer available.' });
 
-  const travelX = session.x - previousX;
-  const travelY = session.y - previousY;
-  const travelLengthSquared = travelX * travelX + travelY * travelY;
-  const node = session.nodes.find(candidate => {
-    if (candidate.collected) return false;
-    const projection = travelLengthSquared
-      ? Math.max(0, Math.min(1, ((candidate.x - previousX) * travelX + (candidate.y - previousY) * travelY) / travelLengthSquared))
-      : 0;
-    const closestX = previousX + projection * travelX;
-    const closestY = previousY + projection * travelY;
-    return Math.hypot(candidate.x - closestX, candidate.y - closestY) <= 5.5;
-  });
-  let result = null;
-  let updatedUser = null;
-  if (node) {
-    node.collected = true;
-    const username = req.session.username;
-    const user = await findUser(username);
-    const selection = selectWeightedOption(DIVE_OPTIONS, getLuckMultiplier(username, 'deep-sea'));
-    result = { ...selection.result, rollChance: selection.rollChance };
-    const inventory = normalizeInventory(user.inventory);
-    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
-    const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
-    if (result.itemType === 'potion') {
-      const potionType = ['luck', 'luck-ii', 'speed'][Math.floor(Math.random() * 3)];
-      potions[potionType] = (Number(potions[potionType]) || 0) + 1;
-      result.name = `${POTION_CATALOG[potionType].name} Cache`;
-      result.potionType = potionType;
-    } else if (result.key === 'treasure-chest') {
-      items.treasure_chest = (Number(items.treasure_chest) || 0) + 1;
-    } else {
-      inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
-    }
-    const event = getActiveGameEvent();
-    const reward = Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
-    const coins = Number(user.coins || 0) + reward;
-    result.reward = reward;
-    const titles = getUnlockedTitles({ ...user, inventory, items, coins });
-    await updateUser(username, {
-      inventory: JSON.stringify(inventory),
-      items: JSON.stringify(items),
-      potions: JSON.stringify(potions),
-      coins,
-      titles: JSON.stringify(titles)
-    });
-    updatedUser = await findUser(username);
-    if (result.isGlobal) {
-      const chatRecord = await saveChatMessage(user.username, `${user.username} discovered ${result.name} while diving!`, result.name, result.glowColor || result.color, false, true);
-      io.emit('chat-message', chatRecord);
-    }
+  node.collected = true;
+  const username = req.session.username;
+  const user = await findUser(username);
+  const selection = selectWeightedOption(DIVE_OPTIONS, getLuckMultiplier(username, 'deep-sea'));
+  const result = { ...selection.result, rollChance: selection.rollChance };
+  const inventory = normalizeInventory(user.inventory);
+  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
+  const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
+  if (result.itemType === 'potion') {
+    const potionType = ['luck', 'luck-ii', 'speed'][Math.floor(Math.random() * 3)];
+    potions[potionType] = (Number(potions[potionType]) || 0) + 1;
+    result.name = `${POTION_CATALOG[potionType].name} Cache`;
+    result.potionType = potionType;
+  } else if (result.key === 'treasure-chest') {
+    items.treasure_chest = (Number(items.treasure_chest) || 0) + 1;
+  } else {
+    inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
   }
-  if (session.nodes.every(candidate => candidate.collected)) session.target = null;
-  res.json({
-    success: true,
-    dive: { ...getDiveState(session), reachedTarget },
-    result: result ? { ...result, user: sanitizeUser(updatedUser) } : null
+  const event = getActiveGameEvent();
+  const reward = Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
+  const coins = Number(user.coins || 0) + reward;
+  result.reward = reward;
+  const titles = getUnlockedTitles({ ...user, inventory, items, coins });
+  await updateUser(username, {
+    inventory: JSON.stringify(inventory),
+    items: JSON.stringify(items),
+    potions: JSON.stringify(potions),
+    coins,
+    titles: JSON.stringify(titles)
   });
+  const updatedUser = await findUser(username);
+  if (result.isGlobal) {
+    const chatRecord = await saveChatMessage(user.username, `${user.username} discovered ${result.name} while diving!`, result.name, result.glowColor || result.color, false, true);
+    io.emit('chat-message', chatRecord);
+  }
+  if (session.nodes.every(candidate => candidate.collected)) session.cooldownUntil = Date.now() + 120000;
+  res.json({ success: true, dive: getDiveState(session), result: { ...result, user: sanitizeUser(updatedUser) } });
 });
 
 app.post('/api/sea/open-treasure-chest', async (req, res) => {
