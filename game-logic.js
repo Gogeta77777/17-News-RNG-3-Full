@@ -75,8 +75,10 @@ let eventVisualLayer = null;
 let cameraShakeTimer = null;
 let cameraShakeEndTimer = null;
 let diveMoveTimer = null;
+let diveCooldownTimer = null;
 let diveMovePending = false;
-const diveKeys = new Set();
+let diveTarget = null;
+let diveDragging = false;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -192,6 +194,7 @@ async function handleAPI(url, options = {}) {
       if (data.banned) showBanScreen(data.banReason);
       if (data.shutdown) setShutdownScreen(true, data.error);
       return {
+        ...data,
         success: false,
         error: data.error || data.message || `Request failed (${response.status})`,
         status: response.status,
@@ -669,7 +672,7 @@ function enterDeepSea() {
   // Generate bubbles
   const bubbleContainer = document.querySelector('.bubbles');
   bubbleContainer.innerHTML = '';
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 10; i++) {
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.style.left = Math.random() * 100 + '%';
@@ -686,41 +689,62 @@ function enterDeepSea() {
 
 function bindDiveControls() {
   if (document.documentElement.dataset.diveControlsBound) return;
-  const directions = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
-  document.addEventListener('keydown', event => {
-    const direction = directions[event.code];
-    if (gameState.currentDimension !== 'deep-sea' || !direction || event.target.matches('input, textarea, select')) return;
+  const map = document.getElementById('dive-map');
+  const readMapTarget = event => {
+    const bounds = map.getBoundingClientRect();
+    return {
+      x: Math.max(4, Math.min(96, (event.clientX - bounds.left) / bounds.width * 100)),
+      y: Math.max(5, Math.min(95, (event.clientY - bounds.top) / bounds.height * 100))
+    };
+  };
+  map?.addEventListener('pointerdown', event => {
+    if (gameState.currentDimension !== 'deep-sea' || !gameState.dive?.remaining || event.button > 0) return;
     event.preventDefault();
-    diveKeys.add(direction);
+    diveDragging = true;
+    map.setPointerCapture?.(event.pointerId);
+    diveTarget = readMapTarget(event);
+    ensureDiveMoveLoop();
   });
-  document.addEventListener('keyup', event => {
-    const direction = directions[event.code];
-    if (direction) diveKeys.delete(direction);
+  map?.addEventListener('pointermove', event => {
+    if (diveDragging) {
+      diveTarget = readMapTarget(event);
+      ensureDiveMoveLoop();
+    }
   });
-  window.addEventListener('blur', () => diveKeys.clear());
-  document.querySelectorAll('[data-dive-key]').forEach(button => {
-    const direction = button.dataset.diveKey;
-    button.addEventListener('pointerdown', event => {
-      event.preventDefault();
-      button.setPointerCapture?.(event.pointerId);
-      diveKeys.add(direction);
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => {
+    map?.addEventListener(type, () => {
+      diveDragging = false;
+      if (!diveTarget) {
+        clearInterval(diveMoveTimer);
+        diveMoveTimer = null;
+      }
     });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => button.addEventListener(type, () => diveKeys.delete(direction)));
   });
+  window.addEventListener('blur', () => { diveDragging = false; });
   document.getElementById('dive-rescan')?.addEventListener('click', startDive);
   document.documentElement.dataset.diveControlsBound = 'true';
 }
 
 async function startDive() {
   const response = await handleAPI('/api/sea/dive/start', { method: 'POST' });
+  if (!response.success && response.status === 429 && response.dive) {
+    diveTarget = null;
+    renderDiveMap(response.dive);
+    return;
+  }
   if (!response.success || !response.dive) {
     showPopup(response.error || 'Unable to start the dive.', 'error');
     return;
   }
+  diveTarget = null;
   gameState.dive = null;
   renderDiveMap(response.dive);
   clearInterval(diveMoveTimer);
-  diveMoveTimer = setInterval(moveDiveSubmarine, 300);
+  diveMoveTimer = null;
+}
+
+function ensureDiveMoveLoop() {
+  if (!diveMoveTimer) diveMoveTimer = setInterval(moveDiveSubmarine, 300);
 }
 
 function renderDiveMap(dive) {
@@ -731,6 +755,7 @@ function renderDiveMap(dive) {
   gameState.dive = dive;
   submarine.style.left = `${dive.x}%`;
   submarine.style.top = `${dive.y}%`;
+  submarine.style.setProperty('--sub-heading', `${Number(dive.heading) || 0}deg`);
   if (rebuildNodes) {
     map.querySelectorAll('.dive-cache').forEach(node => node.remove());
     dive.nodes.forEach(node => {
@@ -750,22 +775,43 @@ function renderDiveMap(dive) {
   const rescan = document.getElementById('dive-rescan');
   if (remaining) remaining.textContent = `${dive.remaining} SIGNAL${dive.remaining === 1 ? '' : 'S'} LEFT`;
   if (status) status.textContent = dive.remaining ? 'Sonar has marked nearby energy signatures.' : 'Area swept. Launch a fresh dive to chart a new route.';
-  if (rescan) {
-    rescan.disabled = dive.remaining > 0;
-    rescan.textContent = dive.remaining ? 'AREA SWEPT' : 'NEW DIVE';
+  updateDiveCooldown(dive);
+}
+
+function updateDiveCooldown(dive = gameState.dive) {
+  const rescan = document.getElementById('dive-rescan');
+  const status = document.getElementById('dive-status');
+  if (!rescan || !dive) return;
+  const remainingMs = Math.max(0, Number(dive.cooldownUntil) - Date.now());
+  const seconds = Math.ceil(remainingMs / 1000);
+  const formatTime = value => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+  rescan.disabled = dive.remaining > 0 || remainingMs > 0;
+  rescan.textContent = dive.remaining > 0 ? 'AREA IN PROGRESS' : remainingMs > 0 ? `NEW DIVE · ${formatTime(seconds)}` : 'NEW DIVE';
+  if (dive.remaining === 0 && remainingMs > 0 && status) status.textContent = `Dive complete. Another dive is ready in ${formatTime(seconds)}.`;
+  clearInterval(diveCooldownTimer);
+  diveCooldownTimer = null;
+  if (dive.remaining === 0 && remainingMs > 0) {
+    diveCooldownTimer = setInterval(() => updateDiveCooldown(), 1000);
   }
 }
 
 async function moveDiveSubmarine() {
-  if (diveMovePending || gameState.currentDimension !== 'deep-sea' || !gameState.dive || !diveKeys.size) return;
+  if (diveMovePending || gameState.currentDimension !== 'deep-sea' || !gameState.dive || !diveTarget) return;
   diveMovePending = true;
   try {
-    const response = await handleAPI('/api/sea/dive/move', { method: 'POST', body: { keys: [...diveKeys] } });
+    const sentTarget = { ...diveTarget };
+    const response = await handleAPI('/api/sea/dive/move', { method: 'POST', body: { target: sentTarget } });
     if (!response.success || !response.dive) {
       if (response.status !== 409) showPopup(response.error || 'Dive connection lost.', 'error');
       return;
     }
     renderDiveMap(response.dive);
+    const targetUnchanged = diveTarget && Math.abs(diveTarget.x - sentTarget.x) < 0.1 && Math.abs(diveTarget.y - sentTarget.y) < 0.1;
+    if (response.dive.remaining === 0 || (response.dive.reachedTarget && targetUnchanged)) diveTarget = null;
+    if (!diveTarget) {
+      clearInterval(diveMoveTimer);
+      diveMoveTimer = null;
+    }
     if (response.result) {
       const result = response.result;
       currentUser = result.user;
@@ -783,7 +829,10 @@ async function moveDiveSubmarine() {
 function exitDeepSea() {
   clearInterval(diveMoveTimer);
   diveMoveTimer = null;
-  diveKeys.clear();
+  clearInterval(diveCooldownTimer);
+  diveCooldownTimer = null;
+  diveTarget = null;
+  diveDragging = false;
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
@@ -1402,7 +1451,7 @@ function createAdminEventVisual(eventName) {
   layer.setAttribute('aria-hidden', 'true');
   const starfall = ['starlight-surge', 'meteor-shower'].includes(eventName);
   if (starfall) {
-    for (let index = 0; index < 40; index += 1) {
+    for (let index = 0; index < 24; index += 1) {
       const star = document.createElement('span');
       star.className = 'event-falling-star';
       star.style.setProperty('--star-left', `${Math.random() * 100}%`);
@@ -1957,6 +2006,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   // Game loops
-  setInterval(updatePotionDisplay, 100);
+  setInterval(updatePotionDisplay, 1000);
   setInterval(updateShopTimer, 1000);
 });
