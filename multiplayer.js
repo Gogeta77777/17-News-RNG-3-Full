@@ -1,5 +1,7 @@
 let socket;
 let socketReady = false;
+let playerActivity = 'At the RNG console';
+let activityHeartbeat = null;
 
 async function loadChatFallback() {
   if (typeof handleAPI !== 'function') return;
@@ -25,6 +27,7 @@ function initMultiplayer() {
   socket.on('connect', () => {
     console.log('✅ Connected to RNG 3 multiplayer server');
     socket.emit('join-game');
+    socket.emit('player-activity', playerActivity);
   });
 
   socket.on('chat-history', (messages = []) => {
@@ -61,6 +64,12 @@ function initMultiplayer() {
     }
   });
 
+  socket.on('global-drop', async (data) => {
+    const response = await handleAPI('/api/session');
+    if (response.success && response.user && typeof updateUI === 'function') updateUI(response.user);
+    if (data?.name) showPopup(`Global drop: ${data.amount} × ${data.name} added to every account.`);
+  });
+
   socket.on('admin-headline', (data) => {
     applyAdminHeadline(data || {});
   });
@@ -87,6 +96,16 @@ function initMultiplayer() {
       onlineCount.textContent = `0 users online`;
     }
   });
+
+  clearInterval(activityHeartbeat);
+  activityHeartbeat = setInterval(() => {
+    if (socket?.connected) socket.emit('player-activity', playerActivity);
+  }, 15000);
+}
+
+function updatePlayerActivity(activity) {
+  playerActivity = String(activity || 'At the RNG console').slice(0, 64);
+  if (socket?.connected) socket.emit('player-activity', playerActivity);
 }
 
 function sendChatToServer(message) {
@@ -140,6 +159,7 @@ window.refreshMultiplayerSession = refreshMultiplayerSession;
 window.loadChatFallback = loadChatFallback;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
+window.updatePlayerActivity = updatePlayerActivity;
 
 document.addEventListener('DOMContentLoaded', () => {
   initMultiplayer();
