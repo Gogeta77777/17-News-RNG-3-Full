@@ -4901,6 +4901,20 @@
             background: linear-gradient(180deg, #0b1b34, #075985 125%);
         }
         .realm-art-sea::before { content: none; }
+        .realm-art-sea .realm-submarine {
+            top: 54%;
+            left: 50%;
+            width: 61px;
+            height: 26px;
+            border: 2px solid #fef08a;
+            border-radius: 55% 45% 44% 56%;
+            background: linear-gradient(180deg, #facc15, #ca8a04);
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.48);
+            animation: realmSubHover 3.8s ease-in-out infinite;
+        }
+        .realm-art-sea .realm-submarine::before { top: -9px; left: 23px; width: 9px; height: 9px; border: 1px solid #fef08a; border-bottom: 0; border-radius: 5px 5px 0 0; }
+        .realm-art-sea .realm-submarine::after { right: -8px; width: 8px; height: 11px; background: #eab308; clip-path: polygon(0 0, 100% 25%, 100% 75%, 0 100%); }
+        @keyframes realmSubHover { 50% { transform: translate(-50%, calc(-50% - 5px)); } }
         .realm-art-sea .realm-sea-bubble {
             top: auto;
             bottom: -22px;
@@ -5059,133 +5073,154 @@
             font-size: 0.72rem;
             vertical-align: middle;
         }
-        .sea-fishing-panel {
-            position: relative;
-            width: min(760px, 100%);
-            padding: clamp(20px, 4vw, 38px);
-            overflow: hidden;
+        .dive-console {
+            display: grid;
+            gap: 18px;
+            width: min(980px, 100%);
+            margin: 0 auto;
+            padding: clamp(16px, 3vw, 28px);
             border: 1px solid rgba(103, 232, 249, 0.28);
             border-top: 3px solid #22d3ee;
-            border-radius: 5px;
+            border-radius: 4px;
             background: linear-gradient(155deg, rgba(4, 34, 57, 0.96), rgba(5, 18, 37, 0.96));
             box-shadow: 0 24px 80px rgba(0, 0, 0, 0.46), inset 0 0 38px rgba(34, 211, 238, 0.045);
         }
-        .fishing-panel-top,
-        .fishing-panel-footer {
+        .dimension-content { align-items: flex-start; overflow-y: auto; }
+        .dimension-header { display: grid; justify-items: center; gap: 11px; text-align: center; }
+        .dive-console-heading,
+        .dive-status-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 18px;
+            gap: 14px;
         }
-        .fishing-kicker { color: #67e8f9; font-size: 0.68rem; font-weight: 900; }
-        .fishing-panel-top h2 { margin: 5px 0 0; color: #ecfeff; font-size: clamp(1.3rem, 3vw, 2rem); }
-        .fishing-catch-streak {
-            padding: 7px 10px;
-            border: 1px solid rgba(103, 232, 249, 0.28);
-            color: #a5f3fc;
-            font-size: 0.7rem;
-            font-weight: 900;
-            white-space: nowrap;
-        }
-        .fishing-waterline {
+        .dive-kicker { color: #67e8f9; font-size: 0.68rem; font-weight: 900; }
+        .dive-console-heading h2 { margin: 4px 0 0; color: #ecfeff; font-size: 1.35rem; }
+        .dive-remaining { color: #bef264; font-size: 0.7rem; font-weight: 900; white-space: nowrap; }
+        .dive-map {
             position: relative;
-            height: 72px;
-            margin: 22px 0 18px;
+            height: clamp(300px, 51vh, 540px);
             overflow: hidden;
-            border-top: 1px solid rgba(103, 232, 249, 0.4);
-            border-bottom: 1px solid rgba(103, 232, 249, 0.12);
-            background: linear-gradient(180deg, rgba(34, 211, 238, 0.11), transparent 80%);
+            isolation: isolate;
+            border: 1px solid rgba(103, 232, 249, 0.3);
+            background: radial-gradient(ellipse at 76% 25%, rgba(34, 197, 94, 0.18), transparent 22%), radial-gradient(ellipse at 24% 74%, rgba(14, 165, 233, 0.2), transparent 26%), linear-gradient(145deg, #071d2b, #08273c 55%, #061829);
         }
-        .fishing-waterline::before,
-        .fishing-waterline::after {
+        .dive-map::before,
+        .dive-map::after {
             position: absolute;
-            right: -20%;
-            left: -20%;
-            height: 34px;
-            border-top: 1px solid rgba(103, 232, 249, 0.35);
-            border-radius: 50%;
+            z-index: -1;
+            inset: 8% 12%;
+            border: 1px solid rgba(103, 232, 249, 0.1);
+            border-radius: 46% 54% 43% 57%;
             content: '';
-            animation: fishingWaterDrift 7s ease-in-out infinite alternate;
+            transform: rotate(-18deg);
         }
-        .fishing-waterline::before { top: 14px; }
-        .fishing-waterline::after { top: 25px; animation-delay: -3.5s; opacity: 0.48; }
-        .fishing-meter {
-            position: relative;
-            height: 42px;
-            margin: 25px 0 18px;
-            overflow: hidden;
-            border: 1px solid rgba(103, 232, 249, 0.24);
-            background: linear-gradient(180deg, #04121f, #06233a);
-        }
-        .fishing-progress-fill {
+        .dive-map::after { inset: 19% 22%; border-color: rgba(103, 232, 249, 0.12); transform: rotate(25deg); }
+        .dive-grid {
             position: absolute;
-            z-index: 0;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 4px;
-            background: #5ee7d1;
-            box-shadow: 0 0 12px #22d3ee;
-            transition: width 90ms linear;
+            inset: 0;
+            opacity: 0.5;
+            background-image: linear-gradient(rgba(103, 232, 249, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(103, 232, 249, 0.07) 1px, transparent 1px);
+            background-size: 8% 12%;
+            pointer-events: none;
         }
-        .fishing-bar {
+        .dive-cache {
             position: absolute;
             z-index: 1;
-            top: 5px;
-            bottom: 7px;
-            left: 50%;
-            width: 24%;
-            transform: translateX(-50%);
-            border: 1px solid #5ee7d1;
-            border-radius: 3px;
-            background: rgba(45, 212, 191, 0.2);
-            box-shadow: 0 0 14px rgba(45, 212, 191, 0.24), inset 0 0 12px rgba(45, 212, 191, 0.12);
-            transition: box-shadow 100ms, background 100ms;
+            display: grid;
+            width: 25px;
+            height: 25px;
+            place-items: center;
+            transform: translate(-50%, -50%);
+            border: 1px solid rgba(190, 242, 100, 0.72);
+            border-radius: 50%;
+            background: rgba(132, 204, 22, 0.18);
+            color: #d9f99d;
+            font-size: 1.05rem;
+            text-shadow: 0 0 12px #a3e635;
+            box-shadow: 0 0 15px rgba(163, 230, 53, 0.25);
+            animation: sonarPing 2s ease-out infinite;
+            pointer-events: none;
         }
-        .fishing-bar-moving {
-            background: rgba(94, 234, 212, 0.36);
-            box-shadow: 0 0 19px rgba(45, 212, 191, 0.56), inset 0 0 14px rgba(94, 234, 212, 0.2);
-        }
-        .fishing-fish {
+        .dive-cache.collected { opacity: 0.16; animation: none; }
+        .submarine {
             position: absolute;
             z-index: 2;
-            top: 50%;
-            left: 50%;
-            width: 15px;
-            height: 15px;
-            transform: translate(-50%, -50%) rotate(45deg);
-            border: 2px solid #f0fdff;
-            border-radius: 50% 50% 50% 2px;
-            background: #22d3ee;
-            box-shadow: 0 0 14px 3px rgba(34, 211, 238, 0.64);
-            transition: left 70ms linear;
+            display: grid;
+            width: 48px;
+            height: 27px;
+            place-items: center;
+            transform: translate(-50%, -50%);
+            border: 2px solid #fef08a;
+            border-radius: 52% 42% 42% 52%;
+            background: linear-gradient(180deg, #facc15, #ca8a04);
+            color: #172033;
+            font-size: 0.49rem;
+            font-weight: 1000;
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.42);
+            transition: left 70ms linear, top 70ms linear;
+            pointer-events: none;
         }
-        .fishing-meter-live { border-color: rgba(94, 234, 212, 0.68); box-shadow: 0 0 18px rgba(34, 211, 238, 0.2); }
-        .fishing-readout { display: grid; gap: 5px; min-height: 82px; }
-        .sea-fishing-status { margin: 0; color: #a5f3fc; font-size: 0.83rem; }
-        .sea-fishing-result { color: #f8fafc; font-size: 1.15rem; }
-        .sea-fishing-chance { color: #94a3b8; font-size: 0.76rem; }
-        .fishing-reward { color: #cbd5e1; font-size: 0.9rem; }
-        .fishing-action { min-width: 180px; }
-        .fishing-actions { display: flex; align-items: center; gap: 10px; }
-        .fishing-hold-control {
-            min-height: 48px;
-            padding: 0 14px;
-            border: 1px solid rgba(103, 232, 249, 0.35);
+        .submarine::before { position: absolute; top: -9px; left: 17px; width: 8px; height: 9px; border: 1px solid #fef08a; border-bottom: 0; content: ''; }
+        .submarine::after { position: absolute; right: -7px; width: 7px; height: 11px; background: #eab308; content: ''; clip-path: polygon(0 0, 100% 25%, 100% 75%, 0 100%); }
+        .submarine i { position: absolute; left: -11px; width: 9px; height: 4px; border-radius: 50%; background: #a5f3fc; box-shadow: 0 0 11px 4px rgba(34, 211, 238, 0.36); }
+        .dive-status-row { min-height: 42px; flex-wrap: wrap; }
+        .dive-status { margin: 0; color: #a5f3fc; font-size: 0.82rem; }
+        .dive-result { color: #f8fafc; font-size: 0.9rem; text-align: right; }
+        .dive-controls { display: grid; grid-template-columns: 1fr 1fr; align-items: center; justify-items: center; gap: 16px; }
+        .dive-pad { display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(3, 42px); gap: 4px; justify-content: center; }
+        .dive-pad button {
+            display: grid;
+            width: 42px;
+            height: 42px;
+            place-items: center;
+            border: 1px solid rgba(103, 232, 249, 0.42);
             border-radius: 3px;
             background: rgba(8, 47, 73, 0.92);
-            color: #a5f3fc;
-            font-size: 0.74rem;
-            font-weight: 900;
+            color: #cffafe;
+            font-size: 0.82rem;
             touch-action: none;
             user-select: none;
         }
-        .fishing-hold-control:active,
-        .fishing-hold-active { background: rgba(34, 211, 238, 0.26); box-shadow: 0 0 18px rgba(34, 211, 238, 0.24); }
-        .fishing-action-bite { animation: bitePulse 550ms ease-in-out infinite alternate; }
-        @keyframes fishingWaterDrift { from { transform: translateX(-5%) skewX(-4deg); } to { transform: translateX(5%) skewX(4deg); } }
-        @keyframes bitePulse { to { box-shadow: 0 0 28px rgba(34, 211, 238, 0.78); filter: brightness(1.3); } }
-
+        .dive-pad button:active { background: rgba(34, 211, 238, 0.3); }
+        .dive-pad-core { display: grid; place-items: center; color: #67e8f9; }
+        .dive-rescan { justify-self: center; min-width: 160px; }
+        @keyframes sonarPing { 0% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.28); } 75%, 100% { box-shadow: 0 0 0 12px rgba(163, 230, 53, 0); } }
+        @media (max-width: 600px) {
+            .dive-console-heading, .dive-status-row { align-items: flex-start; flex-direction: column; }
+            .dive-result { text-align: left; }
+            .dive-map { height: min(48vh, 390px); min-height: 260px; }
+            .dive-controls { grid-template-columns: 1fr; }
+        }
+        .event-item { text-align: center; }
+        .event-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; }
+        .event-buttons .btn { min-width: 150px; }
+        .admin-section-copy { margin: 0 0 12px; color: #a9bfd2; font-size: 0.84rem; }
+        .global-drop-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 12px; }
+        .global-drop-form label { display: grid; gap: 6px; color: #bfdbfe; font-size: 0.78rem; }
+        .global-drop-form select,
+        .global-drop-form input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid rgba(96, 165, 250, 0.34); border-radius: 2px; background: #071225; color: #eff6ff; }
+        .global-drop-form button { grid-column: 1 / -1; justify-self: center; min-width: 220px; }
+        .mini-ops-events { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .mini-ops-events button { min-width: 185px; }
+        .mini-ops-status { margin: 14px 0 8px; color: #93c5fd; font-size: 0.82rem; text-align: center; }
+        .mini-user-roster { display: grid; gap: 5px; }
+        .mini-user-row { display: grid; grid-template-columns: 12px minmax(90px, 1fr) minmax(150px, 1.2fr) auto; align-items: center; gap: 10px; min-width: 0; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.13); color: #dbeafe; font-size: 0.78rem; }
+        .mini-user-row > span:nth-of-type(2) { color: #9fb7ca; }
+        .mini-user-row small { color: #8fa7bb; text-align: right; }
+        .mini-user-presence { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+        .mini-user-presence.online { background: #4ade80; box-shadow: 0 0 9px rgba(74, 222, 128, 0.65); }
+        .admin-title-form { display: flex; align-items: end; gap: 8px; color: #bfdbfe; font-size: 0.76rem; }
+        .admin-title-form .btn { white-space: nowrap; }
+        .admin-panel.mini-admin > .admin-content > .admin-section:not(#mini-ops-section) { display: none; }
+        .admin-panel.mini-admin .admin-header-actions #refresh-admin-users { display: none; }
+        @media (max-width: 700px) {
+            .global-drop-form { grid-template-columns: minmax(0, 1fr); }
+            .global-drop-form button { grid-column: auto; width: 100%; }
+            .mini-user-row { grid-template-columns: 12px minmax(0, 1fr) auto; gap: 7px; }
+            .mini-user-row > span:nth-of-type(2) { grid-column: 2; }
+            .mini-user-row small { grid-column: 3; grid-row: 1 / span 2; }
+        }
         .event-visual-layer {
             position: fixed;
             z-index: 806;
@@ -5212,7 +5247,6 @@
             88% { opacity: 0.75; }
             100% { opacity: 0; transform: translate3d(-9vw, 112vh, 0) rotate(180deg); }
         }
-        body.aurora-bloom-live .event-visual-layer { background: radial-gradient(ellipse at 50% -10%, rgba(94, 234, 212, 0.18), transparent 68%); }
         .event-aurora-ribbon {
             position: absolute;
             top: var(--ribbon-offset);
@@ -5225,7 +5259,6 @@
             animation: auroraRibbonWave 11s var(--ribbon-delay) ease-in-out infinite alternate;
         }
         @keyframes auroraRibbonWave { from { transform: translateX(-8%) rotate(-5deg) scaleY(0.7); } to { transform: translateX(8%) rotate(5deg) scaleY(1.15); } }
-        body.golden-rush-live .event-visual-layer { background: radial-gradient(ellipse at 50% 0, rgba(245, 158, 11, 0.12), transparent 60%); }
         body.abyssal-resonance-live .event-visual-layer { background: radial-gradient(ellipse at 50% 100%, rgba(8, 145, 178, 0.18), transparent 68%); }
         .event-abyss-bubble {
             position: absolute;
@@ -5252,7 +5285,7 @@
         .event-item.event-aurora { border-color: rgba(45, 212, 191, 0.48); background: linear-gradient(140deg, #0b3a42, #12203b); }
         .event-item.event-golden { border-color: rgba(245, 158, 11, 0.48); background: linear-gradient(140deg, #51340d, #241a17); }
         .event-item.event-abyssal { border-color: rgba(34, 211, 238, 0.44); background: linear-gradient(140deg, #07354b, #0b1b34); }
-        .fishing-only-rarity small { color: #67e8f9; font-size: 0.56rem; font-weight: 900; }
+        .dive-only-rarity small { color: #67e8f9; font-size: 0.56rem; font-weight: 900; }
         .admin-user-tools select option { background: #0b1b34; }
         .potion-inventory-item {
             display: grid;
@@ -5289,11 +5322,6 @@
         .update-archive[open] summary { margin-bottom: 6px; }
 
         @media (max-width: 560px) {
-            .fishing-panel-footer { align-items: stretch; flex-direction: column; }
-            .fishing-actions { flex-direction: column; align-items: stretch; }
-            .fishing-hold-control { min-height: 54px; }
-            .fishing-action { width: 100%; }
-            .sea-fishing-result { overflow-wrap: anywhere; }
         }
     </style>
 </head>
@@ -5382,25 +5410,11 @@
                 <h3>Latest Updates <span class="update-version">2.0</span></h3>
                 <div class="log-entry">
                     <div class="date">15 Oct 2026 / Release 2.0</div>
-                    <p><strong>The tide turns.</strong></p>
-                    <p>✦ Sea Realm fishing, timed reel challenges, Fisher Baxter, and Treasure Chests.</p>
-                    <p>✦ Three new manual admin events, a reworked Starlight Surge, and two Sea tonics.</p>
-                    <p>✦ The Potato title, 1,000-roll Locked In title, and an expanded release archive.</p>
+                    <p><strong>New titles, rarities, and a rebuilt Sea Realm.</strong></p>
+                    <p>✦ The Admin title unlocks a limited Mini Operations panel when granted by Mr Fernanski.</p>
+                    <p>✦ Mrs Joseph Mcglashan joins the global rarity collection at 0.07%.</p>
+                    <p>✦ Dive the Sea Realm in a submarine, explore with WASD, and recover rarities, potions, and treasure.</p>
                 </div>
-                <details class="update-archive">
-                    <summary>Earlier releases <span>2 entries</span></summary>
-                    <div class="log-entry">
-                        <div class="date">13 Oct 2026 / Release 1.0</div>
-                        <p><strong>The release.</strong></p>
-                        <p>✦ 16 rarities, 2 potions, 9 titles, and 3 realms.</p>
-                        <p>✦ Permanent Sea Realm unlocks, global drops, and live events.</p>
-                        <p>✦ A rebuilt roll console, inventory, portal, chat, and admin desk.</p>
-                    </div>
-                    <div class="log-entry">
-                        <div class="date">Previous / Release 0.5 / Testing Phase</div>
-                        <p>Preparing the UI, testing core systems, and getting everything ready.</p>
-                    </div>
-                </details>
             </div>
         </div>
     </div>
@@ -5674,8 +5688,8 @@
             </header>
             <div class="realm-list">
                 <article class="realm-card realm-sea">
-                    <div class="realm-art realm-art-sea" aria-hidden="true"><span class="realm-sea-bubble" style="--bubble-left: 12%; --bubble-size: 10px; --bubble-delay: -1s; --bubble-duration: 5s"></span><span class="realm-sea-bubble" style="--bubble-left: 28%; --bubble-size: 17px; --bubble-delay: -3s; --bubble-duration: 7s"></span><span class="realm-sea-bubble" style="--bubble-left: 47%; --bubble-size: 8px; --bubble-delay: -2s; --bubble-duration: 4.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 63%; --bubble-size: 14px; --bubble-delay: -4s; --bubble-duration: 6s"></span><span class="realm-sea-bubble" style="--bubble-left: 82%; --bubble-size: 11px; --bubble-delay: -2.5s; --bubble-duration: 5.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 92%; --bubble-size: 19px; --bubble-delay: -5s; --bubble-duration: 7.5s"></span></div>
-                    <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Sea Realm</h3><p>Fish the abyss with 4x luck. Watch the line, set the hook, and reel on the pulse.</p><span class="realm-status" id="sea-realm-status"></span><button class="btn" id="sea-realm-action" type="button">UNLOCK &amp; ENTER · 1 ESSENCE</button></div>
+                    <div class="realm-art realm-art-sea" aria-hidden="true"><span class="realm-sea-bubble" style="--bubble-left: 12%; --bubble-size: 10px; --bubble-delay: -1s; --bubble-duration: 5s"></span><span class="realm-sea-bubble" style="--bubble-left: 28%; --bubble-size: 17px; --bubble-delay: -3s; --bubble-duration: 7s"></span><span class="realm-sea-bubble" style="--bubble-left: 47%; --bubble-size: 8px; --bubble-delay: -2s; --bubble-duration: 4.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 63%; --bubble-size: 14px; --bubble-delay: -4s; --bubble-duration: 6s"></span><span class="realm-sea-bubble" style="--bubble-left: 82%; --bubble-size: 11px; --bubble-delay: -2.5s; --bubble-duration: 5.5s"></span><span class="realm-sea-bubble" style="--bubble-left: 92%; --bubble-size: 19px; --bubble-delay: -5s; --bubble-duration: 7.5s"></span><i class="realm-submarine"></i></div>
+                    <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Sea Realm</h3><p>Pilot a submarine through the abyss, follow sonar signals, and recover rare finds.</p><span class="realm-status" id="sea-realm-status"></span><button class="btn" id="sea-realm-action" type="button">UNLOCK &amp; ENTER · 1 ESSENCE</button></div>
                 </article>
                 <article class="realm-card realm-coming" aria-disabled="true">
                     <div class="realm-art realm-art-unknown" aria-label="Unknown realm" role="img"><span class="realm-question-logo">?</span></div>
@@ -5692,7 +5706,7 @@
     <!-- Deep Sea Dimension -->
     <div class="dimension-container hidden" id="deep-sea-dimension">
         <div class="dimension-header">
-            <h1>Sea Realm <span class="sea-realm-luck">4× CURRENT</span></h1>
+            <h1>Sea Realm <span class="sea-realm-luck">SUBMARINE DIVE</span></h1>
             <button class="btn" id="exit-dimension">Exit Realm</button>
         </div>
         <div class="dimension-main">
@@ -5700,28 +5714,26 @@
                 <div class="bubbles"></div>
             </div>
             <div class="dimension-content">
-                <div class="sea-fishing-panel">
-                    <div class="fishing-panel-top">
-                        <div><span class="fishing-kicker">ABYSSAL FISHING</span><h2>Cast into the blue</h2></div>
-                        <span class="fishing-catch-streak" id="sea-fishing-progress">READY</span>
+                <div class="dive-console">
+                    <div class="dive-console-heading">
+                        <div><span class="dive-kicker">ABYSSAL SURVEY</span><h2>Chart the unknown</h2></div>
+                        <span class="dive-remaining" id="dive-remaining">10 SIGNALS LEFT</span>
                     </div>
-                    <div class="fishing-waterline" aria-hidden="true"><span></span></div>
-                    <div class="fishing-meter" id="fishing-meter">
-                        <span class="fishing-progress-fill" id="fishing-progress-fill" aria-hidden="true"></span>
-                        <span class="fishing-bar" id="fishing-bar" aria-hidden="true"></span>
-                        <span class="fishing-fish" id="fishing-fish" aria-hidden="true"></span>
+                    <div class="dive-map" id="dive-map" role="img" aria-label="Sonar map of the Sea Realm">
+                        <div class="dive-grid" aria-hidden="true"></div>
+                        <div class="submarine" id="submarine" aria-label="Your submarine"><span>SUB</span><i aria-hidden="true"></i></div>
                     </div>
-                    <div class="fishing-readout">
-                        <p class="sea-fishing-status" id="sea-fishing-status" role="status" aria-live="polite">The line is ready.</p>
-                        <strong class="sea-fishing-result" id="sea-fishing-result">Waiting for a catch</strong>
-                        <span class="sea-fishing-chance" id="sea-fishing-chance">Sea luck: 4x</span>
+                    <div class="dive-status-row">
+                        <p class="dive-status" id="dive-status" role="status" aria-live="polite">Launching sonar...</p>
+                        <strong class="dive-result" id="dive-result">No discoveries yet</strong>
                     </div>
-                    <div class="fishing-panel-footer">
-                        <span class="fishing-reward" id="ds-reward-display">🪙 Reward: 0 coins</span>
-                        <div class="fishing-actions">
-                            <button class="fishing-hold-control" id="sea-reel-hold" type="button" aria-label="Hold to move the fishing bar">HOLD TO MOVE</button>
-                            <button class="roll-btn fishing-action" id="sea-fishing-action" type="button">CAST LINE</button>
+                    <div class="dive-controls">
+                        <div class="dive-pad" role="group" aria-label="Submarine direction controls">
+                            <span></span><button type="button" data-dive-key="w" aria-label="Move submarine up">▲</button><span></span>
+                            <button type="button" data-dive-key="a" aria-label="Move submarine left">◀</button><span class="dive-pad-core" aria-hidden="true">+</span><button type="button" data-dive-key="d" aria-label="Move submarine right">▶</button>
+                            <span></span><button type="button" data-dive-key="s" aria-label="Move submarine down">▼</button><span></span>
                         </div>
+                        <button class="btn dive-rescan" id="dive-rescan" type="button" disabled>AREA SWEPT</button>
                     </div>
                 </div>
             </div>
@@ -5758,48 +5770,49 @@
                     <div class="event-item event-starlight">
                         <div class="event-kicker">MANUAL EVENT / STARFALL</div>
                         <h3>Starlight Surge</h3>
-                        <p>Blue stars sweep the sky. Rolls award 2x coins until you switch it off.</p>
-                        <button class="btn" id="activate-starlight-surge">Launch Surge</button>
-                        <button class="btn stop-btn" id="deactivate-starlight-surge" hidden>End Surge</button>
-                        <div class="event-status" id="starlight-surge-status">Ready · stays live until ended</div>
+                        <p>2× coins and 2× luck while the starfield is live.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-starlight-surge">Launch Surge</button><button class="btn stop-btn" id="deactivate-starlight-surge" hidden>End Surge</button></div>
+                        <div class="event-status" id="starlight-surge-status">Ready · manual event</div>
                     </div>
 
                     <div class="event-item event-meteor">
                         <div class="event-kicker">MANUAL EVENT / METEOR FIELD</div>
                         <h3>Meteor Shower</h3>
-                        <p>Gold comets cross the field. Every roll collects an extra 250 coins.</p>
-                        <button class="btn" id="activate-meteor-shower">Call Meteor Shower</button>
-                        <button class="btn stop-btn" id="deactivate-meteor-shower" hidden>End Shower</button>
-                        <div class="event-status" id="meteor-shower-status">Ready · stays live until ended</div>
-                    </div>
-
-                    <div class="event-item event-aurora">
-                        <div class="event-kicker">MANUAL EVENT / SKYFIRE</div>
-                        <h3>Aurora Bloom</h3>
-                        <p>Prismatic ribbons wash across the sky. Rolls pay 2x coins plus 400.</p>
-                        <button class="btn" id="activate-aurora-bloom">Open the Bloom</button>
-                        <button class="btn stop-btn" id="deactivate-aurora-bloom" hidden>Close the Bloom</button>
-                        <div class="event-status" id="aurora-bloom-status">Ready · stays live until ended</div>
-                    </div>
-
-                    <div class="event-item event-golden">
-                        <div class="event-kicker">MANUAL EVENT / HIGH VOLTAGE</div>
-                        <h3>Golden Rush</h3>
-                        <p>Gold shards and impact pulses. Rolls pay 3x coins plus 250.</p>
-                        <button class="btn" id="activate-golden-rush">Trigger Rush</button>
-                        <button class="btn stop-btn" id="deactivate-golden-rush" hidden>End Rush</button>
-                        <div class="event-status" id="golden-rush-status">Ready · stays live until ended</div>
+                        <p>2× coins plus 300 bonus coins on every roll.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-meteor-shower">Call Meteor Shower</button><button class="btn stop-btn" id="deactivate-meteor-shower" hidden>End Shower</button></div>
+                        <div class="event-status" id="meteor-shower-status">Ready · manual event</div>
                     </div>
 
                     <div class="event-item event-abyssal">
                         <div class="event-kicker">MANUAL EVENT / DEEP SIGNAL</div>
                         <h3>Abyssal Resonance</h3>
-                        <p>The ocean answers with an 8x luck pulse in the Sea Realm.</p>
-                        <button class="btn" id="activate-abyssal-resonance">Call the Resonance</button>
-                        <button class="btn stop-btn" id="deactivate-abyssal-resonance" hidden>Silence the Deep</button>
-                        <div class="event-status" id="abyssal-resonance-status">Ready · stays live until ended</div>
+                        <p>3× luck and 250 bonus coins; the Sea Realm amplifies the pulse.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-abyssal-resonance">Call the Resonance</button><button class="btn stop-btn" id="deactivate-abyssal-resonance" hidden>Silence the Deep</button></div>
+                        <div class="event-status" id="abyssal-resonance-status">Ready · manual event</div>
                     </div>
                 </div>
+            </div>
+
+            <div class="admin-section" id="mini-ops-section">
+                <h2>Mini Operations</h2>
+                <div class="mini-ops-events">
+                    <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
+                    <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
+                    <button class="btn stop-btn" data-mini-stop type="button">End My Event</button>
+                </div>
+                <p class="mini-ops-status" id="mini-ops-status" role="status">Loading player activity…</p>
+                <div class="mini-user-roster" id="mini-user-roster"></div>
+            </div>
+
+            <div class="admin-section" id="global-drop-section">
+                <h2>Global Drop</h2>
+                <p class="admin-section-copy">Grant a reward to every account at once.</p>
+                <form class="global-drop-form" id="global-drop-form">
+                    <label>Reward type<select id="global-drop-type" name="type"><option value="rarity">Rarity</option><option value="potion">Potion</option><option value="item">Item</option></select></label>
+                    <label>Reward<select id="global-drop-key" name="key"></select></label>
+                    <label>Quantity<input name="amount" type="number" min="1" max="99" value="1" required></label>
+                    <button class="btn" type="submit">Grant to everyone</button>
+                </form>
             </div>
 
             <div class="admin-section admin-system-controls">
@@ -5856,8 +5869,8 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/game-logic.js?v=3.1.1"></script>
-    <script src="/multiplayer.js?v=3.1.1"></script>
+    <script src="/game-logic.js?v=3.2.0"></script>
+    <script src="/multiplayer.js?v=3.2.0"></script>
 </body>
 </html></content>
 <parameter name="filePath">/workspaces/17-News-RNG-3-Full/index.html
