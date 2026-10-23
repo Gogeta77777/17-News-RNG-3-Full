@@ -149,7 +149,8 @@ const TITLE_CATALOG = {
   potato: { name: 'Potato', color: '#8b5a2b' },
   collector: { name: 'Rarity Collector', color: '#34d399' },
   'global-headliner': { name: 'Global Headliner', color: '#fb7185' },
-  tidekeeper: { name: 'Tidekeeper', color: '#2dd4bf' }
+  tidekeeper: { name: 'Tidekeeper', color: '#2dd4bf' },
+  blacksmith: { name: 'Blacksmith', color: '#fb923c' }
 };
 
 function isAdministratorUser(user) {
@@ -174,6 +175,7 @@ function getUnlockedTitles(user) {
   if (rarityTotal >= 10) titles.add('collector');
   if (hasGlobalDrop) titles.add('global-headliner');
   if (user?.sea_realm_unlocked) titles.add('tidekeeper');
+  if (user?.forge_realm_unlocked) titles.add('blacksmith');
 
   return [...titles].filter(title => Object.prototype.hasOwnProperty.call(TITLE_CATALOG, title));
 }
@@ -342,6 +344,7 @@ async function findUser(username) {
       potions,
       items,
       titles,
+      redeemed_codes: normalizeList(user.redeemed_codes),
       portal_unlocked: user.portal_unlocked || false,
       active_title: user.active_title || null,
       created_at: user.created_at,
@@ -362,6 +365,7 @@ async function findUser(username) {
     potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, speed: 0 }),
     items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
     titles: getUnlockedTitles(stored),
+    redeemed_codes: normalizeList(stored.redeemed_codes),
     is_admin: isAdministratorUser(stored),
     is_banned: stored.is_banned || false,
     ban_reason: stored.ban_reason || '',
@@ -376,8 +380,8 @@ async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
     const result = await executeQuery(
-      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_admin, created_at, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_admin, created_at, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        ON CONFLICT (username) DO NOTHING
        RETURNING username`,
       [
@@ -390,6 +394,7 @@ async function saveUser(user) {
         JSON.stringify(user.potions || { luck: 0, 'luck-ii': 0, speed: 0 }),
         JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
         JSON.stringify(user.titles || []),
+        JSON.stringify(user.redeemed_codes || []),
         user.active_title || null,
         user.portal_unlocked || false,
         user.sea_realm_unlocked || false,
@@ -439,6 +444,7 @@ async function ensureDatabase() {
       potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
       items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
       titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+      redeemed_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
       active_title TEXT,
       portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
@@ -479,6 +485,7 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
       ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
       ADD COLUMN IF NOT EXISTS titles JSONB NOT NULL DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS redeemed_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS active_title TEXT,
       ADD COLUMN IF NOT EXISTS portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
@@ -1149,16 +1156,18 @@ app.post('/api/redeem-code', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
-  const { code } = req.body || {};
-  if (!code || !code.trim()) {
+  const normalizedCode = typeof req.body?.code === 'string' ? req.body.code.trim().toUpperCase() : '';
+  if (!normalizedCode) {
     return res.status(400).json({ success: false, error: 'Code required.' });
   }
 
   const codeRewards = {
-    'THETHREEQUEL': { title: 'veteran' }
+    'THETHREEQUEL': { title: 'veteran' },
+    'UPD3ISHERE!!': { coins: 20000, item: { key: 'ancient_ore', amount: 5 }, rewardMessage: '5 Ancient Ore and 20,000 coins' },
+    'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' }
   };
 
-  const reward = codeRewards[code.toUpperCase()];
+  const reward = codeRewards[normalizedCode];
   if (!reward) {
     return res.status(400).json({ success: false, error: 'Invalid code.' });
   }
@@ -1166,16 +1175,26 @@ app.post('/api/redeem-code', async (req, res) => {
   try {
     const user = await findUser(req.session.username);
     const titles = typeof user.titles === 'string' ? JSON.parse(user.titles) : (user.titles || []);
-    
-    if (titles.includes(reward.title)) {
+    const redeemedCodes = normalizeList(user.redeemed_codes);
+
+    if (redeemedCodes.includes(normalizedCode) || (reward.title && titles.includes(reward.title))) {
       return res.json({ success: false, error: 'Already redeemed.' });
     }
 
-    titles.push(reward.title);
-    await updateUser(req.session.username, { titles: JSON.stringify(titles) });
+    if (reward.title) titles.push(reward.title);
+    redeemedCodes.push(normalizedCode);
+    const updates = { redeemed_codes: JSON.stringify(redeemedCodes) };
+    if (reward.title) updates.titles = JSON.stringify(titles);
+    if (reward.coins) updates.coins = (Number(user.coins) || 0) + reward.coins;
+    if (reward.item) {
+      const items = normalizeRecord(user.items);
+      items[reward.item.key] = (Number(items[reward.item.key]) || 0) + reward.item.amount;
+      updates.items = JSON.stringify(items);
+    }
+    await updateUser(req.session.username, updates);
     
     const updated = await findUser(req.session.username);
-    res.json({ success: true, title: reward.title, user: sanitizeUser(updated) });
+    res.json({ success: true, title: reward.title || null, reward: reward.rewardMessage || null, user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Redeem error:', error);
     res.status(500).json({ success: false, error: 'Redemption failed.' });
