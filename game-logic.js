@@ -718,11 +718,75 @@ async function enterOrUnlockForgeRealm() {
 }
 
 function enterForgeRealm() {
+  showRealmTransition('Forge Realm', 'enter');
   document.getElementById('game-page').classList.add('hidden');
   document.getElementById('forge-dimension')?.classList.remove('hidden');
   gameState.currentDimension = 'forge-realm';
   window.updatePlayerActivity?.('At the Forge');
   renderForgeState();
+}
+
+function showRealmTransition(realmName, mode = 'enter') {
+  const overlay = document.getElementById('realm-transition-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  overlay.classList.toggle('is-leaving', mode === 'leave');
+  overlay.innerHTML = `
+    <div class="realm-transition-panel">
+      <span class="realm-transition-kicker">${mode === 'enter' ? 'Entering' : 'Leaving'}</span>
+      <strong>${realmName}</strong>
+    </div>
+  `;
+  clearTimeout(showRealmTransition.timer);
+  showRealmTransition.timer = setTimeout(() => {
+    overlay.classList.add('hidden');
+    overlay.classList.remove('is-leaving');
+  }, 900);
+}
+
+function updateForgeCraftStatus() {
+  const items = gameState.itemInventory;
+  const potions = currentUser?.potions || {};
+  const luckNeedVial = Math.max(0, 1 - (Number(items.empty_vial) || 0));
+  const luckNeedPotion = Math.max(0, 3 - (Number(potions.luck) || 0));
+  const controllerNeedClovers = Math.max(0, 10 - (Number(items.clovers) || 0));
+  const controllerNeedStickers = Math.max(0, 3 - (Number(items.old_potato_sticker) || 0));
+
+  const luckNote = document.getElementById('forge-luck-note');
+  if (luckNote) {
+    if (luckNeedVial > 0 || luckNeedPotion > 0) {
+      const parts = [];
+      if (luckNeedVial > 0) parts.push(`${luckNeedVial} more Empty Vial`);
+      if (luckNeedPotion > 0) parts.push(`${luckNeedPotion} more Luck Potion I`);
+      luckNote.textContent = `Need ${parts.join(' and ')} to craft this.`;
+      luckNote.classList.add('needs-more');
+    } else {
+      luckNote.textContent = 'Ready to forge. This recipe is craftable now.';
+      luckNote.classList.remove('needs-more');
+    }
+  }
+
+  const controllerNote = document.getElementById('forge-controller-note');
+  if (controllerNote) {
+    if (controllerNeedClovers > 0 || controllerNeedStickers > 0) {
+      const parts = [];
+      if (controllerNeedClovers > 0) parts.push(`${controllerNeedClovers} more Clover Leaf${controllerNeedClovers > 1 ? 's' : ''}`);
+      if (controllerNeedStickers > 0) parts.push(`${controllerNeedStickers} more Old Potato Sticker${controllerNeedStickers > 1 ? 's' : ''}`);
+      controllerNote.textContent = `You still need ${parts.join(' and ')} before this works.`;
+      controllerNote.classList.add('needs-more');
+    } else {
+      controllerNote.textContent = 'Ready to forge. You must craft this controller before activating any event.';
+      controllerNote.classList.remove('needs-more');
+    }
+  }
+
+  const useButton = document.getElementById('use-event-controller');
+  if (useButton) {
+    useButton.disabled = (Number(items.event_controller) || 0) < 1;
+    useButton.title = (Number(items.event_controller) || 0) < 1
+      ? 'Craft an Event Controller first before activating events.'
+      : 'Activate the chosen event for 2 minutes.';
+  }
 }
 
 function renderForgeState() {
@@ -741,21 +805,75 @@ function renderForgeState() {
   });
   const luckButton = document.getElementById('craft-luck-v');
   const controllerButton = document.getElementById('craft-event-controller');
-  if (luckButton) luckButton.disabled = (Number(items.empty_vial) || 0) < 1 || (Number(potions.luck) || 0) < 3;
-  if (controllerButton) controllerButton.disabled = (Number(items.clovers) || 0) < 10 || (Number(items.old_potato_sticker) || 0) < 3;
-  const useButton = document.getElementById('use-event-controller');
-  if (useButton) useButton.disabled = (Number(items.event_controller) || 0) < 1;
+  const luckMissing = (Number(items.empty_vial) || 0) < 1 || (Number(potions.luck) || 0) < 3;
+  const controllerMissing = (Number(items.clovers) || 0) < 10 || (Number(items.old_potato_sticker) || 0) < 3;
+  if (luckButton) luckButton.disabled = luckMissing;
+  if (controllerButton) controllerButton.disabled = controllerMissing;
+  updateForgeCraftStatus();
+}
+
+let activeForgeMiniGame = null;
+
+function startForgeMiniGame(recipe) {
+  const overlay = document.getElementById('forge-mini-game');
+  const meter = document.getElementById('forge-mini-fill');
+  const status = document.getElementById('forge-mini-status');
+  const button = document.getElementById('forge-mini-button');
+  const cancel = document.getElementById('forge-mini-cancel');
+  if (!overlay || !meter || !status || !button || !cancel) {
+    craftForgeRecipeNow(recipe);
+    return;
+  }
+
+  activeForgeMiniGame = {
+    recipe,
+    progress: 0,
+    target: 10,
+    interval: null,
+    complete: false
+  };
+
+  overlay.classList.remove('hidden');
+  meter.style.width = '0%';
+  status.textContent = '0.0s / 10.0s';
+  button.textContent = 'Click to charge';
+  button.onclick = () => {
+    if (!activeForgeMiniGame || activeForgeMiniGame.complete) return;
+    activeForgeMiniGame.progress = Math.min(activeForgeMiniGame.target, activeForgeMiniGame.progress + 0.55);
+    const percent = (activeForgeMiniGame.progress / activeForgeMiniGame.target) * 100;
+    meter.style.width = `${percent}%`;
+    status.textContent = `${activeForgeMiniGame.progress.toFixed(1)}s / ${activeForgeMiniGame.target.toFixed(1)}s`;
+    if (activeForgeMiniGame.progress >= activeForgeMiniGame.target) {
+      activeForgeMiniGame.complete = true;
+      button.textContent = 'Forge complete';
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        craftForgeRecipeNow(activeForgeMiniGame.recipe);
+      }, 220);
+    }
+  };
+
+  cancel.onclick = () => {
+    overlay.classList.add('hidden');
+    activeForgeMiniGame = null;
+  };
 }
 
 async function craftForgeRecipe(recipe) {
+  startForgeMiniGame(recipe);
+}
+
+async function craftForgeRecipeNow(recipe) {
   const response = await handleAPI('/api/forge/craft', { method: 'POST', body: { recipe } });
   if (!response.success || !response.user) {
     showPopup(response.error || 'Unable to craft that recipe.', 'error');
+    activeForgeMiniGame = null;
     return;
   }
   currentUser = response.user;
   updateUI(currentUser);
   showPopup(recipe === 'luck-v' ? 'Crafted Luck Potion V.' : 'Crafted an Event Controller.');
+  activeForgeMiniGame = null;
 }
 
 async function useForgeEventController() {
@@ -916,6 +1034,7 @@ async function collectDiveSignal(nodeId, marker) {
 function exitDeepSea() {
   clearInterval(diveCooldownTimer);
   diveCooldownTimer = null;
+  showRealmTransition('Sea Realm', 'leave');
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
@@ -923,6 +1042,7 @@ function exitDeepSea() {
 }
 
 function exitForgeRealm() {
+  showRealmTransition('Forge Realm', 'leave');
   document.getElementById('forge-dimension')?.classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
