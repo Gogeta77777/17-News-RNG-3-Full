@@ -4270,10 +4270,11 @@
             overflow: hidden;
             padding: 20px 24px;
             border: 1px solid rgba(239, 246, 255, 0.12);
-            border-radius: 3px;
+            border-radius: 16px;
             background:
-                radial-gradient(ellipse at 12% 50%, rgba(37, 99, 235, 0.2), transparent 55%),
-                linear-gradient(115deg, #0a1c38, #071225 70%);
+                radial-gradient(ellipse at 14% 50%, rgba(59, 130, 246, 0.24), transparent 52%),
+                linear-gradient(135deg, rgba(13, 26, 47, 0.96), rgba(7, 18, 37, 0.94));
+            box-shadow: inset 0 0 24px rgba(96, 165, 250, 0.08), 0 18px 30px rgba(2, 6, 23, 0.35);
         }
 
         .portal-base {
@@ -4286,8 +4287,33 @@
             isolation: isolate;
             border: 0;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.14), transparent 69%);
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.18), rgba(14, 22, 35, 0.1) 60%, transparent 75%);
             cursor: pointer;
+            transition: transform 180ms ease;
+        }
+
+        .portal-base:hover {
+            transform: scale(1.02);
+        }
+
+        .portal-base::before,
+        .portal-base::after {
+            position: absolute;
+            content: '';
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .portal-base::before {
+            inset: 9px;
+            border: 1px solid rgba(147, 197, 253, 0.38);
+            box-shadow: 0 0 22px rgba(96, 165, 250, 0.2);
+        }
+
+        .portal-base::after {
+            inset: 24px;
+            border: 1px solid rgba(125, 211, 252, 0.22);
+            animation: portalPulse 3.1s ease-in-out infinite;
         }
 
         .portal-ring {
@@ -4302,14 +4328,14 @@
             inset: 3px;
             border-right-color: transparent;
             border-bottom-color: rgba(96, 165, 250, 0.24);
-            animation: portalOrbit 22s linear infinite;
+            animation: portalOrbit 20s linear infinite;
         }
 
         .portal-ring-inner {
-            inset: 16px;
+            inset: 18px;
             border-style: dashed;
-            border-color: rgba(56, 189, 248, 0.38);
-            animation: portalOrbit 30s linear infinite reverse;
+            border-color: rgba(56, 189, 248, 0.34);
+            animation: portalOrbit 26s linear infinite reverse;
         }
 
         .portal-orb {
@@ -4321,7 +4347,7 @@
             background:
                 radial-gradient(ellipse at 50% 44%, rgba(219, 234, 254, 0.94) 0 2%, rgba(56, 189, 248, 0.84) 9%, rgba(37, 99, 235, 0.62) 35%, rgba(8, 26, 65, 0.92) 72%),
                 #0b1b34;
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.75), inset 0 0 22px rgba(191, 219, 254, 0.4);
+            box-shadow: 0 0 28px rgba(56, 189, 248, 0.75), inset 0 0 22px rgba(191, 219, 254, 0.4);
             animation: portalPulse 3.2s ease-in-out infinite;
         }
 
@@ -4333,8 +4359,9 @@
             border: 1px solid #e0f2fe;
             border-radius: 50%;
             background: #fff;
-            box-shadow: 0 0 15px 6px rgba(125, 211, 252, 0.82);
+            box-shadow: 0 0 18px rgba(125, 211, 252, 0.82);
             pointer-events: none;
+            transition: opacity 200ms ease;
         }
 
         .portal-lock {
@@ -4353,6 +4380,7 @@
             color: #eff6ff;
             font-size: 1.1rem;
             cursor: pointer;
+            box-shadow: 0 0 18px rgba(96, 165, 250, 0.18);
         }
 
         .portal-base:hover .portal-ring-outer {
@@ -4375,6 +4403,59 @@
 
         @keyframes portalOrbit {
             to { transform: rotate(360deg); }
+        }
+
+        .realm-transition-overlay {
+            position: fixed;
+            z-index: 1400;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: rgba(2, 6, 23, 0.3);
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 180ms ease;
+        }
+
+        .realm-transition-overlay:not(.hidden) {
+            opacity: 1;
+        }
+
+        .realm-transition-overlay.is-leaving .realm-transition-panel {
+            border-color: rgba(251, 191, 36, 0.52);
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.2);
+        }
+
+        .realm-transition-panel {
+            display: grid;
+            gap: 8px;
+            min-width: min(280px, 76vw);
+            padding: 18px 24px;
+            border: 1px solid rgba(125, 211, 252, 0.5);
+            border-radius: 999px;
+            background: rgba(12, 21, 35, 0.9);
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.28), 0 0 30px rgba(56, 189, 248, 0.15);
+            text-align: center;
+            animation: realmTransitionPop 0.9s ease;
+        }
+
+        .realm-transition-kicker {
+            color: #7dd3fc;
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .realm-transition-panel strong {
+            color: #f8fafc;
+            font-size: clamp(1.1rem, 3vw, 1.8rem);
+        }
+
+        @keyframes realmTransitionPop {
+            0% { opacity: 0; transform: scale(0.84) translateY(18px); }
+            45% { opacity: 1; transform: scale(1.02) translateY(0); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
         .portal-info p,
@@ -5204,11 +5285,25 @@
         .forge-recipe-type { color: #fbbf24; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
         .forge-cost { display: flex; flex-wrap: wrap; gap: 8px; color: #f5d7b8; font-size: 0.74rem; }
         .forge-cost span { padding: 4px 0; }
+        .forge-recipe-note { display: block; color: #fcd34d; font-size: 0.72rem; line-height: 1.45; }
+        .forge-recipe-note.needs-more { color: #fdba74; }
         .forge-craft-button { justify-self: start; min-width: 160px; }
         .forge-activation { display: grid; grid-template-columns: 1fr minmax(150px, 220px) minmax(160px, 230px) auto; align-items: end; gap: 12px; padding: 14px; border: 1px solid rgba(249, 115, 22, 0.25); background: linear-gradient(180deg, rgba(22, 29, 37, 0.98), rgba(17, 24, 39, 0.96)); }
         .forge-activation label { display: grid; gap: 5px; color: #fde68a; font-size: 0.74rem; }
         .forge-activation select { min-height: 40px; padding: 7px; border: 1px solid rgba(251, 191, 36, 0.35); background: #10151b; color: #f3f4f6; outline: none; transition: border-color 120ms ease, box-shadow 120ms ease; }
         .forge-activation select:focus { border-color: rgba(253, 224, 71, 0.8); box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15); }
+        .forge-activation-note { margin: 0; color: #fbbf24; font-size: 0.76rem; letter-spacing: 0.03em; }
+        .forge-mini-game { position: fixed; z-index: 1350; inset: 0; display: grid; place-items: center; background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(8px); }
+        .forge-mini-game.hidden { display: none; }
+        .forge-mini-panel { display: grid; gap: 12px; width: min(380px, calc(100vw - 24px)); padding: 18px 18px 16px; border: 1px solid rgba(251, 191, 36, 0.4); border-radius: 16px; background: rgba(15, 23, 42, 0.96); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4); }
+        .forge-mini-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .forge-mini-panel h3 { margin: 0; color: #fff7ed; font-size: 1.2rem; }
+        .forge-mini-panel p { margin: 0; color: #fdba74; font-size: 0.82rem; }
+        .forge-mini-bar { width: 100%; height: 14px; overflow: hidden; border: 1px solid rgba(251, 191, 36, 0.32); border-radius: 999px; background: rgba(30, 41, 59, 0.9); }
+        .forge-mini-bar span { display: block; width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #fbbf24, #f97316, #f43f5e); transition: width 120ms ease; }
+        .forge-mini-status { color: #fef3c7; font-size: 0.74rem; font-weight: 700; }
+        .forge-mini-button { width: 100%; }
+        .btn-small { min-height: 30px; padding: 6px 10px; font-size: 0.72rem; }
         @keyframes forgeSweep { 0% { transform: translateX(-100%); } 35%, 100% { transform: translateX(100%); } }
         @media (max-width: 760px) { .forge-resources { grid-template-columns: repeat(2, minmax(0, 1fr)); } .forge-workbench { grid-template-columns: 1fr; } .forge-activation { grid-template-columns: 1fr; } }
         .event-item { text-align: center; }
@@ -5797,7 +5892,7 @@
         </header>
         <main class="forge-content">
             <section class="forge-hero">
-                <div class="forge-hero-copy"><h2>Crafting</h2><p>Turn collected items into potions and event tools.</p></div>
+                <div class="forge-hero-copy"><h2>Crafting</h2><p>Turn collected items into potions and event tools. Build the controller first if you want to activate any event.</p></div>
             </section>
             <section class="forge-resources" aria-label="Forge materials">
                 <div><span>🍀 Clover Leaves</span><strong id="forge-clovers">0</strong></div>
@@ -5812,6 +5907,7 @@
                     <h3>Luck Potion V</h3>
                     <p>A concentrated five-times luck effect.</p>
                     <div class="forge-cost"><span><b id="forge-vials-cost">1</b> Empty Vial</span><span><b>3</b> Luck Potion I</span></div>
+                    <small class="forge-recipe-note" id="forge-luck-note">Need 1 more Empty Vial and 3 more Luck Potion I to craft this.</small>
                     <button class="btn forge-craft-button" id="craft-luck-v" type="button">Craft Potion</button>
                 </article>
                 <article class="forge-recipe forge-recipe-controller">
@@ -5819,6 +5915,7 @@
                     <h3>Event Controller</h3>
                     <p>Choose one live event. The effect lasts two minutes.</p>
                     <div class="forge-cost"><span><b>10</b> Clover Leaves</span><span><b>3</b> Old Potato Stickers</span></div>
+                    <small class="forge-recipe-note" id="forge-controller-note">You still need 10 Clover Leaves and 3 Old Potato Stickers to craft this.</small>
                     <button class="btn forge-craft-button" id="craft-event-controller" type="button">Craft Controller</button>
                 </article>
             </section>
@@ -5828,7 +5925,24 @@
                 <select id="forge-event-select"><option value="starlight-surge">Starlight Surge</option><option value="meteor-shower">Meteor Shower</option><option value="abyssal-resonance">Abyssal Resonance</option></select>
                 <button class="btn" id="use-event-controller" type="button">Activate · 2:00</button>
             </section>
+            <p class="forge-activation-note">You must craft an Event Controller before you can activate any event effect.</p>
         </main>
+    </div>
+
+    <div class="realm-transition-overlay hidden" id="realm-transition-overlay" aria-live="polite" aria-hidden="true"></div>
+
+    <div class="forge-mini-game hidden" id="forge-mini-game" aria-live="polite">
+        <div class="forge-mini-panel">
+            <div class="forge-mini-header">
+                <span class="forge-recipe-type">FORGE CHALLENGE</span>
+                <button class="btn btn-small" id="forge-mini-cancel" type="button">Cancel</button>
+            </div>
+            <h3>Keep forging</h3>
+            <p>Click the forge button for 10 seconds to complete the craft.</p>
+            <div class="forge-mini-bar" aria-hidden="true"><span id="forge-mini-fill"></span></div>
+            <div class="forge-mini-status" id="forge-mini-status">0.0s / 10.0s</div>
+            <button class="btn forge-mini-button" id="forge-mini-button" type="button">Click to charge</button>
+        </div>
     </div>
 
     <!-- Admin Panel -->
