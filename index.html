@@ -4288,7 +4288,7 @@
             isolation: isolate;
             border: 0;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.2), rgba(14, 22, 35, 0.16) 62%, transparent 75%);
+            background: radial-gradient(circle at center, rgba(125, 211, 252, 0.18), rgba(15, 23, 42, 0.12) 40%, rgba(2, 6, 23, 0.8) 70%, transparent 100%);
             cursor: pointer;
             transition: transform 180ms ease, filter 180ms ease;
         }
@@ -4307,14 +4307,15 @@
         }
 
         .portal-base::before {
-            inset: 6px;
-            border: 1px solid rgba(147, 197, 253, 0.42);
-            box-shadow: 0 0 26px rgba(96, 165, 250, 0.2), inset 0 0 24px rgba(125, 211, 252, 0.1);
+            inset: 8px;
+            border: 1px solid rgba(147, 197, 253, 0.46);
+            box-shadow: 0 0 26px rgba(96, 165, 250, 0.18), inset 0 0 32px rgba(125, 211, 252, 0.12);
         }
 
         .portal-base::after {
-            inset: 22px;
+            inset: 18px;
             border: 1px solid rgba(125, 211, 252, 0.22);
+            box-shadow: inset 0 0 22px rgba(56, 189, 248, 0.15), 0 0 26px rgba(56, 189, 248, 0.08);
             animation: portalPulse 3.5s ease-in-out infinite;
         }
 
@@ -4343,15 +4344,17 @@
 
         .portal-orb {
             position: absolute;
-            inset: 31px;
+            inset: 26px;
             width: auto;
             height: auto;
             border: 1px solid rgba(186, 230, 253, 0.72);
+            border-radius: 46% 54% 58% 42% / 42% 44% 56% 58%;
             background:
                 radial-gradient(ellipse at 50% 44%, rgba(219, 234, 254, 0.96) 0 2%, rgba(56, 189, 248, 0.86) 9%, rgba(37, 99, 235, 0.62) 35%, rgba(8, 26, 65, 0.92) 72%),
                 #0b1b34;
-            box-shadow: 0 0 30px rgba(56, 189, 248, 0.8), inset 0 0 26px rgba(191, 219, 254, 0.4), 0 0 40px rgba(34, 211, 238, 0.2);
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.8), inset 0 0 26px rgba(191, 219, 254, 0.4), 0 0 40px rgba(34, 211, 238, 0.2), inset 0 0 18px rgba(59, 130, 246, 0.28);
             animation: portalPulse 3.2s ease-in-out infinite;
+            transform: rotate(8deg);
         }
 
         .portal-core {
@@ -4379,7 +4382,7 @@
             transform: translate(-50%, -50%);
             border: 1px solid rgba(219, 234, 254, 0.58);
             border-radius: 50%;
-            background: rgba(7, 18, 37, 0.76);
+            background: radial-gradient(circle at center, rgba(15, 118, 110, 0.5), rgba(7, 18, 37, 0.84));
             color: #eff6ff;
             font-size: 1.1rem;
             cursor: pointer;
