@@ -24,30 +24,34 @@ const rarityOptions = [
   { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
   { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
   { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' },
-  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 9500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true }
+  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
 ];
 
 const globalOptions = [
   { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444', isGlobal: true },
   { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8', isGlobal: true },
-  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true }
+  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true },
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 9500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true }
 ];
 
 const diveGlobalOptions = [
-  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true }
+  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true },
+  { key: 'sharky', name: 'Sharky', reward: 4500, chance: 0.5, color: '#22c55e', glowColor: '#86efac', diveOnly: true }
 ];
 
 const POTIONS = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck', effectKey: 'luck' },
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effect: 'luck', effectKey: 'luck' },
+  'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effect: 'luck', effectKey: 'luck', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
 };
 
 const ROTATING_SHOP_ITEMS = [
   { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
   { name: 'Clover Leaf', cost: 500, rarity: 'common' },
-  { name: 'Sea Essence', cost: 300000, rarity: 'legendary' }
+  { name: 'Sea Essence', cost: 300000, rarity: 'legendary' },
+  { name: 'Molten Rock', cost: 1000, rarity: 'common' },
+  { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
 ];
 
 const TITLES = [
@@ -76,6 +80,7 @@ let cameraShakeTimer = null;
 let cameraShakeEndTimer = null;
 let diveCooldownTimer = null;
 let diveCollectPending = false;
+let autoRollTimer = null;
 let gameState = {
   activeEffects: {},
   currentDimension: null,
@@ -91,10 +96,12 @@ let gameState = {
   seaEssence: 0,
   portalUnlocked: false,
   seaRealmUnlocked: false,
+  forgeRealmUnlocked: false,
+  autoRollEnabled: false,
   userTitles: [],
   activeTitle: null,
   potionInventory: { luck: 0, 'luck-ii': 0, speed: 0 },
-  itemInventory: { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
+  itemInventory: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
 };
 
 // ==================== TAGLINE CYCLING ====================
@@ -315,13 +322,16 @@ function renderRotatingShopItems() {
   getRotatingShopItems().forEach(item => {
     const card = document.createElement('div');
     card.className = 'shop-item';
-    const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : '💧';
+    const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : item.name.includes('Rock') ? '🌋' : item.name.includes('Ore') ? '⛏️' : '💧';
     card.innerHTML = `
       <h4 class="shop-item-name">${emoji} ${item.name}</h4>
       <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
-      <button class="potion-buy-btn shop-item-buy">Purchase</button>
+      <label class="shop-quantity-label">Quantity<input class="shop-item-quantity" type="number" min="1" max="99" value="1" aria-label="Quantity for ${item.name}"></label>
+      <button class="potion-buy-btn shop-item-buy">Bulk Buy</button>
     `;
-    card.querySelector('.shop-item-buy')?.addEventListener('click', () => buyShopItem(item.name));
+    card.querySelector('.shop-item-buy')?.addEventListener('click', () => {
+      buyShopItem(item.name, Number(card.querySelector('.shop-item-quantity')?.value) || 1);
+    });
     rotatingDiv.appendChild(card);
   });
 }
@@ -349,7 +359,7 @@ function renderShop() {
   const potionsDiv = document.getElementById('potions-list');
   if (potionsDiv) {
     potionsDiv.innerHTML = '';
-    Object.entries(POTIONS).forEach(([key, potion]) => {
+    Object.entries(POTIONS).filter(([, potion]) => !potion.craftOnly).forEach(([key, potion]) => {
       const card = document.createElement('div');
       card.className = 'potion-card';
       const emoji = key.startsWith('luck') ? '🍀' : '⚡';
@@ -405,21 +415,22 @@ function usePotion(potionType) {
   });
 }
 
-function buyShopItem(itemName) {
+function buyShopItem(itemName, quantity = 1) {
   const item = ROTATING_SHOP_ITEMS.find(i => i.name === itemName);
-  if (!item || !currentUser || currentUser.coins < item.cost) {
+  const totalCost = item?.cost * quantity;
+  if (!item || !currentUser || !Number.isInteger(quantity) || quantity < 1 || quantity > 99 || currentUser.coins < totalCost) {
     showPopup('Not enough coins!', 'error');
     return;
   }
   
   // Call backend to buy item
-  handleAPI('/api/buy-shop-item', { method: 'POST', body: { itemName } }).then(response => {
+  handleAPI('/api/buy-shop-item', { method: 'POST', body: { itemName, quantity } }).then(response => {
     if (response.success) {
       currentUser = response.user;
       gameState.itemInventory = currentUser.items || {};
       updateUI(currentUser);
       renderShop();
-      showPopup(`Purchased ${itemName}!`);
+      showPopup(`Purchased ${quantity} × ${itemName}!`);
     } else {
       if (response.status === 409) loadShopRotation();
       showPopup(response.error || 'Purchase failed', 'error');
@@ -545,6 +556,12 @@ function setupPortalUI() {
     realmAction.dataset.bound = 'true';
   }
 
+  const forgeAction = document.getElementById('forge-realm-action');
+  if (forgeAction && !forgeAction.dataset.bound) {
+    forgeAction.addEventListener('click', enterOrUnlockForgeRealm);
+    forgeAction.dataset.bound = 'true';
+  }
+
   const realmClose = document.getElementById('close-realm-selector');
   if (realmClose && !realmClose.dataset.bound) {
     realmClose.addEventListener('click', closeRealmSelector);
@@ -623,6 +640,18 @@ function renderRealmSelector() {
   const cooldownMs = gameState.dive?.remaining === 0 ? Math.max(0, Number(gameState.dive.cooldownUntil) - Date.now()) : 0;
   const cooldownText = cooldownMs ? ` · New dive in ${formatDiveTime(cooldownMs)}` : '';
   status.textContent = unlocked ? `Permanently unlocked · entry is free${cooldownText}` : `${essence} Sea Essence available · unlock costs 1`;
+  const forgeAction = document.getElementById('forge-realm-action');
+  const forgeStatus = document.getElementById('forge-realm-status');
+  const forgeUnlocked = gameState.forgeRealmUnlocked;
+  const molten = Number(gameState.itemInventory.molten_rock) || 0;
+  const ore = Number(gameState.itemInventory.ancient_ore) || 0;
+  if (forgeAction) {
+    forgeAction.textContent = forgeUnlocked ? 'ENTER FORGE' : 'UNLOCK · 1 ORE + 30 ROCK';
+    forgeAction.disabled = !forgeUnlocked && (ore < 1 || molten < 30);
+  }
+  if (forgeStatus) forgeStatus.textContent = forgeUnlocked
+    ? 'Permanently unlocked · entry is free'
+    : `${ore}/1 Ancient Ore · ${molten}/30 Molten Rock`;
 }
 
 async function enterOrUnlockSeaRealm() {
@@ -659,6 +688,85 @@ async function enterOrUnlockSeaRealm() {
     isEnteringDimension = false;
     renderRealmSelector();
   }
+}
+
+async function enterOrUnlockForgeRealm() {
+  if (isEnteringDimension) return;
+  const action = document.getElementById('forge-realm-action');
+  isEnteringDimension = true;
+  if (action) action.disabled = true;
+  try {
+    if (!gameState.forgeRealmUnlocked) {
+      const unlock = await handleAPI('/api/realms/forge/unlock', { method: 'POST' });
+      if (!unlock.success || !unlock.user) throw new Error(unlock.error || 'Unable to unlock Forge Realm.');
+      currentUser = unlock.user;
+      updateUI(currentUser);
+    }
+    const entry = await handleAPI('/api/enter-dimension', { method: 'POST', body: { dimension: 'forge-realm' } });
+    if (!entry.success || !entry.user) throw new Error(entry.error || 'Unable to enter Forge Realm.');
+    currentUser = entry.user;
+    updateUI(currentUser);
+    closeRealmSelector();
+    enterForgeRealm();
+  } catch (error) {
+    showPopup(error.message, 'error');
+  } finally {
+    isEnteringDimension = false;
+    renderRealmSelector();
+  }
+}
+
+function enterForgeRealm() {
+  document.getElementById('game-page').classList.add('hidden');
+  document.getElementById('forge-dimension')?.classList.remove('hidden');
+  gameState.currentDimension = 'forge-realm';
+  window.updatePlayerActivity?.('At the Forge');
+  renderForgeState();
+}
+
+function renderForgeState() {
+  const items = gameState.itemInventory;
+  const potions = currentUser?.potions || {};
+  const refs = {
+    'forge-clovers': items.clovers,
+    'forge-stickers': items.old_potato_sticker,
+    'forge-vials': items.empty_vial,
+    'forge-luck': potions.luck,
+    'forge-controllers': items.event_controller
+  };
+  Object.entries(refs).forEach(([id, count]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = Number(count) || 0;
+  });
+  const luckButton = document.getElementById('craft-luck-v');
+  const controllerButton = document.getElementById('craft-event-controller');
+  if (luckButton) luckButton.disabled = (Number(items.empty_vial) || 0) < 1 || (Number(potions.luck) || 0) < 3;
+  if (controllerButton) controllerButton.disabled = (Number(items.clovers) || 0) < 10 || (Number(items.old_potato_sticker) || 0) < 3;
+  const useButton = document.getElementById('use-event-controller');
+  if (useButton) useButton.disabled = (Number(items.event_controller) || 0) < 1;
+}
+
+async function craftForgeRecipe(recipe) {
+  const response = await handleAPI('/api/forge/craft', { method: 'POST', body: { recipe } });
+  if (!response.success || !response.user) {
+    showPopup(response.error || 'Unable to craft that recipe.', 'error');
+    return;
+  }
+  currentUser = response.user;
+  updateUI(currentUser);
+  showPopup(recipe === 'luck-v' ? 'Crafted Luck Potion V.' : 'Crafted an Event Controller.');
+}
+
+async function useForgeEventController() {
+  const eventName = document.getElementById('forge-event-select')?.value;
+  const response = await handleAPI('/api/forge/use-event-controller', { method: 'POST', body: { eventName } });
+  if (!response.success || !response.user) {
+    showPopup(response.error || 'Unable to activate the Event Controller.', 'error');
+    return;
+  }
+  currentUser = response.user;
+  updateUI(currentUser);
+  showPopup(`${response.event.title} activated for two minutes.`);
 }
 
 function enterDeepSea() {
@@ -796,6 +904,9 @@ async function collectDiveSignal(nodeId, marker) {
     if (result.itemType === 'potion') showPopup(`Found ${result.name}; added to your potion inventory.`);
     else if (result.key === 'treasure-chest') showPopup(`Treasure Chest recovered! +${formatCoins(result.reward)} coins.`);
     else showPopup(`Recovered ${result.name}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
+    if (result.globalRevealToken) {
+      handleAPI('/api/announce-global-reveal', { method: 'POST', body: { token: result.globalRevealToken } });
+    }
   } finally {
     diveCollectPending = false;
   }
@@ -805,6 +916,13 @@ function exitDeepSea() {
   clearInterval(diveCooldownTimer);
   diveCooldownTimer = null;
   document.getElementById('deep-sea-dimension').classList.add('hidden');
+  document.getElementById('game-page').classList.remove('hidden');
+  gameState.currentDimension = null;
+  window.updatePlayerActivity?.('At the RNG console');
+}
+
+function exitForgeRealm() {
+  document.getElementById('forge-dimension')?.classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
   window.updatePlayerActivity?.('At the RNG console');
@@ -904,6 +1022,9 @@ function renderInventory(user) {
       { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0, emoji: '🔮' },
       { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0, emoji: '🍀' },
       { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' },
+      { name: 'Molten Rock', count: gameState.itemInventory.molten_rock || 0, emoji: '🌋' },
+      { name: 'Ancient Ore', count: gameState.itemInventory.ancient_ore || 0, emoji: '⛏️' },
+      { name: 'Event Controller', count: gameState.itemInventory.event_controller || 0, emoji: '🎛️' },
       { name: 'Treasure Chest', count: gameState.itemInventory.treasure_chest || 0, emoji: '🧰', openChest: true },
       { name: 'Old Potato Sticker', count: gameState.itemInventory.old_potato_sticker || 0, emoji: '🏷️' },
       { name: 'Empty Vial', count: gameState.itemInventory.empty_vial || 0, emoji: '🧪' }
@@ -935,13 +1056,11 @@ async function openTreasureChest() {
 }
 
 function renderRarityCatalog() {
-  const list = document.getElementById('rarity-catalog-list');
-  if (!list) return;
-  list.innerHTML = '';
-
-  [...rarityOptions, ...globalOptions, ...diveGlobalOptions]
-    .sort((left, right) => left.chance - right.chance)
-    .forEach((rarity, index) => {
+  const renderRows = (listId, options) => {
+    const list = document.getElementById(listId);
+    if (!list) return;
+    list.innerHTML = '';
+    options.sort((left, right) => left.chance - right.chance).forEach((rarity, index) => {
       const row = document.createElement('div');
       const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
       row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.diveOnly ? ' dive-only-rarity' : ''}`;
@@ -950,21 +1069,26 @@ function renderRarityCatalog() {
       row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarity.diveOnly ? '<small> SEA ONLY</small>' : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
       list.appendChild(row);
     });
+  };
+  renderRows('rarity-catalog-list', [...rarityOptions]);
+  renderRows('secret-catalog-list', [...globalOptions, ...diveGlobalOptions]);
 }
 
 // ==================== UI UPDATES ====================
 function updateUI(user) {
   currentUser = user;
+  gameState.totalRolls = Number(user.spins) || 0;
   if (user.is_admin) setShutdownScreen(false);
   
   // Load game state from user
-  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
+  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
   gameState.potionInventory = user.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
   gameState.userTitles = user.titles || [];
   gameState.activeTitle = user.active_title || null;
   gameState.activeEffects = user.active_effects || {};
   gameState.portalUnlocked = user.portal_unlocked || false;
   gameState.seaRealmUnlocked = user.sea_realm_unlocked || false;
+  gameState.forgeRealmUnlocked = user.forge_realm_unlocked || false;
   
   document.getElementById('game-username').textContent = user.username;
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
@@ -991,14 +1115,30 @@ function updateUI(user) {
   if (!gameState.shopNextRestockAt) loadShopRotation();
   renderShop();
   updatePortalUI();
+  renderForgeState();
   updatePotionDisplay();
   renderRealmSelector();
   syncCurrentActivity();
+  updateAutoRollUI();
+}
+
+function updateAutoRollUI() {
+  const button = document.getElementById('auto-roll-btn');
+  if (!button) return;
+  const unlocked = gameState.totalRolls >= 100;
+  button.disabled = !unlocked;
+  button.textContent = unlocked ? `AUTO ROLL ${gameState.autoRollEnabled ? 'ON' : 'OFF'}` : `AUTO ROLL · ${gameState.totalRolls}/100`;
+  button.setAttribute('aria-pressed', String(gameState.autoRollEnabled));
+  button.title = unlocked ? 'Toggle automatic rolling' : 'Unlocks after 100 total rolls';
 }
 
 function syncCurrentActivity() {
   if (gameState.currentDimension === 'deep-sea') {
     window.updatePlayerActivity?.('Diving in the Sea Realm');
+    return;
+  }
+  if (gameState.currentDimension === 'forge-realm') {
+    window.updatePlayerActivity?.('At the Forge');
     return;
   }
   const activityByTab = {
@@ -1025,8 +1165,8 @@ function updatePortalUI() {
     if (unlockBtn) unlockBtn.style.display = 'none';
     if (status) status.textContent = 'Gateway Online';
     if (fragmentsText) fragmentsText.textContent = gameState.seaRealmUnlocked
-      ? 'Sea Realm unlocked permanently · two destinations coming soon.'
-      : 'Choose a realm · Sea Realm unlock costs 1 Essence once.';
+      ? gameState.forgeRealmUnlocked ? 'Sea Realm and Forge Realm are permanently unlocked.' : 'Sea Realm unlocked · Forge Realm needs 1 Ancient Ore and 30 Molten Rock.'
+      : 'Choose a realm · Sea Realm costs 1 Essence; Forge Realm costs 1 Ancient Ore and 30 Molten Rock.';
   } else {
     if (lock) lock.style.display = fragments < 10 ? 'block' : 'block';
     if (unlockBtn) unlockBtn.style.display = fragments >= 10 ? 'inline-flex' : 'none';
@@ -1194,11 +1334,12 @@ async function loadAdminUsers() {
           <button class="btn" type="submit">Grant</button>
         </form>
         <form class="admin-adjust-form" data-adjustment="item">
-          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
+          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="molten_rock">Molten Rock</option><option value="ancient_ore">Ancient Ore</option><option value="event_controller">Event Controller</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
         ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
+        <form class="admin-forge-form"><span>Forge Realm</span><button class="btn" type="submit">${user.forge_realm_unlocked ? 'Revoke access' : 'Grant access'}</button></form>
       </div>
       <form class="admin-ban-form">
         <label>Ban reason<input class="ban-reason" type="text" maxlength="250" placeholder="Optional reason" ${user.is_admin ? 'disabled' : ''}></label>
@@ -1232,6 +1373,19 @@ async function loadAdminUsers() {
         return;
       }
       showPopup(`${(user.titles || []).includes('admin') ? 'Revoked' : 'Granted'} the Admin title ${user.username === currentUser.username ? 'for your account' : `for ${user.username}`}.`);
+      loadAdminUsers();
+    });
+    row.querySelector('.admin-forge-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const grant = !user.forge_realm_unlocked;
+      const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST', body: { type: 'forge-realm', grant }
+      });
+      if (!result.success) {
+        showPopup(result.error || 'Unable to update Forge access.', 'error');
+        return;
+      }
+      showPopup(`${grant ? 'Granted' : 'Revoked'} Forge Realm access for ${user.username}.`);
       loadAdminUsers();
     });
     row.querySelectorAll('.admin-adjust-form').forEach(form => {
@@ -1307,7 +1461,9 @@ function renderGlobalDropOptions() {
     potion: Object.entries(POTIONS).map(([key, potion]) => ({ key, name: potion.name })),
     item: [
       { key: 'fragments', name: 'Portal Fragment' }, { key: 'clovers', name: 'Clover Leaf' },
-      { key: 'essence', name: 'Sea Essence' }, { key: 'old_potato_sticker', name: 'Old Potato Sticker' },
+      { key: 'essence', name: 'Sea Essence' }, { key: 'molten_rock', name: 'Molten Rock' },
+      { key: 'ancient_ore', name: 'Ancient Ore' }, { key: 'event_controller', name: 'Event Controller' },
+      { key: 'old_potato_sticker', name: 'Old Potato Sticker' },
       { key: 'empty_vial', name: 'Empty Vial' }, { key: 'treasure_chest', name: 'Treasure Chest' }
     ]
   };
@@ -1351,6 +1507,20 @@ function setupAdminTools() {
     if (!response.success) showPopup(response.error || 'Unable to end mini event.', 'error');
     else showPopup(`${miniAdminActiveEvent?.title || 'Event'} ended.`);
     loadMiniAdminOverview();
+  });
+  document.getElementById('mini-announcement-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const response = await handleAPI('/api/mini-admin/announcement', {
+      method: 'POST', body: { title: fields.get('title'), content: fields.get('content') }
+    });
+    if (!response.success) {
+      showPopup(response.error || 'Unable to send the announcement.', 'error');
+      return;
+    }
+    form.reset();
+    showPopup('Mini Operations announcement sent.');
   });
 }
 
@@ -1420,8 +1590,17 @@ function createAdminEventVisual(eventName) {
   const layer = document.createElement('div');
   layer.className = `event-visual-layer event-visual-${eventName}`;
   layer.setAttribute('aria-hidden', 'true');
-  const starfall = ['starlight-surge', 'meteor-shower'].includes(eventName);
-  if (starfall) {
+  if (eventName === 'meteor-shower') {
+    for (let index = 0; index < 18; index += 1) {
+      const meteor = document.createElement('span');
+      meteor.className = 'event-meteor-streak';
+      meteor.style.setProperty('--meteor-left', `${Math.random() * 120 - 10}%`);
+      meteor.style.setProperty('--meteor-delay', `${Math.random() * -9}s`);
+      meteor.style.setProperty('--meteor-duration', `${2.5 + Math.random() * 2.5}s`);
+      meteor.style.setProperty('--meteor-size', `${10 + Math.random() * 12}px`);
+      layer.appendChild(meteor);
+    }
+  } else if (eventName === 'starlight-surge') {
     for (let index = 0; index < 24; index += 1) {
       const star = document.createElement('span');
       star.className = 'event-falling-star';
@@ -1656,6 +1835,9 @@ async function loadSession() {
 
 document.getElementById('logout-btn')?.addEventListener('click', async () => {
   await handleAPI('/api/logout', { method: 'POST' });
+  clearInterval(autoRollTimer);
+  autoRollTimer = null;
+  gameState.autoRollEnabled = false;
   currentUser = null;
   hideGamePage();
   showLanding();
@@ -1663,6 +1845,10 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
 });
 
 document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea);
+document.getElementById('exit-forge-dimension')?.addEventListener('click', exitForgeRealm);
+document.getElementById('craft-luck-v')?.addEventListener('click', () => craftForgeRecipe('luck-v'));
+document.getElementById('craft-event-controller')?.addEventListener('click', () => craftForgeRecipe('event-controller'));
+document.getElementById('use-event-controller')?.addEventListener('click', useForgeEventController);
 
 function getRarityDisplayColor(rarity) {
   return ['#0f172a', '#000000', '#1e3a8a'].includes((rarity.color || '').toLowerCase())
@@ -1683,6 +1869,7 @@ async function animateRarityRoll(rollDisplay, result) {
   rollDisplay.style.removeProperty('--roll-glow');
 
   for (let step = 0; step < 18; step += 1) {
+    if (result.isGlobal && step === 13) rollDisplay.classList.add('global-anticipation');
     const rarity = catalog[Math.floor(Math.random() * catalog.length)];
     rollDisplay.textContent = rarity.name;
     rollDisplay.style.color = getRarityDisplayColor(rarity);
@@ -1693,6 +1880,7 @@ async function animateRarityRoll(rollDisplay, result) {
     await new Promise(resolve => setTimeout(resolve, (42 + step * 7) / speedMultiplier));
   }
 
+  rollDisplay.classList.remove('global-anticipation');
   rollDisplay.classList.remove('rarity-slot-tick');
   rollDisplay.style.color = getRarityDisplayColor(result);
   rollDisplay.style.textShadow = `0 0 20px ${result.glowColor || result.color || '#38bdf8'}`;
@@ -1707,6 +1895,20 @@ function setupRollButton() {
   if (!rollBtn || rollBtn.dataset.bound) return;
 
   rollBtn.dataset.bound = 'true';
+  document.getElementById('auto-roll-btn')?.addEventListener('click', () => {
+    if (gameState.totalRolls < 100) {
+      showPopup('Auto Roll unlocks after 100 total rolls.', 'error');
+      return;
+    }
+    gameState.autoRollEnabled = !gameState.autoRollEnabled;
+    clearInterval(autoRollTimer);
+    autoRollTimer = gameState.autoRollEnabled
+      ? setInterval(() => {
+        if (currentUser && !gameState.currentDimension && !rollBtn.disabled) rollBtn.click();
+      }, 500)
+      : null;
+    updateAutoRollUI();
+  });
 
   rollBtn.addEventListener('click', async () => {
     if (!currentUser) {
@@ -1727,7 +1929,7 @@ function setupRollButton() {
 
     const response = await handleAPI('/api/spin', {
       method: 'POST',
-      body: { dimension: gameState.currentDimension || null }
+      body: { dimension: gameState.currentDimension || null, autoRoll: gameState.autoRollEnabled }
     });
 
     if (response.success && response.result && response.user) await animateRarityRoll(rollDisplay, response.result);
@@ -1761,6 +1963,9 @@ function setupRollButton() {
     rewardDisplay.style.color = '#7dd3fc';
     
     showRewardPopup(`🪙 +${formatCoins(result.reward)} coins!`);
+    if (result.isGlobal && result.globalRevealToken) {
+      handleAPI('/api/announce-global-reveal', { method: 'POST', body: { token: result.globalRevealToken } });
+    }
   });
 }
 
