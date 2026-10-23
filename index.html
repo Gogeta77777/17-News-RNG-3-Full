@@ -5339,7 +5339,25 @@
         .secret-catalog { margin-top: 10px; border-color: rgba(251, 113, 133, 0.3); }
         .secret-catalog summary { color: #fda4af; }
         .shop-quantity-label { display: grid; grid-template-columns: 1fr 70px; align-items: center; gap: 8px; color: #9fb7ca; font-size: 0.72rem; }
-        .shop-item-quantity { width: 70px; min-height: 34px; padding: 4px 7px; border: 1px solid rgba(94, 231, 209, 0.35); border-radius: 2px; background: #08192c; color: #e2e8f0; }
+        .potion-purchase-controls { display: grid; grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr); align-items: end; gap: 7px; }
+        .potion-purchase-controls .potion-buy-btn { min-width: 0; min-height: 38px; padding: 7px 5px; border: 1px solid rgba(125, 211, 252, 0.28); border-radius: 3px; font-size: 0.72rem; }
+        .potion-bulk-quantity { display: grid; gap: 4px; color: #9fb7ca; font-size: 0.68rem; text-align: center; }
+        .potion-bulk-quantity-input { width: 100%; min-width: 0; min-height: 38px; padding: 4px; border: 1px solid rgba(94, 231, 209, 0.35); border-radius: 3px; background: #08192c; color: #e2e8f0; text-align: center; }
+        .realm-selector { background: radial-gradient(ellipse at 50% 0, rgba(8, 145, 178, 0.2), transparent 52%), rgba(2, 8, 22, 0.86); }
+        .realm-dialog { position: relative; overflow: auto; border: 1px solid rgba(125, 211, 252, 0.36); border-top: 2px solid #38bdf8; border-radius: 6px; background: radial-gradient(ellipse at 100% 0, rgba(14, 116, 144, 0.16), transparent 42%), repeating-linear-gradient(0deg, rgba(125, 211, 252, 0.025) 0 1px, transparent 1px 36px), linear-gradient(145deg, #0b1d3b, #061226 78%); box-shadow: 0 30px 90px rgba(0, 0, 0, 0.58), inset 0 1px rgba(224, 242, 254, 0.06), 0 0 36px rgba(14, 165, 233, 0.1); }
+        .realm-dialog::before { position: absolute; top: 0; left: 8%; width: 84%; height: 1px; background: linear-gradient(90deg, transparent, rgba(165, 243, 252, 0.9), transparent); content: ''; pointer-events: none; }
+        .realm-dialog-header { padding-bottom: 16px; border-bottom: 1px solid rgba(125, 211, 252, 0.16); }
+        .realm-dialog-header span { color: #67e8f9; }
+        .realm-list { gap: 12px; }
+        .realm-card { border-color: rgba(125, 211, 252, 0.24); border-radius: 4px; background: linear-gradient(155deg, rgba(14, 36, 61, 0.96), rgba(7, 17, 34, 0.98)); box-shadow: inset 0 1px rgba(224, 242, 254, 0.035); transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+        .realm-card:not(.realm-coming):hover { transform: translateY(-3px); border-color: rgba(103, 232, 249, 0.58); box-shadow: 0 12px 24px rgba(2, 6, 23, 0.28), 0 0 22px rgba(56, 189, 248, 0.12); }
+        .realm-sea { border-top: 1px solid rgba(45, 212, 191, 0.56); }
+        .realm-forge { border-top: 1px solid rgba(96, 165, 250, 0.56); }
+        .realm-coming { border-top: 1px solid rgba(148, 163, 184, 0.24); }
+        .realm-art { border-bottom: 1px solid rgba(125, 211, 252, 0.16); }
+        .realm-copy { background: linear-gradient(180deg, rgba(13, 29, 49, 0.44), rgba(7, 17, 34, 0.18)); }
+        .realm-copy .btn { border-radius: 3px; box-shadow: 0 0 14px rgba(56, 189, 248, 0.1); }
+        @media (max-width: 420px) { .potion-purchase-controls { grid-template-columns: minmax(0, 1fr) 50px minmax(0, 1fr); gap: 5px; } .potion-purchase-controls .potion-buy-btn { font-size: 0.66rem; } }
         .realm-art-forge { background: linear-gradient(145deg, #38251d, #86502d); }
         .realm-art-forge::after { content: none; }
         .forge-dimension { position: fixed; z-index: var(--z-overlay); inset: 0; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(circle at top, rgba(251, 146, 60, 0.16), rgba(16, 21, 27, 0.98) 36%), #10151b; color: #e5e7eb; }
