@@ -103,8 +103,8 @@ const DIVE_OPTIONS = [
   ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 64.08 } : rarity),
   { key: 'treasure-chest', name: 'Treasure Chest', chance: 0.5, reward: 350, isItem: true, color: '#fbbf24' },
   { key: 'potion-cache', name: 'Potion Cache', chance: 1.5, reward: 0, isItem: true, itemType: 'potion', color: '#a3e635' },
-  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true },
-  { key: 'sharky', name: 'Sharky', chance: 0.5, reward: 4500, color: '#22c55e', glowColor: '#86efac', diveOnly: true }
+  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true },
+  { key: 'sharky', name: 'Sharky', chance: 0.5, reward: 4500, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
 ];
 const POTION_CATALOG = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effectKey: 'luck', effect: 'luck' },
@@ -162,7 +162,7 @@ function getUnlockedTitles(user) {
   const titles = new Set(normalizeList(user?.titles));
   const rarities = normalizeInventory(user?.inventory).rarities;
   const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
-  const hasGlobalDrop = ['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0);
+  const hasGlobalDrop = ['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0);
   const spins = Number(user?.spins) || 0;
   const items = normalizeRecord(user?.items);
 
