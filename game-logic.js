@@ -718,7 +718,7 @@ async function enterOrUnlockForgeRealm() {
 }
 
 function enterForgeRealm() {
-  showRealmTransition('Forge Realm', 'enter');
+  showRealmTransition('Forge Realm', 'enter', 'forge');
   document.getElementById('game-page').classList.add('hidden');
   document.getElementById('forge-dimension')?.classList.remove('hidden');
   gameState.currentDimension = 'forge-realm';
@@ -726,10 +726,12 @@ function enterForgeRealm() {
   renderForgeState();
 }
 
-function showRealmTransition(realmName, mode = 'enter') {
+function showRealmTransition(realmName, mode = 'enter', realmType = 'portal') {
   const overlay = document.getElementById('realm-transition-overlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
+  overlay.classList.remove('sea-realm', 'forge-realm');
+  overlay.classList.add(realmType === 'sea' ? 'sea-realm' : 'forge-realm');
   overlay.classList.toggle('is-leaving', mode === 'leave');
   overlay.innerHTML = `
     <div class="realm-transition-panel">
@@ -741,7 +743,7 @@ function showRealmTransition(realmName, mode = 'enter') {
   showRealmTransition.timer = setTimeout(() => {
     overlay.classList.add('hidden');
     overlay.classList.remove('is-leaving');
-  }, 900);
+  }, 1100);
 }
 
 function updateForgeCraftStatus() {
@@ -889,6 +891,7 @@ async function useForgeEventController() {
 }
 
 function enterDeepSea() {
+  showRealmTransition('Sea Realm', 'enter', 'sea');
   document.getElementById('game-page').classList.add('hidden');
   const dsDiv = document.getElementById('deep-sea-dimension');
   dsDiv.classList.remove('hidden');
@@ -1034,7 +1037,7 @@ async function collectDiveSignal(nodeId, marker) {
 function exitDeepSea() {
   clearInterval(diveCooldownTimer);
   diveCooldownTimer = null;
-  showRealmTransition('Sea Realm', 'leave');
+  showRealmTransition('Sea Realm', 'leave', 'sea');
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
@@ -1042,7 +1045,7 @@ function exitDeepSea() {
 }
 
 function exitForgeRealm() {
-  showRealmTransition('Forge Realm', 'leave');
+  showRealmTransition('Forge Realm', 'leave', 'forge');
   document.getElementById('forge-dimension')?.classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
   gameState.currentDimension = null;
