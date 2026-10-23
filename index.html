@@ -4342,24 +4342,50 @@
             animation: portalOrbit 26s linear infinite reverse;
         }
 
+        .portal-spiral {
+            position: absolute;
+            z-index: 1;
+            width: 132px;
+            height: 52px;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            background: conic-gradient(from 20deg, transparent 0 15%, rgba(125, 211, 252, 0.08) 22%, #7dd3fc 38%, rgba(56, 189, 248, 0.12) 48% 70%, #38bdf8 83%, transparent 92%);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.32);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        .portal-spiral-a {
+            transform: rotate(-38deg);
+            animation: portalSpiral 6s linear infinite;
+        }
+
+        .portal-spiral-b {
+            width: 118px;
+            height: 62px;
+            opacity: 0.72;
+            transform: rotate(42deg);
+            animation: portalSpiral 8s linear infinite reverse;
+        }
+
         .portal-orb {
             position: absolute;
             inset: 26px;
             width: auto;
             height: auto;
             border: 1px solid rgba(186, 230, 253, 0.72);
-            border-radius: 46% 54% 58% 42% / 42% 44% 56% 58%;
+            border-radius: 50%;
             background:
                 radial-gradient(ellipse at 50% 44%, rgba(219, 234, 254, 0.96) 0 2%, rgba(56, 189, 248, 0.86) 9%, rgba(37, 99, 235, 0.62) 35%, rgba(8, 26, 65, 0.92) 72%),
                 #0b1b34;
             box-shadow: 0 0 30px rgba(56, 189, 248, 0.8), inset 0 0 26px rgba(191, 219, 254, 0.4), 0 0 40px rgba(34, 211, 238, 0.2), inset 0 0 18px rgba(59, 130, 246, 0.28);
             animation: portalPulse 3.2s ease-in-out infinite;
-            transform: rotate(8deg);
         }
 
         .portal-core {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             width: 17px;
             height: 17px;
             border: 1px solid #e0f2fe;
@@ -4371,7 +4397,7 @@
         }
 
         .portal-lock {
-            z-index: 2;
+            z-index: 3;
             top: 50%;
             left: 50%;
             display: grid;
@@ -4409,6 +4435,11 @@
 
         @keyframes portalOrbit {
             to { transform: rotate(360deg); }
+        }
+
+        @keyframes portalSpiral {
+            from { rotate: 0deg; }
+            to { rotate: 360deg; }
         }
 
         .realm-transition-overlay {
@@ -5862,6 +5893,8 @@
                                     <div class="portal-base" role="group" tabindex="0" aria-label="Portal gateway. Press Enter or Space to enter when unlocked.">
                                         <span class="portal-ring portal-ring-outer" aria-hidden="true"></span>
                                         <span class="portal-ring portal-ring-inner" aria-hidden="true"></span>
+                                        <span class="portal-spiral portal-spiral-a" aria-hidden="true"></span>
+                                        <span class="portal-spiral portal-spiral-b" aria-hidden="true"></span>
                                         <button class="portal-lock" id="portal-lock" type="button" aria-label="Unlock the portal">🔒</button>
                                         <span class="portal-orb" aria-hidden="true"></span>
                                         <span class="portal-core" aria-hidden="true"></span>
