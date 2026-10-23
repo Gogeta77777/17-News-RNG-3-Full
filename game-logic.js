@@ -35,8 +35,8 @@ const globalOptions = [
 ];
 
 const diveGlobalOptions = [
-  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true },
-  { key: 'sharky', name: 'Sharky', reward: 4500, chance: 0.5, color: '#22c55e', glowColor: '#86efac', diveOnly: true }
+  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true },
+  { key: 'sharky', name: 'Sharky', reward: 4500, chance: 0.5, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
 ];
 
 const POTIONS = {
@@ -515,7 +515,7 @@ function checkTitleUnlocks(user) {
   if ((Number(user.spins) || 0) >= 1000) existing.add('locked-in');
   if ((Number(user.spins) || 0) >= 5000) existing.add('endless-frequency');
   if (rarityTotal >= 10) existing.add('collector');
-  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'fisher-baxter', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
   if ((Number(user.items?.old_potato_sticker) || 0) >= 1) existing.add('potato');
   if (user.sea_realm_unlocked) existing.add('tidekeeper');
   gameState.userTitles = Array.from(existing);
