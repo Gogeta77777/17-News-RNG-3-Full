@@ -75,7 +75,9 @@ const inMemoryStore = {
 const ROTATING_SHOP_ITEMS = [
   { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
   { name: 'Clover Leaf', cost: 500, rarity: 'common' },
-  { name: 'Sea Essence', cost: 300000, rarity: 'legendary' }
+  { name: 'Sea Essence', cost: 300000, rarity: 'legendary' },
+  { name: 'Molten Rock', cost: 1000, rarity: 'common' },
+  { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
@@ -101,14 +103,28 @@ const DIVE_OPTIONS = [
   ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 64.08 } : rarity),
   { key: 'treasure-chest', name: 'Treasure Chest', chance: 0.5, reward: 350, isItem: true, color: '#fbbf24' },
   { key: 'potion-cache', name: 'Potion Cache', chance: 1.5, reward: 0, isItem: true, itemType: 'potion', color: '#a3e635' },
-  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true }
+  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#38bdf8', glowColor: '#67e8f9', isGlobal: true, diveOnly: true },
+  { key: 'sharky', name: 'Sharky', chance: 0.5, reward: 4500, color: '#22c55e', glowColor: '#86efac', diveOnly: true }
 ];
 const POTION_CATALOG = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effectKey: 'luck', effect: 'luck' },
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effectKey: 'luck', effect: 'luck' },
+  'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effectKey: 'luck', effect: 'luck', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effectKey: 'speed', effect: 'speed' },
 };
 const activeDiveSessions = new Map();
+const pendingGlobalReveals = new Map();
+
+function createGlobalRevealToken(username, rarity) {
+  const token = crypto.randomBytes(24).toString('hex');
+  pendingGlobalReveals.set(normalizeUsername(username), {
+    token,
+    rarityName: rarity.name,
+    color: rarity.glowColor || rarity.color,
+    expiresAt: Date.now() + 60000
+  });
+  return token;
+}
 
 function getShopRotation(timestamp = Date.now()) {
   const slot = Math.floor(timestamp / SHOP_ROTATION_INTERVAL_MS);
@@ -314,7 +330,7 @@ async function findUser(username) {
     const user = result.rows[0];
     const inventory = normalizeInventory(user.inventory);
     const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
-    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
+    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
     const titles = getUnlockedTitles({ ...user, inventory });
     return {
       username: user.username,
@@ -333,7 +349,8 @@ async function findUser(username) {
       is_admin: isAdministratorUser(user),
       is_banned: user.is_banned || false,
       ban_reason: user.ban_reason || '',
-      sea_realm_unlocked: user.sea_realm_unlocked || false
+      sea_realm_unlocked: user.sea_realm_unlocked || false,
+      forge_realm_unlocked: user.forge_realm_unlocked || false
     };
   }
   const stored = inMemoryStore.users[normalized] || null;
@@ -343,14 +360,15 @@ async function findUser(username) {
     inventory: normalizeInventory(stored.inventory),
     achievements: normalizeList(stored.achievements),
     potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, speed: 0 }),
-    items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }),
+    items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
     titles: getUnlockedTitles(stored),
     is_admin: isAdministratorUser(stored),
     is_banned: stored.is_banned || false,
     ban_reason: stored.ban_reason || '',
     portal_unlocked: stored.portal_unlocked || false,
     active_title: stored.active_title || null,
-    sea_realm_unlocked: stored.sea_realm_unlocked || false
+    sea_realm_unlocked: stored.sea_realm_unlocked || false,
+    forge_realm_unlocked: stored.forge_realm_unlocked || false
   };
 }
 
@@ -358,8 +376,8 @@ async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
     const result = await executeQuery(
-      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, sea_realm_unlocked, is_admin, created_at, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_admin, created_at, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        ON CONFLICT (username) DO NOTHING
        RETURNING username`,
       [
@@ -370,11 +388,12 @@ async function saveUser(user) {
         JSON.stringify(user.inventory),
         JSON.stringify(user.achievements),
         JSON.stringify(user.potions || { luck: 0, 'luck-ii': 0, speed: 0 }),
-        JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }),
+        JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
         JSON.stringify(user.titles || []),
         user.active_title || null,
         user.portal_unlocked || false,
         user.sea_realm_unlocked || false,
+        user.forge_realm_unlocked || false,
         user.is_admin,
         user.created_at || new Date().toISOString(),
         user.last_login || new Date().toISOString()
@@ -418,11 +437,12 @@ async function ensureDatabase() {
       achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       is_admin BOOLEAN NOT NULL DEFAULT false,
       potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
-      items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0}'::jsonb,
+      items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
       titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       active_title TEXT,
       portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
+      forge_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       is_banned BOOLEAN NOT NULL DEFAULT false,
       ban_reason TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -457,11 +477,12 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
-      ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0}'::jsonb,
+      ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
       ADD COLUMN IF NOT EXISTS titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS active_title TEXT,
       ADD COLUMN IF NOT EXISTS portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS forge_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -570,25 +591,28 @@ function getActiveGameEvent() {
   return activeGameEvent;
 }
 
-function startGameEvent(eventName, initiatedBy) {
+function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null) {
   const config = GAME_EVENTS[eventName];
   if (!config) return null;
   endActiveGameEvent();
+  const durationSeconds = Number.isFinite(Number(durationOverrideSeconds)) && Number(durationOverrideSeconds) > 0
+    ? Math.min(1800, Math.floor(Number(durationOverrideSeconds)))
+    : config.durationSeconds;
   activeGameEvent = {
     eventName,
     title: config.title,
     initiatedBy,
-    durationSeconds: config.durationSeconds,
+    durationSeconds,
     coinMultiplier: config.coinMultiplier,
     bonusCoins: config.bonusCoins,
     luckMultiplier: config.luckMultiplier || 1,
     description: config.description,
     startedAt: new Date().toISOString(),
-    expiresAt: config.durationSeconds ? Date.now() + config.durationSeconds * 1000 : null
+    expiresAt: durationSeconds ? Date.now() + durationSeconds * 1000 : null
   };
   io.emit('theme-event', { ...activeGameEvent, active: true });
-  if (config.durationSeconds) {
-    activeGameEventTimeout = setTimeout(endActiveGameEvent, config.durationSeconds * 1000);
+  if (durationSeconds) {
+    activeGameEventTimeout = setTimeout(endActiveGameEvent, durationSeconds * 1000);
     activeGameEventTimeout.unref?.();
   }
   return activeGameEvent;
@@ -786,7 +810,7 @@ app.get('/health', (req, res) => {
 function sanitizeUser(user) {
   const inventory = normalizeInventory(user.inventory);
   const potions = normalizeRecord(user.potions, { luck: 0, speed: 0 });
-  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
+  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
   const titles = getUnlockedTitles(user);
   
   return {
@@ -802,6 +826,7 @@ function sanitizeUser(user) {
     active_effects: user.username ? getUserActiveEffects(user.username) : {},
     portal_unlocked: user.portal_unlocked || false,
     sea_realm_unlocked: user.sea_realm_unlocked || false,
+    forge_realm_unlocked: user.forge_realm_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(inventory),
     inventoryTotal: Object.values(inventory.rarities).reduce((sum, count) => sum + (Number(count) || 0), 0),
@@ -871,10 +896,11 @@ app.post('/api/register', async (req, res) => {
     inventory: { rarities: {} },
     achievements: [],
     potions: { luck: 0, 'luck-ii': 0, speed: 0 },
-    items: { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 },
+    items: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 },
     titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
     portal_unlocked: false,
     sea_realm_unlocked: false,
+    forge_realm_unlocked: false,
     is_admin: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin',
     created_at: new Date().toISOString(),
     last_login: new Date().toISOString()
@@ -1004,6 +1030,9 @@ app.post('/api/spin', async (req, res) => {
   if (!user) {
     return res.status(404).json({ success: false, error: 'User not found.' });
   }
+  if (req.body?.autoRoll && (Number(user.spins) || 0) < 100) {
+    return res.status(403).json({ success: false, error: 'Auto Roll unlocks after 100 total rolls.' });
+  }
 
   const dimension = String(req.body?.dimension || '').toLowerCase();
   if (dimension === 'deep-sea') {
@@ -1069,6 +1098,8 @@ app.post('/api/spin', async (req, res) => {
       titles: JSON.stringify(updatedTitles)
     });
 
+    const globalRevealToken = result.isGlobal ? createGlobalRevealToken(user.username, result) : null;
+
     const responsePayload = {
       success: true,
       result: {
@@ -1078,25 +1109,37 @@ app.post('/api/spin', async (req, res) => {
         luckMultiplier,
         reward: finalReward,
         eventBonus,
-        eventName: event?.title || null
+        eventName: event?.title || null,
+        globalRevealToken
       },
       user: sanitizeUser(updatedUser)
     };
-
-    if (result.isGlobal) {
-      try {
-        const globalMessage = `${user.username} rolled ${result.name}!`;
-        const chatRecord = await saveChatMessage(user.username, globalMessage, result.name, result.glowColor || result.color, false, true);
-        io.emit('chat-message', chatRecord);
-      } catch (error) {
-        console.error('Unable to announce global drop:', error);
-      }
-    }
 
     res.json(responsePayload);
   } catch (error) {
     console.error('Spin persistence error:', error.message || error);
     res.status(503).json({ success: false, error: 'Your roll could not be saved. Please try again.' });
+  }
+});
+
+app.post('/api/announce-global-reveal', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const key = normalizeUsername(req.session.username);
+  const pending = pendingGlobalReveals.get(key);
+  const token = String(req.body?.token || '');
+  if (!pending || pending.expiresAt < Date.now() || pending.token !== token) {
+    pendingGlobalReveals.delete(key);
+    return res.status(409).json({ success: false, error: 'That global reveal is no longer available.' });
+  }
+  pendingGlobalReveals.delete(key);
+  try {
+    const message = `${req.session.username} rolled ${pending.rarityName}!`;
+    const chatRecord = await saveChatMessage(req.session.username, message, pending.rarityName, pending.color, false, true);
+    io.emit('chat-message', chatRecord);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Global reveal announcement error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to announce the global reveal.' });
   }
 });
 
@@ -1147,7 +1190,7 @@ app.post('/api/buy-potion', async (req, res) => {
 
   const { potionType } = req.body || {};
   const potion = POTION_CATALOG[potionType];
-  if (!potion) {
+  if (!potion || potion.craftOnly) {
     return res.status(400).json({ success: false, error: 'Invalid potion.' });
   }
 
@@ -1193,11 +1236,15 @@ app.post('/api/buy-shop-item', async (req, res) => {
   }
 
   const { itemName } = req.body || {};
+  const quantity = Number(req.body?.quantity ?? 1);
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
+    return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
+  }
   const rotation = getShopRotation();
   if (itemName !== rotation.name) {
     return res.status(409).json({ success: false, error: 'That item is no longer in stock.', rotation });
   }
-  const cost = rotation.cost;
+  const cost = rotation.cost * quantity;
 
   try {
     const user = await findUser(req.session.username);
@@ -1207,9 +1254,12 @@ app.post('/api/buy-shop-item', async (req, res) => {
 
     const items = typeof user.items === 'string' ? JSON.parse(user.items) : (user.items || {});
     
-    if (itemName === 'Portal Fragment') items.fragments = (items.fragments || 0) + 1;
-    else if (itemName === 'Clover Leaf') items.clovers = (items.clovers || 0) + 1;
-    else if (itemName === 'Sea Essence') items.essence = (items.essence || 0) + 1;
+    const itemKey = {
+      'Portal Fragment': 'fragments', 'Clover Leaf': 'clovers', 'Sea Essence': 'essence',
+      'Molten Rock': 'molten_rock', 'Ancient Ore': 'ancient_ore'
+    }[itemName];
+    if (!itemKey) return res.status(400).json({ success: false, error: 'That item cannot be purchased.' });
+    items[itemKey] = (Number(items[itemKey]) || 0) + quantity;
 
     await updateUser(req.session.username, {
       coins: user.coins - cost,
@@ -1217,7 +1267,7 @@ app.post('/api/buy-shop-item', async (req, res) => {
     });
 
     const updated = await findUser(req.session.username);
-    res.json({ success: true, user: sanitizeUser(updated) });
+    res.json({ success: true, quantity, totalCost: cost, user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Buy item error:', error);
     res.status(500).json({ success: false, error: 'Purchase failed.' });
@@ -1315,24 +1365,104 @@ app.post('/api/realms/sea/unlock', async (req, res) => {
   }
 });
 
+app.post('/api/realms/forge/unlock', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+    if (!user.portal_unlocked) return res.status(400).json({ success: false, error: 'Unlock the gateway with 10 Portal Fragments first.' });
+    if (user.forge_realm_unlocked) return res.json({ success: true, alreadyUnlocked: true, user: sanitizeUser(user) });
+    const items = normalizeRecord(user.items);
+    if ((Number(items.ancient_ore) || 0) < 1 || (Number(items.molten_rock) || 0) < 30) {
+      return res.status(400).json({ success: false, error: 'Forge Realm requires 1 Ancient Ore and 30 Molten Rock.' });
+    }
+    items.ancient_ore -= 1;
+    items.molten_rock -= 30;
+    await updateUser(req.session.username, { forge_realm_unlocked: true, items: JSON.stringify(items) });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Forge Realm unlock error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to unlock the Forge Realm.' });
+  }
+});
+
 app.post('/api/enter-dimension', async (req, res) => {
   if (!req.session || !req.session.username) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
   const { dimension } = req.body || {};
-  if (dimension !== 'deep-sea') {
+  if (!['deep-sea', 'forge-realm'].includes(dimension)) {
     return res.status(400).json({ success: false, error: 'Invalid dimension.' });
   }
 
   try {
     const user = await findUser(req.session.username);
-    if (!user.portal_unlocked || !user.sea_realm_unlocked) {
-      return res.status(403).json({ success: false, error: 'Unlock the Sea Realm once with Sea Essence before entering.' });
+    const unlocked = dimension === 'deep-sea' ? user?.sea_realm_unlocked : user?.forge_realm_unlocked;
+    if (!user?.portal_unlocked || !unlocked) {
+      return res.status(403).json({ success: false, error: `Unlock the ${dimension === 'deep-sea' ? 'Sea' : 'Forge'} Realm before entering.` });
     }
     res.json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
     console.error('Enter dimension error:', error);
     res.status(500).json({ success: false, error: 'Unable to enter dimension.' });
+  }
+});
+
+app.post('/api/forge/craft', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.forge_realm_unlocked) return res.status(403).json({ success: false, error: 'Forge Realm access is required.' });
+    const items = normalizeRecord(user.items);
+    const potions = normalizeRecord(user.potions);
+    const recipe = String(req.body?.recipe || '');
+    if (recipe === 'luck-v') {
+      if ((Number(items.empty_vial) || 0) < 1 || (Number(potions.luck) || 0) < 3) {
+        return res.status(400).json({ success: false, error: 'Requires 1 Empty Vial and 3 Luck Potion I.' });
+      }
+      items.empty_vial -= 1;
+      potions.luck -= 3;
+      potions['luck-v'] = (Number(potions['luck-v']) || 0) + 1;
+    } else if (recipe === 'event-controller') {
+      if ((Number(items.clovers) || 0) < 10 || (Number(items.old_potato_sticker) || 0) < 3) {
+        return res.status(400).json({ success: false, error: 'Requires 10 Clover Leaves and 3 Old Potato Stickers.' });
+      }
+      items.clovers -= 10;
+      items.old_potato_sticker -= 3;
+      items.event_controller = (Number(items.event_controller) || 0) + 1;
+    } else {
+      return res.status(400).json({ success: false, error: 'Unknown Forge recipe.' });
+    }
+    await updateUser(req.session.username, { items: JSON.stringify(items), potions: JSON.stringify(potions) });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Forge craft error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to craft that item.' });
+  }
+});
+
+app.post('/api/forge/use-event-controller', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.forge_realm_unlocked) return res.status(403).json({ success: false, error: 'Forge Realm access is required.' });
+    const eventName = String(req.body?.eventName || '');
+    if (!Object.prototype.hasOwnProperty.call(GAME_EVENTS, eventName)) {
+      return res.status(400).json({ success: false, error: 'Choose a valid event.' });
+    }
+    if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
+    const items = normalizeRecord(user.items);
+    if ((Number(items.event_controller) || 0) < 1) return res.status(400).json({ success: false, error: 'You need an Event Controller.' });
+    items.event_controller -= 1;
+    await updateUser(req.session.username, { items: JSON.stringify(items) });
+    const event = startGameEvent(eventName, user.username, 120);
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, event: { title: event.title, durationSeconds: event.durationSeconds }, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Event Controller error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to activate the Event Controller.' });
   }
 });
 
@@ -1400,8 +1530,7 @@ app.post('/api/sea/dive/collect', async (req, res) => {
   });
   const updatedUser = await findUser(username);
   if (result.isGlobal) {
-    const chatRecord = await saveChatMessage(user.username, `${user.username} discovered ${result.name} while diving!`, result.name, result.glowColor || result.color, false, true);
-    io.emit('chat-message', chatRecord);
+    result.globalRevealToken = createGlobalRevealToken(user.username, result);
   }
   if (session.nodes.every(candidate => candidate.collected)) session.cooldownUntil = Date.now() + 120000;
   res.json({ success: true, dive: getDiveState(session), result: { ...result, user: sanitizeUser(updatedUser) } });
@@ -1492,6 +1621,9 @@ app.post('/api/admin/users/:username', async (req, res) => {
         titles: JSON.stringify(titles),
         ...(!grant && target.active_title === 'admin' ? { active_title: null } : {})
       };
+    } else if (type === 'forge-realm') {
+      if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether Forge access should be enabled.' });
+      updates = { forge_realm_unlocked: grant };
     } else {
       const quantity = Number(amount);
       if (!Number.isSafeInteger(quantity) || quantity < 0) {
@@ -1506,8 +1638,8 @@ app.post('/api/admin/users/:username', async (req, res) => {
         const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
         potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
         updates = { potions: JSON.stringify(potions) };
-      } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
-        const items = normalizeRecord(target.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
+      } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
+        const items = normalizeRecord(target.items);
         items[item] = Math.min(999, (Number(items[item]) || 0) + quantity);
         updates = { items: JSON.stringify(items) };
       } else {
@@ -1550,7 +1682,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     }
 
     const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem);
-    const itemKeys = ['fragments', 'clovers', 'essence', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
+    const itemKeys = ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
     if (!((type === 'rarity' && rarity) || (type === 'potion' && POTION_CATALOG[key]) || (type === 'item' && itemKeys.includes(key)))) {
       return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
     }
@@ -1578,7 +1710,8 @@ app.post('/api/admin/global-drop', async (req, res) => {
       await updateUser(target.username, updates);
     }
 
-    const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : key.replaceAll('_', ' ');
+    const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
+    const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : itemNames[key];
     const announcement = `Admin ${admin.username} granted ${amount} × ${name} to every player.`;
     const chatRecord = await saveChatMessage('System', announcement, 'GLOBAL DROP', '#fbbf24', true, true);
     io.emit('chat-message', chatRecord);
@@ -1649,6 +1782,26 @@ app.post('/api/mini-admin/event', async (req, res) => {
   } catch (error) {
     console.error('Mini admin event error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to manage this event.' });
+  }
+});
+
+app.post('/api/mini-admin/announcement', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user || (!user.is_admin && !getUnlockedTitles(user).includes('admin'))) {
+      return res.status(403).json({ success: false, error: 'The Admin title is required.' });
+    }
+    const title = String(req.body?.title || '').trim().slice(0, 80);
+    const content = String(req.body?.content || '').trim().slice(0, 500);
+    if (!title || !content) return res.status(400).json({ success: false, error: 'Enter an announcement title and message.' });
+    const record = await saveChatMessage(user.username, `${title}: ${content}`, 'Mini Operations', '#fb7185', false, false, true);
+    io.emit('chat-message', record);
+    io.emit('admin-announcement', { title, content });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Mini admin announcement error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to send the announcement.' });
   }
 });
 
@@ -1887,7 +2040,7 @@ io.on('connection', async (socket) => {
   socket.on('player-activity', activity => {
     if (!socket.request?.session?.username || socket.data.isBanned) return;
     const safeActivity = String(activity || '').trim().slice(0, 64);
-    if (['At the RNG console', 'Diving in the Sea Realm', 'Browsing inventory', 'Using the shop', 'Browsing titles', 'In chat', 'Viewing settings'].includes(safeActivity)) {
+    if (['At the RNG console', 'Diving in the Sea Realm', 'At the Forge', 'Browsing inventory', 'Using the shop', 'Browsing titles', 'In chat', 'Viewing settings'].includes(safeActivity)) {
       socket.data.activity = safeActivity;
     }
   });
