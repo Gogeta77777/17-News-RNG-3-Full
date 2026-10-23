@@ -1208,6 +1208,10 @@ app.post('/api/buy-potion', async (req, res) => {
   }
 
   const { potionType } = req.body || {};
+  const quantity = Number(req.body?.quantity ?? 1);
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
+    return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
+  }
   const potion = POTION_CATALOG[potionType];
   if (!potion || potion.craftOnly) {
     return res.status(400).json({ success: false, error: 'Invalid potion.' });
@@ -1215,26 +1219,28 @@ app.post('/api/buy-potion', async (req, res) => {
 
   try {
     const user = await findUser(req.session.username);
-    if (user.coins < potion.cost) {
+    const totalCost = potion.cost * quantity;
+    const totalVialCost = (potion.vialCost || 0) * quantity;
+    if (user.coins < totalCost) {
       return res.json({ success: false, error: 'Not enough coins.' });
     }
 
     const potions = typeof user.potions === 'string' ? JSON.parse(user.potions) : (user.potions || {});
     const items = normalizeRecord(user.items, { empty_vial: 0 });
-    if ((Number(items.empty_vial) || 0) < (potion.vialCost || 0)) {
-      return res.json({ success: false, error: `Requires ${potion.vialCost} Empty Vial to craft ${potion.name}.` });
+    if ((Number(items.empty_vial) || 0) < totalVialCost) {
+      return res.json({ success: false, error: `Requires ${totalVialCost} Empty Vial to craft ${potion.name}.` });
     }
-    if (potion.vialCost) items.empty_vial -= potion.vialCost;
-    potions[potionType] = (potions[potionType] || 0) + 1;
+    if (totalVialCost) items.empty_vial -= totalVialCost;
+    potions[potionType] = (Number(potions[potionType]) || 0) + quantity;
 
     await updateUser(req.session.username, {
-      coins: user.coins - potion.cost,
+      coins: user.coins - totalCost,
       potions: JSON.stringify(potions),
-      ...(potion.vialCost ? { items: JSON.stringify(items) } : {})
+      ...(totalVialCost ? { items: JSON.stringify(items) } : {})
     });
 
     const updated = await findUser(req.session.username);
-    res.json({ success: true, user: sanitizeUser(updated) });
+    res.json({ success: true, quantity, totalCost, user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Buy potion error:', error);
     res.status(500).json({ success: false, error: 'Purchase failed.' });
@@ -1256,14 +1262,14 @@ app.post('/api/buy-shop-item', async (req, res) => {
 
   const { itemName } = req.body || {};
   const quantity = Number(req.body?.quantity ?? 1);
-  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
-    return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
+  if (quantity !== 1) {
+    return res.status(400).json({ success: false, error: 'Rotating shop items can only be purchased one at a time.' });
   }
   const rotation = getShopRotation();
   if (itemName !== rotation.name) {
     return res.status(409).json({ success: false, error: 'That item is no longer in stock.', rotation });
   }
-  const cost = rotation.cost * quantity;
+  const cost = rotation.cost;
 
   try {
     const user = await findUser(req.session.username);
@@ -1278,7 +1284,7 @@ app.post('/api/buy-shop-item', async (req, res) => {
       'Molten Rock': 'molten_rock', 'Ancient Ore': 'ancient_ore'
     }[itemName];
     if (!itemKey) return res.status(400).json({ success: false, error: 'That item cannot be purchased.' });
-    items[itemKey] = (Number(items[itemKey]) || 0) + quantity;
+    items[itemKey] = (Number(items[itemKey]) || 0) + 1;
 
     await updateUser(req.session.username, {
       coins: user.coins - cost,
