@@ -327,11 +327,10 @@ function renderRotatingShopItems() {
     card.innerHTML = `
       <h4 class="shop-item-name">${emoji} ${item.name}</h4>
       <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
-      <label class="shop-quantity-label">Quantity<input class="shop-item-quantity" type="number" min="1" max="99" value="1" aria-label="Quantity for ${item.name}"></label>
-      <button class="potion-buy-btn shop-item-buy">Bulk Buy</button>
+      <button class="potion-buy-btn shop-item-buy">Buy</button>
     `;
     card.querySelector('.shop-item-buy')?.addEventListener('click', () => {
-      buyShopItem(item.name, Number(card.querySelector('.shop-item-quantity')?.value) || 1);
+      buyShopItem(item.name);
     });
     rotatingDiv.appendChild(card);
   });
@@ -372,26 +371,45 @@ function renderShop() {
           <span>⏱️ ${potion.duration}s active</span>
         </div>
         <div class="potion-cost">${potion.vialCost ? `🧪 ${potion.vialCost} Empty Vial · ` : ''}🪙 ${formatCoins(potion.cost)} coins</div>
-        <button class="potion-buy-btn potion-buy">${potion.vialCost ? 'Craft' : 'Buy Now'}</button>
+        <div class="potion-purchase-controls">
+          <button class="potion-buy-btn potion-buy">${potion.vialCost ? 'Craft' : 'Buy Now'}</button>
+          <label class="potion-bulk-quantity">Qty<input class="potion-bulk-quantity-input" type="number" min="2" max="99" value="10" aria-label="Bulk quantity for ${potion.name}"></label>
+          <button class="potion-buy-btn potion-bulk-buy">Bulk Buy</button>
+        </div>
       `;
       card.querySelector('.potion-buy')?.addEventListener('click', () => buyPotion(key));
+      card.querySelector('.potion-bulk-buy')?.addEventListener('click', () => {
+        buyPotion(key, Number(card.querySelector('.potion-bulk-quantity-input')?.value));
+      });
       potionsDiv.appendChild(card);
     });
   }
 }
 
-function buyPotion(potionType) {
-  if (!currentUser || currentUser.coins < POTIONS[potionType].cost) {
-    showPopup('Not enough coins!', 'error');
+function buyPotion(potionType, quantity = 1) {
+  const potion = POTIONS[potionType];
+  if (!potion || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
+    showPopup('Choose a quantity from 1 to 99.', 'error');
     return;
   }
 
-  handleAPI('/api/buy-potion', { method: 'POST', body: { potionType } }).then(response => {
+  const totalCost = potion.cost * quantity;
+  const totalVialCost = (potion.vialCost || 0) * quantity;
+  if (!currentUser || currentUser.coins < totalCost) {
+    showPopup('Not enough coins!', 'error');
+    return;
+  }
+  if ((Number(currentUser.items?.empty_vial) || 0) < totalVialCost) {
+    showPopup(`Requires ${totalVialCost} Empty Vial to craft ${potion.name}.`, 'error');
+    return;
+  }
+
+  handleAPI('/api/buy-potion', { method: 'POST', body: { potionType, quantity } }).then(response => {
     if (response.success) {
       currentUser = response.user;
       gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
       updateUI(currentUser);
-      showPopup(`Purchased ${POTIONS[potionType].name}! Added to inventory.`);
+      showPopup(`Purchased ${quantity} × ${potion.name}! Added to inventory.`);
     } else {
       showPopup(response.error || 'Purchase failed', 'error');
     }
@@ -416,22 +434,20 @@ function usePotion(potionType) {
   });
 }
 
-function buyShopItem(itemName, quantity = 1) {
+function buyShopItem(itemName) {
   const item = ROTATING_SHOP_ITEMS.find(i => i.name === itemName);
-  const totalCost = item?.cost * quantity;
-  if (!item || !currentUser || !Number.isInteger(quantity) || quantity < 1 || quantity > 99 || currentUser.coins < totalCost) {
+  if (!item || !currentUser || currentUser.coins < item.cost) {
     showPopup('Not enough coins!', 'error');
     return;
   }
   
-  // Call backend to buy item
-  handleAPI('/api/buy-shop-item', { method: 'POST', body: { itemName, quantity } }).then(response => {
+  handleAPI('/api/buy-shop-item', { method: 'POST', body: { itemName } }).then(response => {
     if (response.success) {
       currentUser = response.user;
       gameState.itemInventory = currentUser.items || {};
       updateUI(currentUser);
       renderShop();
-      showPopup(`Purchased ${quantity} × ${itemName}!`);
+      showPopup(`Purchased ${itemName}!`);
     } else {
       if (response.status === 409) loadShopRotation();
       showPopup(response.error || 'Purchase failed', 'error');
