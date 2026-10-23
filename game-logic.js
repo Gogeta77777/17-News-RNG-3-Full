@@ -65,7 +65,8 @@ const TITLES = [
   { id: 'potato', name: 'Potato', color: '#8b5a2b', requirement: 'old-potato-sticker', description: 'Find an Old Potato Sticker in a Treasure Chest' },
   { id: 'collector', name: 'Rarity Collector', color: '#34d399', requirement: 'drops:10', description: 'Collect 10 rarity drops' },
   { id: 'global-headliner', name: 'Global Headliner', color: '#fb7185', requirement: 'global:1', description: 'Find a global rarity' },
-  { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' }
+  { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' },
+  { id: 'blacksmith', name: 'Blacksmith', color: '#fb923c', requirement: 'forge-realm', description: 'Permanently unlock Forge Realm' }
 ];
 
 const CODE_REWARDS = {
@@ -943,8 +944,8 @@ function redeemCode() {
     if (response.success) {
       currentUser = response.user;
       gameState.userTitles = currentUser.titles || [];
-      const titleName = TITLES.find(t => t.id === response.title)?.name || 'Unknown';
-      showPopup(`Code redeemed! Title unlocked: ${titleName}`);
+      const titleName = TITLES.find(t => t.id === response.title)?.name;
+      showPopup(titleName ? `Code redeemed! Title unlocked: ${titleName}` : `Code redeemed! ${response.reward}`);
       input.value = '';
       renderTitles();
       updateUI(currentUser);
@@ -1070,8 +1071,29 @@ function renderRarityCatalog() {
       list.appendChild(row);
     });
   };
-  renderRows('rarity-catalog-list', [...rarityOptions]);
-  renderRows('secret-catalog-list', [...globalOptions, ...diveGlobalOptions]);
+  renderRows('rarity-catalog-list', [...rarityOptions, ...globalOptions]);
+
+  const secretCatalog = document.getElementById('secret-index');
+  const secretSummary = secretCatalog?.querySelector('summary');
+  if (secretCatalog && secretSummary && !secretCatalog.dataset.gateBound) {
+    const blockLockedAccess = event => {
+      if (gameState.portalUnlocked) return;
+      if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      showPopup('Unlock the Portal Gateway to view realm rarities.', 'error');
+    };
+    secretSummary.addEventListener('click', blockLockedAccess);
+    secretSummary.addEventListener('keydown', blockLockedAccess);
+    secretCatalog.dataset.gateBound = 'true';
+  }
+  renderRows('secret-catalog-list', gameState.portalUnlocked ? diveGlobalOptions.filter(rarity => !rarity.isGlobal) : []);
+  if (secretCatalog) secretCatalog.open = false;
+  if (secretSummary) {
+    secretSummary.setAttribute('aria-disabled', String(!gameState.portalUnlocked));
+    secretSummary.querySelector('span').textContent = gameState.portalUnlocked
+      ? 'Realm rarities · rarest first'
+      : 'Locked · unlock Portal Gateway';
+  }
 }
 
 // ==================== UI UPDATES ====================
@@ -1173,6 +1195,7 @@ function updatePortalUI() {
     if (status) status.textContent = fragments >= 10 ? 'Ready to unlock' : 'Locked';
     if (fragmentsText) fragmentsText.textContent = `Requires: 10 Portal Fragments (${fragments}/10)`;
   }
+  renderRarityCatalog();
 }
 
 // ==================== CHAT SYSTEM ====================
