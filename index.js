@@ -80,6 +80,7 @@ const ROTATING_SHOP_ITEMS = [
   { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
+const HALLOWEEN_END_AT = Date.UTC(2026, 10, 2);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
   { key: '17-news', name: '17 News', chance: 66.13, reward: 150, color: '#0f172a' },
@@ -99,13 +100,61 @@ const CORE_RARITIES = [
   { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' },
   { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', chance: 0.07, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#4ade80' }
 ];
+const HALLOWEEN_RARITIES = [
+  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 12000, color: '#f97316', glowColor: '#fdba74', halloweenOnly: true, isGlobal: true },
+  { key: 'grim-reaper', name: 'Grim Reaper', chance: 0.01, reward: 50000, color: '#7c3aed', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
+];
+const halloweenRaritySerials = new Map();
+const limitedCodeClaims = new Map();
+
+function isHalloweenUpdateActive(now = Date.now()) {
+  return now < HALLOWEEN_END_AT;
+}
+
+function getActiveCoreRarities() {
+  return isHalloweenUpdateActive() ? [...CORE_RARITIES, ...HALLOWEEN_RARITIES] : CORE_RARITIES;
+}
+
 const DIVE_OPTIONS = [
   ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 64.08 } : rarity),
   { key: 'treasure-chest', name: 'Treasure Chest', chance: 0.5, reward: 350, isItem: true, color: '#fbbf24' },
   { key: 'potion-cache', name: 'Potion Cache', chance: 1.5, reward: 0, isItem: true, itemType: 'potion', color: '#a3e635' },
-  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true },
+  { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true, isGlobal: true },
   { key: 'sharky', name: 'Sharky', chance: 0.5, reward: 4500, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
 ];
+
+function getActiveDiveOptions() {
+  return isHalloweenUpdateActive() ? [...DIVE_OPTIONS, ...HALLOWEEN_RARITIES] : DIVE_OPTIONS;
+}
+
+async function assignHalloweenSerial(rarityKey, inventory) {
+  if (!HALLOWEEN_RARITIES.some(rarity => rarity.key === rarityKey)) return null;
+
+  let serial;
+  if (pool) {
+    const result = await executeQuery(
+      `INSERT INTO halloween_rarity_serials (rarity_key, last_serial) VALUES ($1, 1)
+       ON CONFLICT (rarity_key) DO UPDATE SET last_serial = halloween_rarity_serials.last_serial + 1
+       RETURNING last_serial`,
+      [rarityKey]
+    );
+    serial = Number(result.rows[0].last_serial);
+  } else {
+    serial = (halloweenRaritySerials.get(rarityKey) || 0) + 1;
+    halloweenRaritySerials.set(rarityKey, serial);
+  }
+
+  const serials = normalizeRecord(inventory.halloweenSerials);
+  serials[rarityKey] = [...normalizeList(serials[rarityKey]), serial];
+  inventory.halloweenSerials = serials;
+  return serial;
+}
+
+const GLOBAL_RARITIES = [...new Map(
+  [...CORE_RARITIES, ...DIVE_OPTIONS, ...HALLOWEEN_RARITIES]
+    .filter(rarity => rarity.isGlobal)
+    .map(rarity => [rarity.key, rarity])
+).values()];
 const POTION_CATALOG = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effectKey: 'luck', effect: 'luck' },
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effectKey: 'luck', effect: 'luck' },
@@ -120,6 +169,7 @@ function createGlobalRevealToken(username, rarity) {
   pendingGlobalReveals.set(normalizeUsername(username), {
     token,
     rarityName: rarity.name,
+    serialNumber: rarity.serialNumber || null,
     color: rarity.glowColor || rarity.color,
     expiresAt: Date.now() + 60000
   });
@@ -150,7 +200,8 @@ const TITLE_CATALOG = {
   collector: { name: 'Rarity Collector', color: '#34d399' },
   'global-headliner': { name: 'Global Headliner', color: '#fb7185' },
   tidekeeper: { name: 'Tidekeeper', color: '#2dd4bf' },
-  blacksmith: { name: 'Blacksmith', color: '#fb923c' }
+  blacksmith: { name: 'Blacksmith', color: '#fb923c' },
+  'halloween-2026': { name: 'Halloween 2026', color: '#f97316' }
 };
 
 function isAdministratorUser(user) {
@@ -162,7 +213,8 @@ function getUnlockedTitles(user) {
   const titles = new Set(normalizeList(user?.titles));
   const rarities = normalizeInventory(user?.inventory).rarities;
   const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
-  const hasGlobalDrop = ['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0);
+  const hasGlobalDrop = GLOBAL_RARITIES.some(rarity => Number(rarities[rarity.key]) > 0);
+  const hasHalloweenDrop = ['grim-reaper', 'pumpkin-baxter'].some(key => Number(rarities[key]) > 0);
   const spins = Number(user?.spins) || 0;
   const items = normalizeRecord(user?.items);
 
@@ -176,6 +228,7 @@ function getUnlockedTitles(user) {
   if (hasGlobalDrop) titles.add('global-headliner');
   if (user?.sea_realm_unlocked) titles.add('tidekeeper');
   if (user?.forge_realm_unlocked) titles.add('blacksmith');
+  if (hasHalloweenDrop) titles.add('halloween-2026');
 
   return [...titles].filter(title => Object.prototype.hasOwnProperty.call(TITLE_CATALOG, title));
 }
@@ -425,6 +478,53 @@ async function updateUser(username, updates) {
   inMemoryStore.users[normalized] = { ...existing, ...updates };
 }
 
+async function claimLimitedCode(code, username, maxUses, updates) {
+  const accountUsername = username.trim();
+  if (!pool) {
+    const claims = limitedCodeClaims.get(code) || new Set();
+    if (claims.has(accountUsername)) return { status: 'already-used' };
+    if (claims.size >= maxUses) return { status: 'exhausted' };
+    claims.add(accountUsername);
+    limitedCodeClaims.set(code, claims);
+    try {
+      await updateUser(username, updates);
+      return { status: 'claimed', remaining: Math.max(0, maxUses - claims.size) };
+    } catch (error) {
+      claims.delete(accountUsername);
+      throw error;
+    }
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [code]);
+    const usage = await client.query('SELECT COUNT(*)::int AS uses FROM limited_code_redemptions WHERE code = $1', [code]);
+    const priorClaim = await client.query('SELECT 1 FROM limited_code_redemptions WHERE code = $1 AND username = $2', [code, accountUsername]);
+    if (priorClaim.rowCount) {
+      await client.query('ROLLBACK');
+      return { status: 'already-used' };
+    }
+    if (usage.rows[0].uses >= maxUses) {
+      await client.query('ROLLBACK');
+      return { status: 'exhausted' };
+    }
+
+    await client.query('INSERT INTO limited_code_redemptions (code, username) VALUES ($1, $2)', [code, accountUsername]);
+    const keys = Object.keys(updates);
+    const values = keys.map(key => updates[key]);
+    const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+    await client.query(`UPDATE users SET ${setClause} WHERE username = $${keys.length + 1}`, [...values, username.trim()]);
+    await client.query('COMMIT');
+    return { status: 'claimed', remaining: Math.max(0, maxUses - usage.rows[0].uses - 1) };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function ensureDatabase() {
   if (!pool) {
     if (IS_PRODUCTION) {
@@ -466,6 +566,20 @@ async function ensureDatabase() {
       system BOOLEAN NOT NULL DEFAULT false,
       is_global BOOLEAN NOT NULL DEFAULT false,
       is_announcement BOOLEAN NOT NULL DEFAULT false
+    )
+  `);
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS limited_code_redemptions (
+      code TEXT NOT NULL,
+      username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+      redeemed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (code, username)
+    )
+  `);
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS halloween_rarity_serials (
+      rarity_key TEXT PRIMARY KEY,
+      last_serial INTEGER NOT NULL DEFAULT 0
     )
   `);
   await executeQuery(`
@@ -633,11 +747,13 @@ function stopGameEvent(eventName) {
 
 let connectedUsers = 0;
 
-async function getRecentChatMessages(limit = 60) {
+async function getRecentChatMessages(limit = 60, globalOnly = null) {
   if (pool) {
     const result = await executeQuery(
-      'SELECT username, message, created_at, title, title_color, system, is_global, is_announcement FROM chat_messages ORDER BY created_at DESC LIMIT $1',
-      [limit]
+      `SELECT username, message, created_at, title, title_color, system, is_global, is_announcement
+       FROM chat_messages ${globalOnly === null ? '' : 'WHERE is_global = $1'}
+       ORDER BY created_at DESC LIMIT $${globalOnly === null ? 1 : 2}`,
+      globalOnly === null ? [limit] : [globalOnly, limit]
     );
     return result.rows.reverse().map(row => ({
       username: row.username,
@@ -650,7 +766,23 @@ async function getRecentChatMessages(limit = 60) {
       isAnnouncement: row.is_announcement || false
     }));
   }
-  return inMemoryStore.chatMessages.slice(-limit);
+  return inMemoryStore.chatMessages
+    .filter(message => globalOnly === null || Boolean(message.isGlobalDrop) === globalOnly)
+    .slice(-limit);
+}
+
+async function getGlobalRarityCounts() {
+  const users = pool
+    ? (await executeQuery('SELECT inventory FROM users')).rows
+    : Object.values(inMemoryStore.users);
+  const counts = Object.fromEntries(GLOBAL_RARITIES.map(rarity => [rarity.key, 0]));
+  users.forEach(user => {
+    const rarities = normalizeInventory(user.inventory).rarities;
+    GLOBAL_RARITIES.forEach(rarity => {
+      counts[rarity.key] += Number(rarities[rarity.key]) || 0;
+    });
+  });
+  return GLOBAL_RARITIES.map(rarity => ({ ...rarity, obtained: counts[rarity.key] }));
 }
 
 async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false) {
@@ -1046,7 +1178,7 @@ app.post('/api/spin', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Click sonar signals in the Sea Realm to collect rewards.' });
   }
   const luckMultiplier = getLuckMultiplier(req.session.username, dimension);
-  const selection = selectWeightedOption(CORE_RARITIES, luckMultiplier);
+  const selection = selectWeightedOption(getActiveCoreRarities(), luckMultiplier);
   const result = selection.result;
 
   let inventory = user.inventory;
@@ -1065,6 +1197,7 @@ app.post('/api/spin', async (req, res) => {
   }
   const ownedCount = Number(inventory.rarities[result.key]);
   inventory.rarities[result.key] = Number.isFinite(ownedCount) && ownedCount >= 0 ? ownedCount + 1 : 1;
+  result.serialNumber = await assignHalloweenSerial(result.key, inventory);
 
   const event = getActiveGameEvent();
   const multiplier = computeSpinMultiplier() * (event?.coinMultiplier || 1);
@@ -1140,9 +1273,10 @@ app.post('/api/announce-global-reveal', async (req, res) => {
   }
   pendingGlobalReveals.delete(key);
   try {
-    const message = `${req.session.username} rolled ${pending.rarityName}!`;
+    const serialText = pending.serialNumber ? ` · Serial #${String(pending.serialNumber).padStart(6, '0')}` : '';
+    const message = `${req.session.username} rolled ${pending.rarityName}${serialText}!`;
     const chatRecord = await saveChatMessage(req.session.username, message, pending.rarityName, pending.color, false, true);
-    io.emit('chat-message', chatRecord);
+    io.emit('global-chat-message', chatRecord);
     res.json({ success: true });
   } catch (error) {
     console.error('Global reveal announcement error:', error.message || error);
@@ -1164,12 +1298,16 @@ app.post('/api/redeem-code', async (req, res) => {
   const codeRewards = {
     'THETHREEQUEL': { title: 'veteran' },
     'UPD3ISHERE!!': { coins: 20000, item: { key: 'ancient_ore', amount: 5 }, rewardMessage: '5 Ancient Ore and 20,000 coins' },
-    'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' }
+    'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' },
+    'MRFERNANSKIHALLOW2026': { coins: 1000000, item: { key: 'event_controller', amount: 3 }, rewardMessage: '1,000,000 coins and 3 Event Controllers', maxUses: 2, expiresAt: HALLOWEEN_END_AT }
   };
 
   const reward = codeRewards[normalizedCode];
   if (!reward) {
     return res.status(400).json({ success: false, error: 'Invalid code.' });
+  }
+  if (reward.expiresAt && Date.now() >= reward.expiresAt) {
+    return res.status(400).json({ success: false, error: 'This Halloween code has expired.' });
   }
 
   try {
@@ -1191,10 +1329,21 @@ app.post('/api/redeem-code', async (req, res) => {
       items[reward.item.key] = (Number(items[reward.item.key]) || 0) + reward.item.amount;
       updates.items = JSON.stringify(items);
     }
-    await updateUser(req.session.username, updates);
+    if (reward.maxUses) {
+      const claim = await claimLimitedCode(normalizedCode, req.session.username, reward.maxUses, updates);
+      if (claim.status !== 'claimed') {
+        return res.status(409).json({
+          success: false,
+          error: claim.status === 'already-used' ? 'Already redeemed.' : 'This limited code has already been fully redeemed.'
+        });
+      }
+      reward.usesRemaining = claim.remaining;
+    } else {
+      await updateUser(req.session.username, updates);
+    }
     
     const updated = await findUser(req.session.username);
-    res.json({ success: true, title: reward.title || null, reward: reward.rewardMessage || null, user: sanitizeUser(updated) });
+    res.json({ success: true, title: reward.title || null, reward: reward.rewardMessage || null, usesRemaining: reward.usesRemaining, user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Redeem error:', error);
     res.status(500).json({ success: false, error: 'Redemption failed.' });
@@ -1526,7 +1675,7 @@ app.post('/api/sea/dive/collect', async (req, res) => {
   node.collected = true;
   const username = req.session.username;
   const user = await findUser(username);
-  const selection = selectWeightedOption(DIVE_OPTIONS, getLuckMultiplier(username, 'deep-sea'));
+  const selection = selectWeightedOption(getActiveDiveOptions(), getLuckMultiplier(username, 'deep-sea'));
   const result = { ...selection.result, rollChance: selection.rollChance };
   const inventory = normalizeInventory(user.inventory);
   const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
@@ -1541,6 +1690,7 @@ app.post('/api/sea/dive/collect', async (req, res) => {
   } else {
     inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
   }
+  result.serialNumber = await assignHalloweenSerial(result.key, inventory);
   const event = getActiveGameEvent();
   const reward = Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
   const coins = Number(user.coins || 0) + reward;
@@ -1706,7 +1856,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
     }
 
-    const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem);
+    const rarity = [...CORE_RARITIES, ...HALLOWEEN_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem);
     const itemKeys = ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
     if (!((type === 'rarity' && rarity) || (type === 'potion' && POTION_CATALOG[key]) || (type === 'item' && itemKeys.includes(key)))) {
       return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
@@ -1739,7 +1889,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : itemNames[key];
     const announcement = `Admin ${admin.username} granted ${amount} × ${name} to every player.`;
     const chatRecord = await saveChatMessage('System', announcement, 'GLOBAL DROP', '#fbbf24', true, true);
-    io.emit('chat-message', chatRecord);
+    io.emit('global-chat-message', chatRecord);
     io.emit('global-drop', { type, key, amount, name });
     return res.json({ success: true, count: targets.length, name, amount });
   } catch (error) {
@@ -1976,10 +2126,26 @@ app.get('/api/chat', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Login required to view chat.' });
   }
   try {
-    res.json({ success: true, messages: await getRecentChatMessages(60) });
+    res.json({ success: true, messages: await getRecentChatMessages(60, false) });
   } catch (error) {
     console.error('Chat history error:', error);
     res.status(500).json({ success: false, error: 'Unable to load chat.' });
+  }
+});
+
+app.get('/api/global-chat', async (req, res) => {
+  if (!req.session?.username) {
+    return res.status(401).json({ success: false, error: 'Login required to view chat.' });
+  }
+  try {
+    res.json({
+      success: true,
+      messages: await getRecentChatMessages(100, true),
+      rarities: await getGlobalRarityCounts()
+    });
+  } catch (error) {
+    console.error('Global chat history error:', error);
+    res.status(500).json({ success: false, error: 'Unable to load global drops.' });
   }
 });
 
@@ -2035,8 +2201,8 @@ io.on('connection', async (socket) => {
   }
   socket.emit('admin-headline', adminHeadline);
 
-  const history = await getRecentChatMessages(60);
-  socket.emit('chat-history', history);
+  socket.emit('chat-history', await getRecentChatMessages(60, false));
+  socket.emit('global-chat-history', await getRecentChatMessages(100, true));
   const runningEvent = getActiveGameEvent();
   if (runningEvent) {
     socket.emit('theme-event', { ...runningEvent, active: true });
@@ -2093,6 +2259,7 @@ io.on('connection', async (socket) => {
     }
     await clearChatHistory();
     io.emit('chat-history', []);
+    io.emit('global-chat-history', []);
     io.emit('system-message', {
       username: 'System',
       message: 'Chat history has been cleared by an administrator.',
