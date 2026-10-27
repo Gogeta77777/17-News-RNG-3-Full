@@ -3933,6 +3933,15 @@
             font-size: 0.76rem;
         }
 
+        .rarity-serials {
+            display: block;
+            margin-top: 5px;
+            color: #fdba74;
+            font-size: 0.7rem;
+            font-variant-numeric: tabular-nums;
+            overflow-wrap: anywhere;
+        }
+
         .inventory-item.global-rarity-card {
             border-color: color-mix(in srgb, var(--rarity-color), transparent 25%);
             box-shadow: 0 0 18px color-mix(in srgb, var(--rarity-color), transparent 74%);
@@ -4016,6 +4025,19 @@
         .chat-header h2 {
             color: #eff6ff;
         }
+
+        .chat-container { display: flex; flex-direction: column; }
+        .chat-view-tabs { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); }
+        .chat-view-tab { min-height: 34px; padding: 6px 12px; border: 1px solid rgba(125, 211, 252, 0.2); border-radius: 3px; background: rgba(15, 23, 42, 0.55); color: #a9bfd2; font-weight: 700; cursor: pointer; }
+        .chat-view-tab.active { border-color: rgba(125, 211, 252, 0.6); background: rgba(14, 116, 144, 0.24); color: #e0f2fe; }
+        .chat-view-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+        .global-rarity-counts { padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); background: rgba(8, 18, 35, 0.78); }
+        .global-rarity-summary { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; color: #a9bfd2; font-size: 0.76rem; }
+        .global-rarity-summary strong { color: #f8fafc; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+        .global-rarity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; }
+        .global-rarity-stat { display: grid; gap: 3px; min-width: 0; padding: 7px 8px; border-left: 2px solid var(--rarity-color); background: color-mix(in srgb, var(--rarity-color), transparent 92%); }
+        .global-rarity-stat strong { overflow: hidden; color: #e2e8f0; font-size: 0.74rem; text-overflow: ellipsis; white-space: nowrap; }
+        .global-rarity-stat span { color: var(--rarity-color); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
 
         .chat-messages {
             background: #071225;
@@ -5556,6 +5578,102 @@
         .update-archive summary span { margin-left: 8px; color: #94a3b8; font-size: 0.74rem; font-weight: 500; }
         .update-archive[open] summary { margin-bottom: 6px; }
 
+        body.halloween-event {
+            --primary-blue: #7c2d12;
+            --secondary-blue: #c2410c;
+            --accent-blue: #fb923c;
+            --light-blue: #fed7aa;
+            --dark-blue: #431407;
+            --darker-blue: #160b14;
+            --glow-blue: #f97316;
+            --particle-blue: #fb923c;
+            --wave-blue: #7f1d1d;
+            background: radial-gradient(ellipse at 50% 0, rgba(124, 45, 18, 0.56), transparent 46%), linear-gradient(145deg, #100c17 0%, #21101b 50%, #32150f 100%);
+        }
+
+        body.halloween-event .background-container {
+            background: radial-gradient(ellipse at 15% 28%, rgba(234, 88, 12, 0.11), transparent 34%), radial-gradient(ellipse at 86% 72%, rgba(109, 40, 217, 0.12), transparent 32%);
+        }
+
+        body.halloween-event .geometric {
+            border-color: rgba(251, 146, 60, 0.45);
+            box-shadow: 0 0 16px rgba(249, 115, 22, 0.1), inset 0 0 10px rgba(251, 146, 60, 0.05);
+        }
+
+        body.halloween-event .btn,
+        body.halloween-event .roll-btn,
+        body.halloween-event .potion-buy-btn,
+        body.halloween-event .auto-roll-btn {
+            border-color: rgba(253, 186, 116, 0.4);
+            background: linear-gradient(135deg, #c2410c, #7f1d1d);
+            color: #fff7ed;
+            box-shadow: 0 0 16px rgba(234, 88, 12, 0.14);
+        }
+
+        body.halloween-event .btn:hover,
+        body.halloween-event .roll-btn:hover,
+        body.halloween-event .potion-buy-btn:hover,
+        body.halloween-event .auto-roll-btn:hover:not(:disabled) {
+            border-color: rgba(254, 215, 170, 0.78);
+            background: linear-gradient(135deg, #ea580c, #9a3412);
+        }
+
+        body.halloween-event .settings-section,
+        body.halloween-event .potion-shop,
+        body.halloween-event .shop-item,
+        body.halloween-event .potion-card,
+        body.halloween-event .portal-container,
+        body.halloween-event .realm-dialog,
+        body.halloween-event .realm-card,
+        body.halloween-event .rarity-catalog {
+            border-color: rgba(251, 146, 60, 0.26);
+        }
+
+        body.halloween-event .portal-container,
+        body.halloween-event .realm-dialog {
+            background-color: #170f19;
+            background-image: radial-gradient(ellipse at 14% 50%, rgba(234, 88, 12, 0.2), transparent 50%), radial-gradient(ellipse at 85% 0, rgba(109, 40, 217, 0.12), transparent 42%), linear-gradient(145deg, #21101b, #100c17 78%);
+        }
+
+        body.halloween-event .portal-ring {
+            border-color: rgba(251, 146, 60, 0.62);
+        }
+
+        body.halloween-event .portal-spiral {
+            background: conic-gradient(from 20deg, transparent 0 15%, rgba(251, 146, 60, 0.08) 22%, #fdba74 38%, rgba(234, 88, 12, 0.12) 48% 70%, #a78bfa 83%, transparent 92%);
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.32);
+        }
+
+        body.halloween-event .portal-orb {
+            background: radial-gradient(ellipse at 50% 44%, #fff7ed 0 2%, #fdba74 10%, #ea580c 34%, #581c35 73%);
+            box-shadow: 0 0 34px rgba(249, 115, 22, 0.82), inset 0 0 28px rgba(255, 237, 213, 0.5), 0 0 50px rgba(109, 40, 217, 0.26);
+        }
+
+        body.halloween-event .halloween-rarity {
+            border-color: rgba(249, 115, 22, 0.42);
+            background: linear-gradient(90deg, rgba(124, 45, 18, 0.15), transparent 70%);
+        }
+
+        body.halloween-event .halloween-rarity small {
+            color: #fdba74;
+        }
+
+        body.halloween-event .chat-view-tab.active {
+            border-color: rgba(251, 146, 60, 0.72);
+            background: rgba(124, 45, 18, 0.34);
+            color: #ffedd5;
+        }
+
+        body.halloween-event .global-rarity-counts {
+            border-color: rgba(251, 146, 60, 0.2);
+            background: rgba(30, 13, 23, 0.86);
+        }
+
+        @media (max-width: 520px) {
+            .global-rarity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .chat-view-tab { flex: 1; }
+        }
+
         @media (max-width: 560px) {
         }
     </style>
@@ -5642,16 +5760,22 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">Update 3 Part 1</span></h3>
+                <h3>Latest Updates <span class="update-version">Update 3 Part 2</span></h3>
                 <div class="log-entry">
-                    <div class="date">23 Oct 2026 / Update 3 Part 1</div>
-                    <p><strong>New ways to roll, explore, and craft.</strong></p>
-                    <p>✦ Auto Roll unlocks at 100 rolls; global drops reveal before announcements.</p>
-                    <p>✦ Sharky joins the Sea Realm. The Secret Index now lists realm-only rarities.</p>
-                    <p>✦ Forge crafting, rotating materials, Meteor Shower, and event tools are available.</p>
+                    <div class="date">27 Oct 2026 / Update 3 Part 2</div>
+                    <p><strong>Halloween has arrived. The event runs through November 1.</strong></p>
+                    <p>✦ Find Pumpkin Baxter (0.1%) and Grim Reaper (0.01%) to earn the Halloween 2026 title.</p>
+                    <p>✦ A two-use code will be handed out in person on Halloween day. Look for Mr Fernanski / Delan Fernando while you're out.</p>
                 </div>
                 <details class="update-archive">
-                    <summary>Previous updates <span>1 release</span></summary>
+                    <summary>Previous updates <span>2 releases</span></summary>
+                    <div class="log-entry">
+                        <div class="date">23 Oct 2026 / Update 3 Part 1</div>
+                        <p><strong>New ways to roll, explore, and craft.</strong></p>
+                        <p>✦ Auto Roll unlocks at 100 rolls; global drops reveal before announcements.</p>
+                        <p>✦ Sharky joins the Sea Realm. The Secret Index now lists realm-only rarities.</p>
+                        <p>✦ Forge crafting, rotating materials, Meteor Shower, and event tools are available.</p>
+                    </div>
                     <div class="log-entry">
                         <div class="date">17/10/26 / Release 2.0</div>
                         <p><strong>New titles, rarities, and a rebuilt Sea Realm.</strong></p>
@@ -5866,15 +5990,25 @@
                         <div class="chat-container">
                             <div class="chat-header">
                                 <div>
-                                    <h2>Global Chat</h2>
-                                    <p class="chat-subtitle">Community chat for RNG 3 players.</p>
+                                    <h2>Community Chat</h2>
+                                    <p class="chat-subtitle">Player conversation and global rarity discoveries.</p>
                                 </div>
                                 <div class="chat-status">🟢 Online</div>
                             </div>
-                            <div class="chat-messages" id="chat-messages"></div>
-                            <div class="chat-input-area">
-                                <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
-                                <button class="btn" id="send-chat">Send</button>
+                            <div class="chat-view-tabs" role="group" aria-label="Chat views">
+                                <button class="chat-view-tab active" type="button" data-chat-view="players" aria-pressed="true">Players</button>
+                                <button class="chat-view-tab" type="button" data-chat-view="globals" aria-pressed="false">Global Drops</button>
+                            </div>
+                            <div class="chat-view-panel" id="player-chat-view">
+                                <div class="chat-messages" id="chat-messages"></div>
+                                <div class="chat-input-area">
+                                    <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
+                                    <button class="btn" id="send-chat">Send</button>
+                                </div>
+                            </div>
+                            <div class="chat-view-panel hidden" id="global-chat-view">
+                                <div class="global-rarity-counts" id="global-rarity-counts"></div>
+                                <div class="chat-messages" id="global-chat-messages" aria-label="Global rarity announcements"></div>
                             </div>
                         </div>
                     </div>
