@@ -7,6 +7,20 @@ const taglines = [
   'For 17 News',
   'The Threequel'
 ];
+const HALLOWEEN_END_AT = Date.UTC(2026, 10, 2);
+
+function applyHalloweenTheme() {
+  const isActive = Date.now() < HALLOWEEN_END_AT;
+  document.body.classList.toggle('halloween-event', isActive);
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) themeColor.content = isActive ? '#241018' : '#1e3a8a';
+  if (isActive) {
+    setTimeout(() => {
+      document.body.classList.remove('halloween-event');
+      if (themeColor) themeColor.content = '#1e3a8a';
+    }, HALLOWEEN_END_AT - Date.now());
+  }
+}
 
 let currentTaglineIndex = 0;
 let taglineTimer = null;
@@ -24,7 +38,9 @@ const rarityOptions = [
   { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
   { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
   { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
+  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' },
+  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', reward: 12000, chance: 0.1, color: '#f97316', glowColor: '#fdba74', halloweenOnly: true, isGlobal: true },
+  { key: 'grim-reaper', name: 'Grim Reaper', reward: 50000, chance: 0.01, color: '#7c3aed', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
 ];
 
 const globalOptions = [
@@ -35,7 +51,7 @@ const globalOptions = [
 ];
 
 const diveGlobalOptions = [
-  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true },
+  { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true, isGlobal: true },
   { key: 'sharky', name: 'Sharky', reward: 4500, chance: 0.5, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
 ];
 
@@ -66,7 +82,8 @@ const TITLES = [
   { id: 'collector', name: 'Rarity Collector', color: '#34d399', requirement: 'drops:10', description: 'Collect 10 rarity drops' },
   { id: 'global-headliner', name: 'Global Headliner', color: '#fb7185', requirement: 'global:1', description: 'Find a global rarity' },
   { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' },
-  { id: 'blacksmith', name: 'Blacksmith', color: '#fb923c', requirement: 'forge-realm', description: 'Permanently unlock Forge Realm' }
+  { id: 'blacksmith', name: 'Blacksmith', color: '#fb923c', requirement: 'forge-realm', description: 'Permanently unlock Forge Realm' },
+  { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' }
 ];
 
 const CODE_REWARDS = {
@@ -1038,10 +1055,11 @@ async function collectDiveSignal(nodeId, marker) {
     const result = response.result;
     currentUser = result.user;
     updateUI(currentUser);
-    document.getElementById('dive-result').textContent = `${result.name} · ${formatRollChance(result.rollChance)}`;
+    const serialText = result.serialNumber ? ` · Serial #${String(result.serialNumber).padStart(6, '0')}` : '';
+    document.getElementById('dive-result').textContent = `${result.name}${serialText} · ${formatRollChance(result.rollChance)}`;
     if (result.itemType === 'potion') showPopup(`Found ${result.name}; added to your potion inventory.`);
     else if (result.key === 'treasure-chest') showPopup(`Treasure Chest recovered! +${formatCoins(result.reward)} coins.`);
-    else showPopup(`Recovered ${result.name}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
+    else showPopup(`Recovered ${result.name}${serialText}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
     if (result.globalRevealToken) {
       handleAPI('/api/announce-global-reveal', { method: 'POST', body: { token: result.globalRevealToken } });
     }
@@ -1084,7 +1102,13 @@ function redeemCode() {
       currentUser = response.user;
       gameState.userTitles = currentUser.titles || [];
       const titleName = TITLES.find(t => t.id === response.title)?.name;
-      showPopup(titleName ? `Code redeemed! Title unlocked: ${titleName}` : `Code redeemed! ${response.reward}`);
+      const redemptionMessage = titleName ? `Code redeemed! Title unlocked: ${titleName}` : `Code redeemed! ${response.reward}`;
+      const remainingUsesMessage = Number.isInteger(response.usesRemaining)
+        ? response.usesRemaining === 0
+          ? ' No more uses remain.'
+          : ` ${response.usesRemaining} more ${response.usesRemaining === 1 ? 'player can' : 'players can'} use this code.`
+        : '';
+      showPopup(`${redemptionMessage}${remainingUsesMessage}`);
       input.value = '';
       renderTitles();
       updateUI(currentUser);
@@ -1114,12 +1138,17 @@ function renderInventory(user) {
         card.className = `inventory-item rarity-card${rarity.isGlobal ? ' global-rarity-card' : ''}`;
         card.style.setProperty('--rarity-color', rarityColor);
         if (rarity.isGlobal) card.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
+        const serialNumbers = rarity.halloweenOnly ? (user.inventory?.halloweenSerials?.[key] || []) : [];
+        const serialLabel = serialNumbers.length
+          ? `<span class="rarity-serials">Serial${serialNumbers.length === 1 ? '' : 's'}: ${serialNumbers.map(serial => `#${String(serial).padStart(6, '0')}`).join(', ')}</span>`
+          : '';
         card.innerHTML = `
           <div class="rarity-card-head">
             <h4>${escapeHtml(rarity.name)}</h4>
             <span class="rarity-count">x${Number(count) || 0}</span>
           </div>
           <span class="rarity-reward">🪙 ${formatCoins(rarity.reward)} per drop</span>
+          ${serialLabel}
         `;
         rarGrid.appendChild(card);
       });
@@ -1203,14 +1232,15 @@ function renderRarityCatalog() {
     options.sort((left, right) => left.chance - right.chance).forEach((rarity, index) => {
       const row = document.createElement('div');
       const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
-      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.diveOnly ? ' dive-only-rarity' : ''}`;
+      row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.diveOnly ? ' dive-only-rarity' : ''}${rarity.halloweenOnly ? ' halloween-rarity' : ''}`;
       row.style.setProperty('--rarity-color', rarityColor);
       if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
-      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarity.diveOnly ? '<small> SEA ONLY</small>' : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
+      const rarityTag = rarity.diveOnly ? ' SEA ONLY' : rarity.halloweenOnly ? ' HALLOWEEN ONLY' : '';
+      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarityTag ? `<small>${rarityTag}</small>` : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
       list.appendChild(row);
     });
   };
-  renderRows('rarity-catalog-list', [...rarityOptions, ...globalOptions]);
+  renderRows('rarity-catalog-list', [...rarityOptions, ...globalOptions, ...diveGlobalOptions.filter(rarity => rarity.isGlobal)]);
 
   const secretCatalog = document.getElementById('secret-index');
   const secretSummary = secretCatalog?.querySelector('summary');
@@ -1348,17 +1378,17 @@ function formatChatTimestamp(timestamp) {
 }
 
 function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false) {
-  const chatMessages = document.getElementById('chat-messages');
+  const chatMessages = document.getElementById(isGlobalDrop ? 'global-chat-messages' : 'chat-messages');
   if (!chatMessages) return;
   
   const msgEl = document.createElement('div');
-  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isSystem ? 'chat-message system-message' : `chat-message${isGlobalDrop ? ' global-drop-message' : ''}`;
+  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isSystem ? 'chat-message system-message' : 'chat-message';
   msgEl.dataset.messageId = timestamp;
   if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
   
   const time = formatChatTimestamp(timestamp);
   
-  if (isSystem) {
+  if (isSystem && !isGlobalDrop) {
     msgEl.innerHTML = `
       <span style="font-weight: bold; color: #FF0000;">⚡ ${escapeHtml(message)}</span>
       <br><small style="opacity: 0.7;">${time}</small>
@@ -1386,6 +1416,20 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   chatMessages.scrollTop = chatMessages.scrollHeight;
   if (isGlobalDrop && announceGlobalDrop) showGlobalDropBanner(username, title, message, titleColor);
 }
+
+function renderGlobalRarityCounts(rarities = []) {
+  const container = document.getElementById('global-rarity-counts');
+  if (!container) return;
+  const total = rarities.reduce((sum, rarity) => sum + (Number(rarity.obtained) || 0), 0);
+  container.innerHTML = `
+    <div class="global-rarity-summary"><strong>${total.toLocaleString()}</strong><span>global rarities found across all accounts</span></div>
+    <div class="global-rarity-grid">${rarities.map(rarity => {
+      const color = /^#[0-9a-f]{6}$/i.test(rarity.color || '') ? rarity.color : '#7dd3fc';
+      return `<article class="global-rarity-stat" style="--rarity-color:${color}"><strong>${escapeHtml(rarity.name)}</strong><span>${(Number(rarity.obtained) || 0).toLocaleString()} found</span></article>`;
+    }).join('')}</div>
+  `;
+}
+window.renderGlobalRarityCounts = renderGlobalRarityCounts;
 
 function showAdminAnnouncementBanner(announcement) {
   if (!announcement?.title || !announcement?.content) return;
@@ -2118,7 +2162,8 @@ function setupRollButton() {
     rollDisplay.classList.toggle('global-rarity-reveal', Boolean(result.isGlobal));
     if (result.isGlobal) rollDisplay.style.setProperty('--roll-glow', result.glowColor || result.color);
     else rollDisplay.style.removeProperty('--roll-glow');
-    rollDisplay.textContent = `${result.name}${multiplierDisplay}${luckDisplay}`;
+    const serialDisplay = result.serialNumber ? ` · Serial #${String(result.serialNumber).padStart(6, '0')}` : '';
+    rollDisplay.textContent = `${result.name}${serialDisplay}${multiplierDisplay}${luckDisplay}`;
     if (chanceDisplay) chanceDisplay.textContent = formatRollChance(result.rollChance);
     
     rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
@@ -2133,6 +2178,7 @@ function setupRollButton() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+  applyHalloweenTheme();
   // Show landing page and start tagline
   showPage('landing');
   
