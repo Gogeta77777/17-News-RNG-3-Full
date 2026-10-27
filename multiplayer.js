@@ -10,9 +10,41 @@ async function loadChatFallback() {
   const container = document.getElementById('chat-messages');
   if (!container) return;
   container.innerHTML = '';
-  response.messages.forEach((message) => {
+  response.messages.filter(message => !message.isGlobalDrop).forEach((message) => {
     addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false);
   });
+}
+
+async function loadGlobalChatFallback() {
+  if (typeof handleAPI !== 'function') return;
+  const response = await handleAPI('/api/global-chat');
+  if (!response.success) return;
+  const container = document.getElementById('global-chat-messages');
+  if (container) {
+    container.innerHTML = '';
+    response.messages.forEach(message => {
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false);
+    });
+  }
+  window.renderGlobalRarityCounts?.(response.rarities || []);
+}
+
+async function refreshGlobalRarityCounts() {
+  if (typeof handleAPI !== 'function') return;
+  const response = await handleAPI('/api/global-chat');
+  if (response.success) window.renderGlobalRarityCounts?.(response.rarities || []);
+}
+
+function setChatView(view) {
+  const showGlobals = view === 'globals';
+  document.getElementById('player-chat-view')?.classList.toggle('hidden', showGlobals);
+  document.getElementById('global-chat-view')?.classList.toggle('hidden', !showGlobals);
+  document.querySelectorAll('[data-chat-view]').forEach(button => {
+    const active = button.dataset.chatView === view;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  if (showGlobals) loadGlobalChatFallback();
 }
 
 function initMultiplayer() {
@@ -34,13 +66,33 @@ function initMultiplayer() {
     const container = document.getElementById('chat-messages');
     if (!container) return;
     container.innerHTML = '';
-    messages.forEach((message) => {
+    messages.filter(message => !message.isGlobalDrop).forEach((message) => {
       addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false);
     });
   });
 
+  socket.on('global-chat-history', (messages = []) => {
+    const container = document.getElementById('global-chat-messages');
+    if (!container) return;
+    container.innerHTML = '';
+    messages.forEach(message => {
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false);
+    });
+  });
+
   socket.on('chat-message', (message) => {
+    if (message.isGlobalDrop) {
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
+      refreshGlobalRarityCounts();
+      return;
+    }
     addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false);
+  });
+
+  socket.on('global-chat-message', message => {
+    if (!message) return;
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
+    refreshGlobalRarityCounts();
   });
 
   socket.on('system-message', (message) => {
@@ -101,6 +153,12 @@ function initMultiplayer() {
   activityHeartbeat = setInterval(() => {
     if (socket?.connected) socket.emit('player-activity', playerActivity);
   }, 15000);
+
+  document.querySelectorAll('[data-chat-view]').forEach(button => {
+    if (button.dataset.bound) return;
+    button.addEventListener('click', () => setChatView(button.dataset.chatView));
+    button.dataset.bound = 'true';
+  });
 }
 
 function updatePlayerActivity(activity) {
@@ -157,6 +215,7 @@ window.initMultiplayer = initMultiplayer;
 window.sendChatToServer = sendChatToServer;
 window.refreshMultiplayerSession = refreshMultiplayerSession;
 window.loadChatFallback = loadChatFallback;
+window.loadGlobalChatFallback = loadGlobalChatFallback;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
 window.updatePlayerActivity = updatePlayerActivity;
@@ -164,4 +223,5 @@ window.updatePlayerActivity = updatePlayerActivity;
 document.addEventListener('DOMContentLoaded', () => {
   initMultiplayer();
   loadChatFallback();
+  loadGlobalChatFallback();
 });
