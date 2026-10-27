@@ -5669,6 +5669,31 @@
             background: rgba(30, 13, 23, 0.86);
         }
 
+        body.halloween-event .update-log {
+            border-color: rgba(251, 146, 60, 0.38);
+            border-top-color: #f97316;
+            background: linear-gradient(145deg, rgba(33, 16, 27, 0.96), rgba(18, 12, 23, 0.92));
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34), 0 0 26px rgba(249, 115, 22, 0.12);
+        }
+
+        body.halloween-event .update-log h3,
+        body.halloween-event .update-log .date,
+        body.halloween-event .update-log .update-version,
+        body.halloween-event .update-log .log-entry p,
+        body.halloween-event .update-archive summary {
+            color: #ffedd5;
+        }
+
+        body.halloween-event .update-version {
+            border-color: rgba(251, 146, 60, 0.5);
+            background: rgba(124, 45, 18, 0.2);
+        }
+
+        body.halloween-event .update-log .log-entry + .log-entry,
+        body.halloween-event .update-archive {
+            border-top-color: rgba(251, 146, 60, 0.18);
+        }
+
         @media (max-width: 520px) {
             .global-rarity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .chat-view-tab { flex: 1; }
@@ -5760,12 +5785,14 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">Update 3 Part 2</span></h3>
+                <h3>Latest Updates <span class="update-version">Nightfall Notice</span></h3>
                 <div class="log-entry">
                     <div class="date">27 Oct 2026 / Update 3 Part 2</div>
-                    <p><strong>Halloween has arrived. The event runs through November 1.</strong></p>
+                    <p><strong>Halloween has arrived, and the whole lobby has been dressed for the season.</strong></p>
+                    <p>✦ The chat has been refreshed with clearer global and local splits, so event drops, reveals, and general chatter feel far less chaotic.</p>
+                    <p>✦ The Halloween theme now stretches across the interface, bringing a darker pumpkin-lit atmosphere to the game.</p>
                     <p>✦ Find Pumpkin Baxter (0.1%) and Grim Reaper (0.01%) to earn the Halloween 2026 title.</p>
-                    <p>✦ A two-use code will be handed out in person on Halloween day. Look for Mr Fernanski / Delan Fernando while you're out.</p>
+                    <p>✦ A special two-use code will be handed out on Halloween day, so keep an eye out for the event giveaway.</p>
                 </div>
                 <details class="update-archive">
                     <summary>Previous updates <span>2 releases</span></summary>
