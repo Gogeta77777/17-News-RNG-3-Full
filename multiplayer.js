@@ -4,11 +4,19 @@ let playerActivity = 'At the RNG console';
 let activityHeartbeat = null;
 let chatUnreadCounts = { players: 0, globals: 0 };
 let chatTypingUsers = new Map();
+let chatTypingTimers = new Map();
 let localChatTypingState = false;
+let localChatTypingHeartbeat = null;
+let currentChatReply = null;
 
 function getCurrentChatView() {
   const activeButton = document.querySelector('[data-chat-view].active');
   return activeButton?.dataset.chatView || 'players';
+}
+
+function isChatViewOpen(view) {
+  const chatTab = document.getElementById('chat-tab');
+  return Boolean(chatTab?.classList.contains('active') && !chatTab.classList.contains('hidden') && getCurrentChatView() === view);
 }
 
 function updateChatTabBadge(view, count) {
@@ -31,7 +39,7 @@ function updateChatTabBadge(view, count) {
 }
 
 function bumpChatUnread(view) {
-  if (getCurrentChatView() === view) return;
+  if (isChatViewOpen(view)) return;
   chatUnreadCounts[view] = (chatUnreadCounts[view] || 0) + 1;
   updateChatTabBadge(view, chatUnreadCounts[view]);
 }
@@ -59,6 +67,48 @@ function updateTypingIndicator() {
   indicator.classList.remove('hidden');
 }
 
+function setLocalChatTyping(isTyping) {
+  if (!socket?.connected) {
+    isTyping = false;
+  }
+  if (socket?.connected && (isTyping || localChatTypingState !== isTyping)) {
+    socket.emit('chat-typing', isTyping);
+  }
+  localChatTypingState = isTyping;
+  clearInterval(localChatTypingHeartbeat);
+  localChatTypingHeartbeat = null;
+  if (isTyping) {
+    localChatTypingHeartbeat = setInterval(() => {
+      if (socket?.connected && localChatTypingState) socket.emit('chat-typing', true);
+    }, 2000);
+  }
+}
+
+function clearChatReplyTarget() {
+  currentChatReply = null;
+  const preview = document.getElementById('chat-reply-preview');
+  preview?.classList.add('hidden');
+  const author = document.getElementById('chat-reply-author');
+  const quote = document.getElementById('chat-reply-quote');
+  if (author) author.textContent = '';
+  if (quote) quote.textContent = '';
+}
+
+function setChatReplyTarget(reply) {
+  if (!reply?.username || !reply?.message) return;
+  currentChatReply = {
+    username: String(reply.username).slice(0, 32),
+    message: String(reply.message).slice(0, 240)
+  };
+  const author = document.getElementById('chat-reply-author');
+  const quote = document.getElementById('chat-reply-quote');
+  const preview = document.getElementById('chat-reply-preview');
+  if (author) author.textContent = `Replying to ${currentChatReply.username}`;
+  if (quote) quote.textContent = currentChatReply.message;
+  preview?.classList.remove('hidden');
+  document.getElementById('chat-input')?.focus();
+}
+
 async function loadChatFallback() {
   if (typeof handleAPI !== 'function') return;
   const response = await handleAPI('/api/chat');
@@ -67,7 +117,7 @@ async function loadChatFallback() {
   if (!container) return;
   container.innerHTML = '';
   response.messages.filter(message => !message.isGlobalDrop).forEach((message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null);
   });
 }
 
@@ -124,7 +174,7 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.filter(message => !message.isGlobalDrop).forEach((message) => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null);
     });
   });
 
@@ -139,18 +189,18 @@ function initMultiplayer() {
 
   socket.on('chat-message', (message) => {
     if (message.isGlobalDrop) {
-      if (getCurrentChatView() !== 'globals') bumpChatUnread('globals');
+      if (!isChatViewOpen('globals')) bumpChatUnread('globals');
       addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
       refreshGlobalRarityCounts();
       return;
     }
-    if (getCurrentChatView() !== 'players') bumpChatUnread('players');
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false);
+    if (!isChatViewOpen('players')) bumpChatUnread('players');
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false, message.replyTo || null);
   });
 
   socket.on('global-chat-message', message => {
     if (!message) return;
-    if (getCurrentChatView() !== 'globals') bumpChatUnread('globals');
+    if (!isChatViewOpen('globals')) bumpChatUnread('globals');
     addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
     refreshGlobalRarityCounts();
   });
@@ -204,15 +254,29 @@ function initMultiplayer() {
 
   socket.on('chat-typing', ({ username, typing } = {}) => {
     if (!username) return;
+    clearTimeout(chatTypingTimers.get(username));
     if (typing) {
       chatTypingUsers.set(username, Date.now());
+      chatTypingTimers.set(username, setTimeout(() => {
+        chatTypingUsers.delete(username);
+        chatTypingTimers.delete(username);
+        updateTypingIndicator();
+      }, 4500));
     } else {
       chatTypingUsers.delete(username);
+      chatTypingTimers.delete(username);
     }
     updateTypingIndicator();
   });
 
   socket.on('disconnect', () => {
+    clearInterval(localChatTypingHeartbeat);
+    localChatTypingHeartbeat = null;
+    localChatTypingState = false;
+    chatTypingTimers.forEach(timer => clearTimeout(timer));
+    chatTypingTimers.clear();
+    chatTypingUsers.clear();
+    updateTypingIndicator();
     const onlineCount = document.getElementById('online-count');
     if (onlineCount) {
       onlineCount.textContent = `0 users online`;
@@ -231,27 +295,19 @@ function initMultiplayer() {
   });
 
   const chatInput = document.getElementById('chat-input');
+  chatInput?.addEventListener('focus', () => setLocalChatTyping(true));
   chatInput?.addEventListener('input', () => {
-    const text = chatInput.value.trim();
-    const nextTypingState = Boolean(text) && socket?.connected;
-    if (nextTypingState !== localChatTypingState) {
-      socket.emit('chat-typing', nextTypingState);
-      localChatTypingState = nextTypingState;
-    }
+    if (document.activeElement === chatInput) setLocalChatTyping(true);
   });
   chatInput?.addEventListener('blur', () => {
-    if (socket?.connected && localChatTypingState) {
-      socket.emit('chat-typing', false);
-      localChatTypingState = false;
-    }
+    setLocalChatTyping(false);
   });
 
   const sendButton = document.getElementById('send-chat');
-  sendButton?.addEventListener('click', () => {
-    if (socket?.connected && localChatTypingState) {
-      socket.emit('chat-typing', false);
-      localChatTypingState = false;
-    }
+  sendButton?.addEventListener('click', () => setLocalChatTyping(false));
+  document.getElementById('cancel-chat-reply')?.addEventListener('click', clearChatReplyTarget);
+  document.querySelector('[data-tab="chat"]')?.addEventListener('click', () => {
+    setTimeout(() => resetChatUnread(getCurrentChatView()), 0);
   });
 }
 
@@ -264,14 +320,15 @@ function sendChatToServer(message) {
   const text = String(message || '').trim();
   if (!text) return;
   if (socket && socket.connected) {
-    socket.emit('chat-typing', false);
-    localChatTypingState = false;
+    setLocalChatTyping(false);
   }
   if (!socket || !socket.connected) {
     if (typeof handleAPI === 'function') {
-      handleAPI('/api/chat', { method: 'POST', body: { message: text } }).then((response) => {
+      handleAPI('/api/chat', { method: 'POST', body: { message: text, replyTo: currentChatReply } }).then((response) => {
         if (!response.success) {
           addChatMessage('System', response.error || 'Unable to send chat.', new Date().toISOString(), true);
+        } else {
+          clearChatReplyTarget();
         }
       });
       return;
@@ -279,7 +336,8 @@ function sendChatToServer(message) {
     addChatMessage('System', 'Unable to send chat: disconnected from server.', new Date().toISOString(), true);
     return;
   }
-  socket.emit('chat-message', { message: text });
+  socket.emit('chat-message', { message: text, replyTo: currentChatReply });
+  clearChatReplyTarget();
 }
 
 function refreshMultiplayerSession() {
@@ -314,6 +372,7 @@ window.sendChatToServer = sendChatToServer;
 window.refreshMultiplayerSession = refreshMultiplayerSession;
 window.loadChatFallback = loadChatFallback;
 window.loadGlobalChatFallback = loadGlobalChatFallback;
+window.setChatReplyTarget = setChatReplyTarget;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
 window.updatePlayerActivity = updatePlayerActivity;
