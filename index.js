@@ -2256,6 +2256,16 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('chat-message', async (data) => {
+    const username = socket.request?.session?.username;
+    if (!username) {
+      socket.emit('system-message', {
+        username: 'System',
+        message: 'Log in to send chat messages.',
+        timestamp: new Date().toISOString(),
+        system: true
+      });
+      return;
+    }
     if (gameShutdown || socket.data.isBanned) return;
     clearTimeout(socket.data.chatTypingTimeout);
     if (socket.data.chatTyping && socketUsername) {
@@ -2264,8 +2274,7 @@ io.on('connection', async (socket) => {
     }
     const text = String(data?.message || '').trim().slice(0, 500);
     if (!text) return;
-    const username = socket.request?.session?.username || 'Guest';
-    const user = username !== 'Guest' ? await findUser(username) : null;
+    const user = await findUser(username);
     const badge = getChatBadge(user);
     const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false, false, false, data?.replyTo);
     io.emit('chat-message', record);
