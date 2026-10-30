@@ -2,6 +2,62 @@ let socket;
 let socketReady = false;
 let playerActivity = 'At the RNG console';
 let activityHeartbeat = null;
+let chatUnreadCounts = { players: 0, globals: 0 };
+let chatTypingUsers = new Map();
+let localChatTypingState = false;
+
+function getCurrentChatView() {
+  const activeButton = document.querySelector('[data-chat-view].active');
+  return activeButton?.dataset.chatView || 'players';
+}
+
+function updateChatTabBadge(view, count) {
+  const button = document.querySelector(`[data-chat-view="${view}"]`);
+  if (!button) return;
+  let badge = button.querySelector('.chat-tab-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'chat-tab-badge';
+    button.appendChild(badge);
+  }
+  const numeric = Number(count) || 0;
+  if (numeric > 0) {
+    badge.textContent = numeric > 99 ? '99+' : String(numeric);
+    badge.hidden = false;
+  } else {
+    badge.textContent = '';
+    badge.hidden = true;
+  }
+}
+
+function bumpChatUnread(view) {
+  if (getCurrentChatView() === view) return;
+  chatUnreadCounts[view] = (chatUnreadCounts[view] || 0) + 1;
+  updateChatTabBadge(view, chatUnreadCounts[view]);
+}
+
+function resetChatUnread(view) {
+  chatUnreadCounts[view] = 0;
+  updateChatTabBadge(view, 0);
+}
+
+function updateTypingIndicator() {
+  const indicator = document.getElementById('chat-typing-indicator');
+  if (!indicator) return;
+  const names = [...chatTypingUsers.keys()];
+  if (!names.length) {
+    indicator.classList.add('hidden');
+    indicator.textContent = '';
+    return;
+  }
+  const label = names.length === 1
+    ? `${names[0]} is typing...`
+    : names.length === 2
+      ? `${names[0]} and ${names[1]} are typing...`
+      : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more are typing...`;
+  indicator.textContent = label;
+  indicator.classList.remove('hidden');
+}
 
 async function loadChatFallback() {
   if (typeof handleAPI !== 'function') return;
@@ -44,6 +100,7 @@ function setChatView(view) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+  resetChatUnread(view);
   if (showGlobals) loadGlobalChatFallback();
 }
 
@@ -82,15 +139,18 @@ function initMultiplayer() {
 
   socket.on('chat-message', (message) => {
     if (message.isGlobalDrop) {
+      if (getCurrentChatView() !== 'globals') bumpChatUnread('globals');
       addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
       refreshGlobalRarityCounts();
       return;
     }
+    if (getCurrentChatView() !== 'players') bumpChatUnread('players');
     addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false);
   });
 
   socket.on('global-chat-message', message => {
     if (!message) return;
+    if (getCurrentChatView() !== 'globals') bumpChatUnread('globals');
     addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
     refreshGlobalRarityCounts();
   });
@@ -142,6 +202,16 @@ function initMultiplayer() {
     showBanScreen(data?.reason);
   });
 
+  socket.on('chat-typing', ({ username, typing } = {}) => {
+    if (!username) return;
+    if (typing) {
+      chatTypingUsers.set(username, Date.now());
+    } else {
+      chatTypingUsers.delete(username);
+    }
+    updateTypingIndicator();
+  });
+
   socket.on('disconnect', () => {
     const onlineCount = document.getElementById('online-count');
     if (onlineCount) {
@@ -159,6 +229,30 @@ function initMultiplayer() {
     button.addEventListener('click', () => setChatView(button.dataset.chatView));
     button.dataset.bound = 'true';
   });
+
+  const chatInput = document.getElementById('chat-input');
+  chatInput?.addEventListener('input', () => {
+    const text = chatInput.value.trim();
+    const nextTypingState = Boolean(text) && socket?.connected;
+    if (nextTypingState !== localChatTypingState) {
+      socket.emit('chat-typing', nextTypingState);
+      localChatTypingState = nextTypingState;
+    }
+  });
+  chatInput?.addEventListener('blur', () => {
+    if (socket?.connected && localChatTypingState) {
+      socket.emit('chat-typing', false);
+      localChatTypingState = false;
+    }
+  });
+
+  const sendButton = document.getElementById('send-chat');
+  sendButton?.addEventListener('click', () => {
+    if (socket?.connected && localChatTypingState) {
+      socket.emit('chat-typing', false);
+      localChatTypingState = false;
+    }
+  });
 }
 
 function updatePlayerActivity(activity) {
@@ -169,6 +263,10 @@ function updatePlayerActivity(activity) {
 function sendChatToServer(message) {
   const text = String(message || '').trim();
   if (!text) return;
+  if (socket && socket.connected) {
+    socket.emit('chat-typing', false);
+    localChatTypingState = false;
+  }
   if (!socket || !socket.connected) {
     if (typeof handleAPI === 'function') {
       handleAPI('/api/chat', { method: 'POST', body: { message: text } }).then((response) => {
