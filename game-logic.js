@@ -72,7 +72,7 @@ const ROTATING_SHOP_ITEMS = [
 
 const TITLES = [
   { id: 'owner', name: 'Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
-  { id: 'admin', name: 'Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks Mini Operations' },
+  { id: 'admin', name: 'Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks the Admin Panel' },
   { id: 'veteran', name: 'Veteran', color: '#38bdf8', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
@@ -1291,7 +1291,7 @@ function updateUI(user) {
   if (adminBtn) {
     if (user.is_admin || (user.titles || []).includes('admin')) {
       adminBtn.classList.remove('hidden');
-      adminBtn.textContent = user.is_admin ? 'Admin Panel' : 'Mini Operations';
+      adminBtn.textContent = user.is_admin ? 'Owner Panel' : 'Admin Panel';
     } else {
       adminBtn.classList.add('hidden');
     }
@@ -1377,7 +1377,7 @@ function formatChatTimestamp(timestamp) {
   return `${day} · ${time}`;
 }
 
-function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false) {
+function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null) {
   const chatMessages = document.getElementById(isGlobalDrop ? 'global-chat-messages' : 'chat-messages');
   if (!chatMessages) return;
   
@@ -1403,14 +1403,26 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
     }
     const titleLabel = displayTitle ? `<span class="chat-title-badge" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
+    const replyContext = replyTo?.username && replyTo?.message
+      ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
+      : '';
+    const replyButton = !isGlobalDrop && !isAnnouncement
+      ? '<button class="chat-reply-button" type="button">Reply</button>'
+      : '';
     msgEl.innerHTML = `
+      ${replyContext}
       ${isAnnouncement ? '<span class="global-drop-kicker">ADMIN EVENT</span>' : ''}
       ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
       <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
+      ${replyButton}
       <br><small style="opacity: 0.7;">${time}</small>
     `;
   }
+
+  msgEl.querySelector('.chat-reply-button')?.addEventListener('click', () => {
+    window.setChatReplyTarget?.({ username, message });
+  });
   
   chatMessages.appendChild(msgEl);
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1726,7 +1738,7 @@ function setupAdminTools() {
       return;
     }
     form.reset();
-    showPopup('Mini Operations announcement sent.');
+    showPopup('Admin Panel announcement sent.');
   });
 }
 
@@ -2273,7 +2285,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isMini = !currentUser.is_admin;
       panel?.classList.toggle('mini-admin', isMini);
       const heading = panel?.querySelector('.admin-header h1');
-      if (heading) heading.textContent = isMini ? 'Mini Operations' : 'Admin Control Center';
+      if (heading) heading.textContent = isMini ? 'Admin Panel' : 'Owner Panel';
       document.getElementById('refresh-admin-users')?.classList.toggle('hidden', isMini);
       showPage('admin-panel');
       if (currentUser.is_admin) {
