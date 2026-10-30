@@ -565,7 +565,9 @@ async function ensureDatabase() {
       title_color TEXT NOT NULL DEFAULT '#7dd3fc',
       system BOOLEAN NOT NULL DEFAULT false,
       is_global BOOLEAN NOT NULL DEFAULT false,
-      is_announcement BOOLEAN NOT NULL DEFAULT false
+      is_announcement BOOLEAN NOT NULL DEFAULT false,
+      reply_to_username TEXT,
+      reply_to_message TEXT
     )
   `);
   await executeQuery(`
@@ -615,7 +617,9 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS title_color TEXT NOT NULL DEFAULT '#7dd3fc',
       ADD COLUMN IF NOT EXISTS system BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT false,
-      ADD COLUMN IF NOT EXISTS is_announcement BOOLEAN NOT NULL DEFAULT false
+      ADD COLUMN IF NOT EXISTS is_announcement BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS reply_to_username TEXT,
+      ADD COLUMN IF NOT EXISTS reply_to_message TEXT
   `);
   await executeQuery('CREATE INDEX IF NOT EXISTS chat_messages_created_at_idx ON chat_messages (created_at DESC)');
   await executeQuery("UPDATE users SET inventory = inventory #- ARRAY['rarities', 'kayla-walters'] WHERE inventory ? 'rarities' AND (inventory->'rarities') ? 'kayla-walters'");
@@ -750,7 +754,7 @@ let connectedUsers = 0;
 async function getRecentChatMessages(limit = 60, globalOnly = null) {
   if (pool) {
     const result = await executeQuery(
-      `SELECT username, message, created_at, title, title_color, system, is_global, is_announcement
+      `SELECT username, message, created_at, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message
        FROM chat_messages ${globalOnly === null ? '' : 'WHERE is_global = $1'}
        ORDER BY created_at DESC LIMIT $${globalOnly === null ? 1 : 2}`,
       globalOnly === null ? [limit] : [globalOnly, limit]
@@ -763,7 +767,10 @@ async function getRecentChatMessages(limit = 60, globalOnly = null) {
       timestamp: row.created_at,
       system: row.system || false,
       isGlobalDrop: row.is_global || false,
-      isAnnouncement: row.is_announcement || false
+      isAnnouncement: row.is_announcement || false,
+      replyTo: row.reply_to_username && row.reply_to_message
+        ? { username: row.reply_to_username, message: row.reply_to_message }
+        : null
     }));
   }
   return inMemoryStore.chatMessages
@@ -785,7 +792,14 @@ async function getGlobalRarityCounts() {
   return GLOBAL_RARITIES.map(rarity => ({ ...rarity, obtained: counts[rarity.key] }));
 }
 
-async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false) {
+function normalizeChatReply(replyTo) {
+  if (!replyTo || typeof replyTo !== 'object') return null;
+  const replyUsername = String(replyTo.username || '').trim().slice(0, 32);
+  const replyMessage = String(replyTo.message || '').trim().slice(0, 240);
+  return replyUsername && replyMessage ? { username: replyUsername, message: replyMessage } : null;
+}
+
+async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false, replyTo = null) {
   const record = {
     username: username || 'Guest',
     message,
@@ -794,13 +808,14 @@ async function saveChatMessage(username, message, title = null, titleColor = '#7
     timestamp: new Date().toISOString(),
     system,
     isGlobalDrop,
-    isAnnouncement
+    isAnnouncement,
+    replyTo: normalizeChatReply(replyTo)
   };
 
   if (pool) {
     await executeQuery(
-      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [record.username, record.message, title, titleColor, system, isGlobalDrop, isAnnouncement]
+      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      [record.username, record.message, title, titleColor, system, isGlobalDrop, isAnnouncement, record.replyTo?.username || null, record.replyTo?.message || null]
     );
   } else {
     inMemoryStore.chatMessages.push(record);
@@ -1942,7 +1957,7 @@ app.post('/api/mini-admin/event', async (req, res) => {
     const eventName = String(req.body?.eventName || '');
     const action = req.body?.action === 'stop' ? 'stop' : 'start';
     if (!['starlight-surge', 'abyssal-resonance'].includes(eventName)) {
-      return res.status(400).json({ success: false, error: 'This event is not available in Mini Operations.' });
+      return res.status(400).json({ success: false, error: 'This event is not available in the Admin Panel.' });
     }
     if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
     if (action === 'stop') {
@@ -1970,7 +1985,7 @@ app.post('/api/mini-admin/announcement', async (req, res) => {
     const title = String(req.body?.title || '').trim().slice(0, 80);
     const content = String(req.body?.content || '').trim().slice(0, 500);
     if (!title || !content) return res.status(400).json({ success: false, error: 'Enter an announcement title and message.' });
-    const record = await saveChatMessage(user.username, `${title}: ${content}`, 'Mini Operations', '#fb7185', false, false, true);
+    const record = await saveChatMessage(user.username, `${title}: ${content}`, 'Admin Panel', '#fb7185', false, false, true);
     io.emit('chat-message', record);
     io.emit('admin-announcement', { title, content });
     res.json({ success: true });
@@ -2160,7 +2175,7 @@ app.post('/api/chat', async (req, res) => {
   try {
     const user = await findUser(req.session.username);
     const badge = getChatBadge(user);
-    const record = await saveChatMessage(req.session.username, text, badge.title, badge.titleColor, false);
+    const record = await saveChatMessage(req.session.username, text, badge.title, badge.titleColor, false, false, false, req.body?.replyTo);
     io.emit('chat-message', record);
     res.json({ success: true, message: record });
   } catch (error) {
@@ -2252,7 +2267,7 @@ io.on('connection', async (socket) => {
     const username = socket.request?.session?.username || 'Guest';
     const user = username !== 'Guest' ? await findUser(username) : null;
     const badge = getChatBadge(user);
-    const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false);
+    const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false, false, false, data?.replyTo);
     io.emit('chat-message', record);
   });
 
