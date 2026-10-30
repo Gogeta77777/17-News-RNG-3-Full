@@ -4031,8 +4031,19 @@
         .chat-view-tab { position: relative; min-height: 34px; padding: 6px 12px; border: 1px solid rgba(125, 211, 252, 0.2); border-radius: 3px; background: rgba(15, 23, 42, 0.55); color: #a9bfd2; font-weight: 700; cursor: pointer; }
         .chat-view-tab.active { border-color: rgba(125, 211, 252, 0.6); background: rgba(14, 116, 144, 0.24); color: #e0f2fe; }
         .chat-tab-badge { position: absolute; top: -8px; right: -8px; display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.62rem; font-weight: 800; line-height: 1; box-shadow: 0 0 14px rgba(239, 68, 68, 0.65); }
+        .chat-tab-badge[hidden] { display: none; }
         .chat-view-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
         .chat-typing-indicator { padding: 6px 10px 0; color: #cbd5e1; font-size: 0.72rem; font-style: italic; opacity: 0.9; }
+        .chat-reply-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 12px 8px; padding: 8px 10px; border-left: 3px solid #38bdf8; background: rgba(15, 23, 42, 0.82); }
+        .chat-reply-copy { display: grid; min-width: 0; gap: 2px; }
+        .chat-reply-copy strong { color: #7dd3fc; font-size: 0.7rem; }
+        .chat-reply-copy span { overflow: hidden; color: #cbd5e1; font-size: 0.74rem; text-overflow: ellipsis; white-space: nowrap; }
+        .chat-reply-cancel { flex: 0 0 30px; width: 30px; height: 30px; border: 1px solid rgba(148, 163, 184, 0.25); background: rgba(255, 255, 255, 0.04); color: #cbd5e1; cursor: pointer; }
+        .chat-reply-context { display: grid; gap: 2px; margin: 0 0 6px 8px; padding: 4px 8px; border-left: 2px solid #38bdf8; color: #94a3b8; font-size: 0.72rem; }
+        .chat-reply-context strong { color: #7dd3fc; font-size: 0.68rem; }
+        .chat-reply-context span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chat-reply-button { margin-left: 8px; padding: 2px 6px; border: 0; background: transparent; color: #93c5fd; font: inherit; font-size: 0.68rem; cursor: pointer; }
+        .chat-reply-button:hover { color: #fff; text-decoration: underline; }
         .global-rarity-counts { padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); background: rgba(8, 18, 35, 0.78); }
         .global-rarity-summary { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; color: #a9bfd2; font-size: 0.76rem; }
         .global-rarity-summary strong { color: #f8fafc; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
@@ -5808,7 +5819,7 @@
                     <div class="log-entry">
                         <div class="date">17/10/26 / Release 2.0</div>
                         <p><strong>New titles, rarities, and a rebuilt Sea Realm.</strong></p>
-                        <p>✦ The Admin title unlocks a limited Mini Operations panel when granted by Mr Fernanski.</p>
+                        <p>✦ The Admin title unlocks a limited Admin Panel when granted by Mr Fernanski.</p>
                         <p>✦ Mrs Joseph Mcglashan joins the global rarity collection at 0.07%.</p>
                         <p>✦ Dive the Sea Realm in a submarine, explore with WASD, and recover rarities, potions, and treasure.</p>
                     </div>
@@ -6031,6 +6042,10 @@
                             <div class="chat-view-panel" id="player-chat-view">
                                 <div class="chat-messages" id="chat-messages"></div>
                                 <div class="chat-typing-indicator hidden" id="chat-typing-indicator" aria-live="polite"></div>
+                                <div class="chat-reply-preview hidden" id="chat-reply-preview">
+                                    <div class="chat-reply-copy"><strong id="chat-reply-author"></strong><span id="chat-reply-quote"></span></div>
+                                    <button class="chat-reply-cancel" id="cancel-chat-reply" type="button" aria-label="Cancel reply">×</button>
+                                </div>
                                 <div class="chat-input-area">
                                     <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
                                     <button class="btn" id="send-chat">Send</button>
@@ -6214,7 +6229,7 @@
         <header class="admin-header">
             <div>
                 <p class="admin-eyebrow">17 NEWS / OPERATIONS</p>
-                <h1>Admin Control Center</h1>
+                <h1>Owner Panel</h1>
             </div>
             <div class="admin-header-actions">
                 <button class="btn" id="refresh-admin-users">Refresh Players</button>
@@ -6263,7 +6278,7 @@
             </div>
 
             <div class="admin-section" id="mini-ops-section">
-                <h2>Mini Operations</h2>
+                <h2>Admin Panel</h2>
                 <div class="mini-ops-events">
                     <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
                     <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
@@ -6272,7 +6287,7 @@
                 <form class="mini-ops-announcement" id="mini-announcement-form">
                     <label>Announcement title<input name="title" maxlength="80" required></label>
                     <label>Message<textarea name="content" maxlength="500" required></textarea></label>
-                    <button class="btn" type="submit">Send Mini Announcement</button>
+                    <button class="btn" type="submit">Send Admin Announcement</button>
                 </form>
                 <p class="mini-ops-status" id="mini-ops-status" role="status">Loading player activity…</p>
                 <div class="mini-user-roster" id="mini-user-roster"></div>
