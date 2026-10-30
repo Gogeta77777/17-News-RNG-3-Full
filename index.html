@@ -4028,9 +4028,11 @@
 
         .chat-container { display: flex; flex-direction: column; }
         .chat-view-tabs { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); }
-        .chat-view-tab { min-height: 34px; padding: 6px 12px; border: 1px solid rgba(125, 211, 252, 0.2); border-radius: 3px; background: rgba(15, 23, 42, 0.55); color: #a9bfd2; font-weight: 700; cursor: pointer; }
+        .chat-view-tab { position: relative; min-height: 34px; padding: 6px 12px; border: 1px solid rgba(125, 211, 252, 0.2); border-radius: 3px; background: rgba(15, 23, 42, 0.55); color: #a9bfd2; font-weight: 700; cursor: pointer; }
         .chat-view-tab.active { border-color: rgba(125, 211, 252, 0.6); background: rgba(14, 116, 144, 0.24); color: #e0f2fe; }
+        .chat-tab-badge { position: absolute; top: -8px; right: -8px; display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 999px; background: #ef4444; color: #fff; font-size: 0.62rem; font-weight: 800; line-height: 1; box-shadow: 0 0 14px rgba(239, 68, 68, 0.65); }
         .chat-view-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+        .chat-typing-indicator { padding: 6px 10px 0; color: #cbd5e1; font-size: 0.72rem; font-style: italic; opacity: 0.9; }
         .global-rarity-counts { padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); background: rgba(8, 18, 35, 0.78); }
         .global-rarity-summary { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; color: #a9bfd2; font-size: 0.76rem; }
         .global-rarity-summary strong { color: #f8fafc; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
@@ -6028,6 +6030,7 @@
                             </div>
                             <div class="chat-view-panel" id="player-chat-view">
                                 <div class="chat-messages" id="chat-messages"></div>
+                                <div class="chat-typing-indicator hidden" id="chat-typing-indicator" aria-live="polite"></div>
                                 <div class="chat-input-area">
                                     <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
                                     <button class="btn" id="send-chat">Send</button>
