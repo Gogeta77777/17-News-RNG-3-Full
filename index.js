@@ -2215,6 +2215,10 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('disconnect', () => {
+    clearTimeout(socket.data.chatTypingTimeout);
+    if (socket.data.chatTyping && socketUsername) {
+      socket.broadcast.emit('chat-typing', { username: socketUsername, typing: false });
+    }
     console.log(`🔌 RNG 3 Player disconnected: ${socket.id}`);
     connectedUsers = Math.max(0, connectedUsers - 1);
     io.emit('online-count', connectedUsers);
@@ -2238,6 +2242,11 @@ io.on('connection', async (socket) => {
 
   socket.on('chat-message', async (data) => {
     if (gameShutdown || socket.data.isBanned) return;
+    clearTimeout(socket.data.chatTypingTimeout);
+    if (socket.data.chatTyping && socketUsername) {
+      socket.data.chatTyping = false;
+      socket.broadcast.emit('chat-typing', { username: socketUsername, typing: false });
+    }
     const text = String(data?.message || '').trim().slice(0, 500);
     if (!text) return;
     const username = socket.request?.session?.username || 'Guest';
@@ -2245,6 +2254,21 @@ io.on('connection', async (socket) => {
     const badge = getChatBadge(user);
     const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false);
     io.emit('chat-message', record);
+  });
+
+  socket.on('chat-typing', isTyping => {
+    const username = socket.request?.session?.username;
+    if (!username || socket.data.isBanned || gameShutdown) return;
+    clearTimeout(socket.data.chatTypingTimeout);
+    socket.data.chatTyping = Boolean(isTyping);
+    socket.broadcast.emit('chat-typing', { username, typing: socket.data.chatTyping });
+    if (socket.data.chatTyping) {
+      socket.data.chatTypingTimeout = setTimeout(() => {
+        socket.data.chatTyping = false;
+        socket.broadcast.emit('chat-typing', { username, typing: false });
+      }, 4000);
+      socket.data.chatTypingTimeout.unref?.();
+    }
   });
 
   socket.on('clear-chat', async () => {
