@@ -4071,6 +4071,11 @@
         .inbox-gift-note { padding: 7px 9px; border: 1px solid rgba(251, 191, 36, 0.26); background: rgba(146, 97, 13, 0.12); color: #fde68a; font-size: 0.78rem; }
         .inbox-tab-badge { margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 800; }
         .inbox-tab-badge[hidden] { display: none; }
+        .header-inbox-button { position: relative; display: grid; flex: 0 0 40px; width: 40px; height: 40px; place-items: center; padding: 0; border: 1px solid rgba(125, 211, 252, 0.34); border-radius: 4px; background: rgba(15, 23, 42, 0.76); color: #e0f2fe; font-size: 1.2rem; cursor: pointer; transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease; }
+        .header-inbox-button:hover, .header-inbox-button:focus-visible { border-color: #7dd3fc; background: rgba(14, 116, 144, 0.28); outline: none; }
+        .header-inbox-button.has-unread { border-color: #f87171; box-shadow: 0 0 15px rgba(239, 68, 68, 0.42); animation: inboxUnreadGlow 1.8s ease-in-out infinite alternate; }
+        .header-inbox-button .inbox-tab-badge { position: absolute; top: -7px; right: -7px; display: grid; min-width: 18px; height: 18px; place-items: center; margin: 0; padding: 0 4px; border: 1px solid #071225; }
+        @keyframes inboxUnreadGlow { to { box-shadow: 0 0 22px rgba(239, 68, 68, 0.74); } }
         .reply-notification { position: fixed; z-index: 1700; top: 16px; right: 18px; width: min(360px, calc(100vw - 36px)); padding: 12px 15px; border: 1px solid rgba(125, 211, 252, 0.42); border-left: 3px solid #38bdf8; background: rgba(8, 24, 43, 0.96); color: #e0f2fe; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.38), 0 0 18px rgba(56, 189, 248, 0.14); animation: replyToastIn 180ms ease-out; }
         @keyframes replyToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .global-rarity-counts { padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); background: rgba(8, 18, 35, 0.78); }
@@ -4111,6 +4116,7 @@
             font-size: 0.72rem;
             box-shadow: 0 0 12px color-mix(in srgb, var(--title-color), transparent 72%);
         }
+        .glitch-rarity-name.identity-glitch::after { content: '▍'; color: #f0abfc; animation: typingCursor 600ms steps(2, end) infinite; }
         .chat-delete-button { float: right; width: 25px; height: 25px; margin: -2px 0 0 8px; border: 1px solid rgba(248, 113, 113, 0.26); border-radius: 3px; background: rgba(127, 29, 29, 0.14); color: #fca5a5; font-size: 1rem; line-height: 1; cursor: pointer; }
         .chat-delete-button:hover { border-color: rgba(248, 113, 113, 0.72); background: rgba(127, 29, 29, 0.46); color: white; }
         .chat-delete-button:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; }
@@ -5874,6 +5880,7 @@
                     <div class="user-info">
                         <span class="username" id="game-username">Player</span>
                         <span class="coins" id="game-coins">🪙 0 coins</span>
+                        <button class="header-inbox-button" id="open-inbox-btn" type="button" title="Open inbox" aria-label="Open inbox" aria-expanded="false">🎁<span class="inbox-tab-badge" id="inbox-tab-badge" hidden></span></button>
                     </div>
                 </div>
                 <div class="admin-headline hidden" id="admin-headline" aria-label="Admin headline">
@@ -5919,7 +5926,6 @@
                     <button class="content-tab" data-tab="shop">Shop</button>
                     <button class="content-tab" data-tab="titles">Titles</button>
                     <button class="content-tab" data-tab="chat">Chat</button>
-                    <button class="content-tab" data-tab="inbox">Inbox <span class="inbox-tab-badge" id="inbox-tab-badge" hidden></span></button>
                     <button class="content-tab" data-tab="settings">Settings</button>
                 </div>
                 <div class="tab-content">
@@ -6021,7 +6027,7 @@
                             <div class="inbox-layout">
                                 <form class="inbox-compose" id="inbox-compose-form">
                                     <h3>New message</h3>
-                                    <label>To<input id="inbox-recipient" name="recipient" maxlength="32" autocomplete="off" required></label>
+                                    <label>To<input id="inbox-recipient" name="recipient" maxlength="32" list="inbox-player-options" autocomplete="off" required><datalist id="inbox-player-options"></datalist></label>
                                     <label>Message<textarea id="inbox-message" name="message" maxlength="500" placeholder="Write a note..."></textarea></label>
                                     <label>Gift<select id="inbox-gift-type" name="giftType"><option value="none">No gift</option><option value="coins">Coins</option><option value="item">Item</option><option value="potion">Potion</option></select></label>
                                     <div class="inbox-gift-fields" id="inbox-gift-fields" hidden>
@@ -6052,7 +6058,7 @@
 
                             <div class="settings-section rarity-catalog-section">
                                     <details class="rarity-catalog">
-                                        <summary>Rarity Index <span>22 drops · rarest first</span></summary>
+                                        <summary>Rarity Index <span id="rarity-catalog-count">Drops · rarest first</span></summary>
                                         <div class="rarity-catalog-list" id="rarity-catalog-list"></div>
                                     </details>
                                     <details class="rarity-catalog secret-catalog" id="secret-index">
@@ -6343,8 +6349,8 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/game-logic.js?v=4.0.0"></script>
-    <script src="/multiplayer.js?v=4.0.0"></script>
+    <script src="/game-logic.js?v=4.0.1"></script>
+    <script src="/multiplayer.js?v=4.0.1"></script>
 </body>
 </html></content>
 <parameter name="filePath">/workspaces/17-News-RNG-3-Full/index.html
