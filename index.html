@@ -4046,6 +4046,33 @@
         .chat-reply-button::before { content: '\21B6'; color: #7dd3fc; font-size: 0.85rem; }
         .chat-reply-button:hover { border-color: rgba(125, 211, 252, 0.65); background: rgba(14, 116, 144, 0.28); color: #fff; }
         .chat-reply-button:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
+        .inbox-container { display: grid; gap: 14px; padding: 18px; }
+        .inbox-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .inbox-header h2 { margin: 0; color: #eff6ff; font-size: 1.15rem; }
+        .inbox-folders { display: flex; gap: 6px; }
+        .inbox-folder { min-height: 34px; padding: 6px 12px; border: 1px solid rgba(125, 211, 252, 0.22); background: rgba(15, 23, 42, 0.55); color: #a9bfd2; cursor: pointer; }
+        .inbox-folder.active { border-color: rgba(125, 211, 252, 0.62); background: rgba(14, 116, 144, 0.24); color: #e0f2fe; }
+        .inbox-layout { display: grid; grid-template-columns: minmax(230px, 0.75fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
+        .inbox-compose { display: grid; gap: 9px; padding: 14px; border: 1px solid rgba(96, 165, 250, 0.22); background: rgba(9, 20, 38, 0.7); }
+        .inbox-compose h3 { margin: 0 0 2px; color: #bfdbfe; font-size: 0.95rem; }
+        .inbox-compose label { display: grid; gap: 5px; color: #a9bfd2; font-size: 0.75rem; }
+        .inbox-compose input, .inbox-compose textarea, .inbox-compose select { width: 100%; min-width: 0; min-height: 36px; padding: 7px 9px; border: 1px solid rgba(125, 211, 252, 0.2); background: #071225; color: #eff6ff; font: inherit; }
+        .inbox-compose textarea { min-height: 72px; resize: vertical; }
+        .inbox-gift-fields { display: grid; grid-template-columns: minmax(0, 1fr) 76px; gap: 8px; }
+        .inbox-gift-fields.coins-gift { grid-template-columns: minmax(0, 1fr); }
+        .inbox-gift-fields[hidden] { display: none; }
+        .inbox-compose .btn { width: 100%; }
+        .inbox-list { display: grid; gap: 8px; max-height: 560px; overflow-y: auto; }
+        .inbox-empty { padding: 24px 12px; border: 1px dashed rgba(125, 211, 252, 0.2); color: #94a3b8; text-align: center; }
+        .inbox-message-card { display: grid; gap: 7px; padding: 12px; border: 1px solid rgba(125, 211, 252, 0.16); border-left: 3px solid #38bdf8; background: rgba(9, 20, 38, 0.68); }
+        .inbox-message-head { display: flex; justify-content: space-between; gap: 10px; color: #bfdbfe; font-size: 0.75rem; }
+        .inbox-message-head time { color: #7f98ae; white-space: nowrap; }
+        .inbox-message-copy { color: #e2e8f0; font-size: 0.86rem; overflow-wrap: anywhere; }
+        .inbox-gift-note { padding: 7px 9px; border: 1px solid rgba(251, 191, 36, 0.26); background: rgba(146, 97, 13, 0.12); color: #fde68a; font-size: 0.78rem; }
+        .inbox-tab-badge { margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 800; }
+        .inbox-tab-badge[hidden] { display: none; }
+        .reply-notification { position: fixed; z-index: 1700; top: 16px; right: 18px; width: min(360px, calc(100vw - 36px)); padding: 12px 15px; border: 1px solid rgba(125, 211, 252, 0.42); border-left: 3px solid #38bdf8; background: rgba(8, 24, 43, 0.96); color: #e0f2fe; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.38), 0 0 18px rgba(56, 189, 248, 0.14); animation: replyToastIn 180ms ease-out; }
+        @keyframes replyToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .global-rarity-counts { padding: 10px 12px; border-bottom: 1px solid rgba(239, 246, 255, 0.1); background: rgba(8, 18, 35, 0.78); }
         .global-rarity-summary { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; color: #a9bfd2; font-size: 0.76rem; }
         .global-rarity-summary strong { color: #f8fafc; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
@@ -4076,6 +4103,17 @@
             text-shadow: var(--title-glow);
             vertical-align: 1px;
         }
+        .chat-title-badge.prestige-title {
+            margin-right: 8px;
+            padding: 3px 8px;
+            border-color: color-mix(in srgb, var(--title-color), transparent 18%);
+            background: color-mix(in srgb, var(--title-color), transparent 91%);
+            font-size: 0.72rem;
+            box-shadow: 0 0 12px color-mix(in srgb, var(--title-color), transparent 72%);
+        }
+        .chat-delete-button { float: right; width: 25px; height: 25px; margin: -2px 0 0 8px; border: 1px solid rgba(248, 113, 113, 0.26); border-radius: 3px; background: rgba(127, 29, 29, 0.14); color: #fca5a5; font-size: 1rem; line-height: 1; cursor: pointer; }
+        .chat-delete-button:hover { border-color: rgba(248, 113, 113, 0.72); background: rgba(127, 29, 29, 0.46); color: white; }
+        .chat-delete-button:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; }
 
         .global-drop-message {
             padding: 12px !important;
@@ -4084,6 +4122,13 @@
             background: linear-gradient(100deg, rgba(14, 165, 233, 0.2), rgba(15, 23, 42, 0.86)) !important;
             box-shadow: inset 0 0 24px rgba(56, 189, 248, 0.08);
         }
+        .global-drop-message.owner-global-drop-message {
+            border-color: rgba(251, 191, 36, 0.78) !important;
+            border-left-color: #fbbf24 !important;
+            background: linear-gradient(100deg, rgba(161, 98, 7, 0.28), rgba(15, 23, 42, 0.94)) !important;
+            box-shadow: inset 0 0 25px rgba(251, 191, 36, 0.11), 0 0 16px rgba(251, 191, 36, 0.12);
+        }
+        .global-drop-message.owner-global-drop-message .global-drop-kicker { color: #fde68a; text-shadow: 0 0 12px rgba(251, 191, 36, 0.54); }
 
         .global-drop-kicker {
             display: block;
@@ -4247,6 +4292,11 @@
         .roll-display.global-rarity-reveal {
             animation: globalRollReveal 900ms ease-in-out infinite alternate;
         }
+        .roll-display.identity-glitch,
+        #dive-result.identity-glitch { color: #f0abfc !important; text-shadow: 0 0 18px rgba(217, 70, 239, 0.8); animation: identityGlitch 110ms steps(2, end) infinite; }
+        .roll-display.identity-glitch::after { content: '▍'; margin-left: 3px; color: #f0abfc; animation: typingCursor 600ms steps(2, end) infinite; }
+        @keyframes identityGlitch { 0% { transform: translateX(0); } 25% { transform: translateX(1px); } 50% { transform: translateX(-1px); } 100% { transform: translateX(0); } }
+        @keyframes typingCursor { 50% { opacity: 0; } }
         @keyframes globalRollReveal {
             from { text-shadow: 0 0 12px var(--roll-glow), 0 0 26px var(--roll-glow); }
             to { text-shadow: 0 0 24px var(--roll-glow), 0 0 54px var(--roll-glow); }
@@ -5373,8 +5423,9 @@
         @media (max-width: 540px) { .roll-actions { width: 100%; } .auto-roll-btn { flex-basis: 40%; min-height: 54px; font-size: 0.7rem; } .roll-actions .roll-btn { min-height: 54px; } }
         .global-anticipation { animation: globalAnticipation 360ms ease-in-out infinite alternate; }
         @keyframes globalAnticipation { to { filter: brightness(1.9); text-shadow: 0 0 28px #fef08a; } }
-        .secret-catalog { margin-top: 10px; border-color: rgba(251, 113, 133, 0.3); }
-        .secret-catalog summary { color: #fda4af; }
+        .secret-catalog { margin-top: 10px; border-color: rgba(45, 212, 191, 0.38); box-shadow: inset 0 0 18px rgba(45, 212, 191, 0.035); }
+        .secret-catalog summary { color: #5eead4; }
+        .secret-catalog summary span { color: #a7f3d0; }
         .shop-quantity-label { display: grid; grid-template-columns: 1fr 70px; align-items: center; gap: 8px; color: #9fb7ca; font-size: 0.72rem; }
         .potion-purchase-controls { display: grid; grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr); align-items: end; gap: 7px; }
         .potion-purchase-controls .potion-buy-btn { min-width: 0; min-height: 38px; padding: 7px 5px; border: 1px solid rgba(125, 211, 252, 0.28); border-radius: 3px; font-size: 0.72rem; }
@@ -5455,6 +5506,12 @@
         .global-drop-form select,
         .global-drop-form input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid rgba(96, 165, 250, 0.34); border-radius: 2px; background: #071225; color: #eff6ff; }
         .global-drop-form button { grid-column: 1 / -1; justify-self: center; min-width: 220px; }
+        .global-drop-preview { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; padding: 11px 13px; border: 1px solid rgba(251, 191, 36, 0.3); border-left: 3px solid #fbbf24; background: linear-gradient(100deg, rgba(146, 97, 13, 0.18), rgba(15, 23, 42, 0.52)); color: #fde68a; }
+        .global-drop-preview strong { color: #fff3bd; }
+        .owner-command-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 9px; }
+        .owner-command-card { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(251, 191, 36, 0.24); background: rgba(15, 23, 42, 0.5); }
+        .owner-command-card strong { color: #fde68a; font-size: 0.85rem; }
+        .owner-command-card span { color: #a9bfd2; font-size: 0.75rem; }
         .mini-ops-events { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
         .mini-ops-events button { min-width: 185px; }
         .mini-ops-status { margin: 14px 0 8px; color: #93c5fd; font-size: 0.82rem; text-align: center; }
@@ -5593,122 +5650,6 @@
         .update-archive summary span { margin-left: 8px; color: #94a3b8; font-size: 0.74rem; font-weight: 500; }
         .update-archive[open] summary { margin-bottom: 6px; }
 
-        body.halloween-event {
-            --primary-blue: #7c2d12;
-            --secondary-blue: #c2410c;
-            --accent-blue: #fb923c;
-            --light-blue: #fed7aa;
-            --dark-blue: #431407;
-            --darker-blue: #160b14;
-            --glow-blue: #f97316;
-            --particle-blue: #fb923c;
-            --wave-blue: #7f1d1d;
-            background: radial-gradient(ellipse at 50% 0, rgba(124, 45, 18, 0.56), transparent 46%), linear-gradient(145deg, #100c17 0%, #21101b 50%, #32150f 100%);
-        }
-
-        body.halloween-event .background-container {
-            background: radial-gradient(ellipse at 15% 28%, rgba(234, 88, 12, 0.11), transparent 34%), radial-gradient(ellipse at 86% 72%, rgba(109, 40, 217, 0.12), transparent 32%);
-        }
-
-        body.halloween-event .geometric {
-            border-color: rgba(251, 146, 60, 0.45);
-            box-shadow: 0 0 16px rgba(249, 115, 22, 0.1), inset 0 0 10px rgba(251, 146, 60, 0.05);
-        }
-
-        body.halloween-event .btn,
-        body.halloween-event .roll-btn,
-        body.halloween-event .potion-buy-btn,
-        body.halloween-event .auto-roll-btn {
-            border-color: rgba(253, 186, 116, 0.4);
-            background: linear-gradient(135deg, #c2410c, #7f1d1d);
-            color: #fff7ed;
-            box-shadow: 0 0 16px rgba(234, 88, 12, 0.14);
-        }
-
-        body.halloween-event .btn:hover,
-        body.halloween-event .roll-btn:hover,
-        body.halloween-event .potion-buy-btn:hover,
-        body.halloween-event .auto-roll-btn:hover:not(:disabled) {
-            border-color: rgba(254, 215, 170, 0.78);
-            background: linear-gradient(135deg, #ea580c, #9a3412);
-        }
-
-        body.halloween-event .settings-section,
-        body.halloween-event .potion-shop,
-        body.halloween-event .shop-item,
-        body.halloween-event .potion-card,
-        body.halloween-event .portal-container,
-        body.halloween-event .realm-dialog,
-        body.halloween-event .realm-card,
-        body.halloween-event .rarity-catalog {
-            border-color: rgba(251, 146, 60, 0.26);
-        }
-
-        body.halloween-event .portal-container,
-        body.halloween-event .realm-dialog {
-            background-color: #170f19;
-            background-image: radial-gradient(ellipse at 14% 50%, rgba(234, 88, 12, 0.2), transparent 50%), radial-gradient(ellipse at 85% 0, rgba(109, 40, 217, 0.12), transparent 42%), linear-gradient(145deg, #21101b, #100c17 78%);
-        }
-
-        body.halloween-event .portal-ring {
-            border-color: rgba(251, 146, 60, 0.62);
-        }
-
-        body.halloween-event .portal-spiral {
-            background: conic-gradient(from 20deg, transparent 0 15%, rgba(251, 146, 60, 0.08) 22%, #fdba74 38%, rgba(234, 88, 12, 0.12) 48% 70%, #a78bfa 83%, transparent 92%);
-            box-shadow: 0 0 12px rgba(249, 115, 22, 0.32);
-        }
-
-        body.halloween-event .portal-orb {
-            background: radial-gradient(ellipse at 50% 44%, #fff7ed 0 2%, #fdba74 10%, #ea580c 34%, #581c35 73%);
-            box-shadow: 0 0 34px rgba(249, 115, 22, 0.82), inset 0 0 28px rgba(255, 237, 213, 0.5), 0 0 50px rgba(109, 40, 217, 0.26);
-        }
-
-        body.halloween-event .halloween-rarity {
-            border-color: rgba(249, 115, 22, 0.42);
-            background: linear-gradient(90deg, rgba(124, 45, 18, 0.15), transparent 70%);
-        }
-
-        body.halloween-event .halloween-rarity small {
-            color: #fdba74;
-        }
-
-        body.halloween-event .chat-view-tab.active {
-            border-color: rgba(251, 146, 60, 0.72);
-            background: rgba(124, 45, 18, 0.34);
-            color: #ffedd5;
-        }
-
-        body.halloween-event .global-rarity-counts {
-            border-color: rgba(251, 146, 60, 0.2);
-            background: rgba(30, 13, 23, 0.86);
-        }
-
-        body.halloween-event .update-log {
-            border-color: rgba(251, 146, 60, 0.38);
-            border-top-color: #f97316;
-            background: linear-gradient(145deg, rgba(33, 16, 27, 0.96), rgba(18, 12, 23, 0.92));
-            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34), 0 0 26px rgba(249, 115, 22, 0.12);
-        }
-
-        body.halloween-event .update-log h3,
-        body.halloween-event .update-log .date,
-        body.halloween-event .update-log .update-version,
-        body.halloween-event .update-log .log-entry p,
-        body.halloween-event .update-archive summary {
-            color: #ffedd5;
-        }
-
-        body.halloween-event .update-version {
-            border-color: rgba(251, 146, 60, 0.5);
-            background: rgba(124, 45, 18, 0.2);
-        }
-
-        body.halloween-event .update-log .log-entry + .log-entry,
-        body.halloween-event .update-archive {
-            border-top-color: rgba(251, 146, 60, 0.18);
-        }
-
         @media (max-width: 520px) {
             .global-rarity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .chat-view-tab { flex: 1; }
@@ -5800,22 +5741,29 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">Nightfall Notice</span></h3>
+                <h3>Latest Updates <span class="update-version">Update 4</span></h3>
                 <div class="log-entry">
-                    <div class="date">27 Oct 2026 / Update 3 Part 2</div>
-                    <p><strong>Halloween has arrived, and the whole lobby has been dressed for the season.</strong></p>
-                    <p>✦ The chat has been refreshed with clearer global and local splits, so event drops, reveals, and general chatter feel far less chaotic.</p>
-                    <p>✦ The Halloween theme now stretches across the interface, bringing a darker pumpkin-lit atmosphere to the game.</p>
-                    <p>✦ Find Pumpkin Baxter (0.1%) and Grim Reaper (0.01%) to earn the Halloween 2026 title.</p>
-                    <p>✦ A special two-use code will be handed out on Halloween day, so keep an eye out for the event giveaway.</p>
+                    <div class="date">1 Nov 2026 / Update 4</div>
+                    <p><strong>New discoveries, better tools, and a fresh home for your messages.</strong></p>
+                    <p>✦ Meet The Daily Ellerslilian (2.5%), Lord Crinkle (0.03%), and Mr Butler (0.01%), whose name glitches into The Principal.</p>
+                    <p>✦ Earn Multi-millionaire, Willpower, and This is my year! titles. Requirements stay visible, including in chat.</p>
+                    <p>✦ The Exclusive Index gathers realm and Halloween rarities. Halloween collectibles, titles, and codes remain; the seasonal theme has ended.</p>
+                    <p>✦ Chat now has replies, moderation, separate global drops, and an inbox for notes and gifts. Owner Panel commands and global-drop previews have also been improved.</p>
+                    <p><strong>To all the Year 8s: have a great camp experience and an amazing time at camp!</strong></p>
                 </div>
                 <details class="update-archive">
-                    <summary>Previous updates <span>2 releases</span></summary>
+                    <summary>Previous updates <span>3 releases</span></summary>
+                    <div class="log-entry">
+                        <div class="date">27 Oct 2026 / Update 3 Part 2</div>
+                        <p><strong>Halloween rarities and a seasonal game theme.</strong></p>
+                        <p>✦ Pumpkin Baxter and Grim Reaper debuted with the Halloween 2026 title and a limited giveaway code.</p>
+                        <p>✦ Halloween colors and global rarity chat arrived across the lobby.</p>
+                    </div>
                     <div class="log-entry">
                         <div class="date">23 Oct 2026 / Update 3 Part 1</div>
                         <p><strong>New ways to roll, explore, and craft.</strong></p>
                         <p>✦ Auto Roll unlocks at 100 rolls; global drops reveal before announcements.</p>
-                        <p>✦ Sharky joins the Sea Realm. The Secret Index now lists realm-only rarities.</p>
+                        <p>✦ Sharky joins the Sea Realm. The Exclusive Index now lists realm-only rarities.</p>
                         <p>✦ Forge crafting, rotating materials, Meteor Shower, and event tools are available.</p>
                     </div>
                     <div class="log-entry">
@@ -5971,6 +5919,7 @@
                     <button class="content-tab" data-tab="shop">Shop</button>
                     <button class="content-tab" data-tab="titles">Titles</button>
                     <button class="content-tab" data-tab="chat">Chat</button>
+                    <button class="content-tab" data-tab="inbox">Inbox <span class="inbox-tab-badge" id="inbox-tab-badge" hidden></span></button>
                     <button class="content-tab" data-tab="settings">Settings</button>
                 </div>
                 <div class="tab-content">
@@ -6060,6 +6009,32 @@
                         </div>
                     </div>
 
+                    <div class="tab-pane hidden" id="inbox-tab">
+                        <section class="inbox-container">
+                            <header class="inbox-header">
+                                <h2>Inbox</h2>
+                                <div class="inbox-folders" role="group" aria-label="Inbox folders">
+                                    <button class="inbox-folder active" type="button" data-inbox-folder="inbox" aria-pressed="true">Inbox</button>
+                                    <button class="inbox-folder" type="button" data-inbox-folder="sent" aria-pressed="false">Sent</button>
+                                </div>
+                            </header>
+                            <div class="inbox-layout">
+                                <form class="inbox-compose" id="inbox-compose-form">
+                                    <h3>New message</h3>
+                                    <label>To<input id="inbox-recipient" name="recipient" maxlength="32" autocomplete="off" required></label>
+                                    <label>Message<textarea id="inbox-message" name="message" maxlength="500" placeholder="Write a note..."></textarea></label>
+                                    <label>Gift<select id="inbox-gift-type" name="giftType"><option value="none">No gift</option><option value="coins">Coins</option><option value="item">Item</option><option value="potion">Potion</option></select></label>
+                                    <div class="inbox-gift-fields" id="inbox-gift-fields" hidden>
+                                        <label>Gift item<select id="inbox-gift-key" name="giftKey"></select></label>
+                                        <label>Amount<input id="inbox-gift-amount" name="giftAmount" type="number" min="1" max="99" value="1"></label>
+                                    </div>
+                                    <button class="btn" id="inbox-send-button" type="submit">Send</button>
+                                </form>
+                                <div class="inbox-list" id="inbox-list" aria-live="polite"></div>
+                            </div>
+                        </section>
+                    </div>
+
                     <!-- Settings Tab -->
                     <div class="tab-pane hidden" id="settings-tab">
                         <div class="settings-container">
@@ -6077,11 +6052,11 @@
 
                             <div class="settings-section rarity-catalog-section">
                                     <details class="rarity-catalog">
-                                        <summary>Rarity Index <span>16 drops · rarest first</span></summary>
+                                        <summary>Rarity Index <span>22 drops · rarest first</span></summary>
                                         <div class="rarity-catalog-list" id="rarity-catalog-list"></div>
                                     </details>
                                     <details class="rarity-catalog secret-catalog" id="secret-index">
-                                        <summary>Secret Index <span>Locked · unlock Portal Gateway</span></summary>
+                                        <summary>Exclusive Index <span>Locked · unlock Portal Gateway</span></summary>
                                         <div class="rarity-catalog-list" id="secret-catalog-list"></div>
                                     </details>
                             </div>
@@ -6240,6 +6215,13 @@
         </header>
 
         <div class="admin-content">
+            <div class="admin-section" id="owner-command-section">
+                <h2>Owner Commands</h2>
+                <div class="owner-command-grid">
+                    <div class="owner-command-card"><strong>Clear all chat</strong><span>Remove messages from both Player Chat and Global Drops.</span><button class="btn danger-btn" type="button" data-owner-command="clear-chat">Clear chat history</button></div>
+                    <div class="owner-command-card"><strong>End active event</strong><span>Stop the currently running game event.</span><button class="btn" type="button" data-owner-command="end-active-event">End active event</button></div>
+                </div>
+            </div>
             <div class="admin-section">
                 <h2>Moving Headline</h2>
                 <form class="headline-admin-form" id="admin-headline-form">
@@ -6297,7 +6279,8 @@
 
             <div class="admin-section" id="global-drop-section">
                 <h2>Global Drop</h2>
-                <p class="admin-section-copy">Grant a reward to every account at once.</p>
+                <p class="admin-section-copy">Grant rarity, potion, or item rewards to every account. Owner Panel drops are highlighted in gold in Global Drops chat.</p>
+                <div class="global-drop-preview" id="global-drop-preview" role="status"><strong>Global reward preview</strong><span>Select a reward to preview the grant.</span></div>
                 <form class="global-drop-form" id="global-drop-form">
                     <label>Reward type<select id="global-drop-type" name="type"><option value="rarity">Rarity</option><option value="potion">Potion</option><option value="item">Item</option></select></label>
                     <label>Reward<select id="global-drop-key" name="key"></select></label>
@@ -6360,8 +6343,8 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/game-logic.js?v=3.2.0"></script>
-    <script src="/multiplayer.js?v=3.2.0"></script>
+    <script src="/game-logic.js?v=4.0.0"></script>
+    <script src="/multiplayer.js?v=4.0.0"></script>
 </body>
 </html></content>
 <parameter name="filePath">/workspaces/17-News-RNG-3-Full/index.html
