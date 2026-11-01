@@ -247,10 +247,8 @@ function initMultiplayer() {
     }
   });
 
-  socket.on('global-drop', async (data) => {
-    const response = await handleAPI('/api/session');
-    if (response.success && response.user && typeof updateUI === 'function') updateUI(response.user);
-    if (data?.name) showPopup(`Global drop: ${data.amount} × ${data.name} added to every account.`);
+  socket.on('global-drop', data => {
+    if (data?.name) showPopup(`Global drop: ${data.amount} × ${data.name} sent to every inbox. Claim it to receive it.`);
   });
 
   socket.on('admin-headline', (data) => {
