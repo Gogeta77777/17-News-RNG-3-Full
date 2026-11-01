@@ -7,47 +7,35 @@ const taglines = [
   'For 17 News',
   'The Threequel'
 ];
-const HALLOWEEN_END_AT = Date.UTC(2026, 10, 2);
-
-function applyHalloweenTheme() {
-  const isActive = Date.now() < HALLOWEEN_END_AT;
-  document.body.classList.toggle('halloween-event', isActive);
-  const themeColor = document.querySelector('meta[name="theme-color"]');
-  if (themeColor) themeColor.content = isActive ? '#241018' : '#1e3a8a';
-  if (isActive) {
-    setTimeout(() => {
-      document.body.classList.remove('halloween-event');
-      if (themeColor) themeColor.content = '#1e3a8a';
-    }, HALLOWEEN_END_AT - Date.now());
-  }
-}
-
 let currentTaglineIndex = 0;
 let taglineTimer = null;
 let taglineRun = 0;
 
 const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 66.13, color: '#0f172a' },
+  { key: '17-news', name: '17 News', reward: 150, chance: 63.59, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
+  { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', reward: 800, chance: 2.5, color: '#a16207' },
   { key: 'daniel-poole', name: 'Daniel Poole', reward: 450, chance: 4, color: '#166534' },
   { key: 'dominik-procter', name: 'Dominik Procter', reward: 450, chance: 3, color: '#0d9488' },
   { key: 'gabe-muir', name: 'Gabe Muir', reward: 450, chance: 2, color: '#115e59' },
   { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', reward: 550, chance: 1.5, color: '#7c3aed' },
   { key: 'leo-thacker', name: 'Leo Thacker', reward: 700, chance: 0.8, color: '#2dd4bf' },
-  { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 700, chance: 0.7, color: '#f97316' },
+  { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 700, chance: 0.7, color: '#ea580c' },
   { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
   { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
   { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
   { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' },
-  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', reward: 12000, chance: 0.1, color: '#f97316', glowColor: '#fdba74', halloweenOnly: true, isGlobal: true },
-  { key: 'grim-reaper', name: 'Grim Reaper', reward: 50000, chance: 0.01, color: '#7c3aed', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
+  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', reward: 12000, chance: 0.1, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
+  { key: 'grim-reaper', name: 'Grim Reaper', reward: 50000, chance: 0.01, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
 ];
 
 const globalOptions = [
   { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444', isGlobal: true },
   { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8', isGlobal: true },
   { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true },
-  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 9500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true }
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 9500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true },
+  { key: 'lord-crinkle', name: 'Lord Crinkle', reward: 25000, chance: 0.03, color: '#e11d48', glowColor: '#fda4af', isGlobal: true },
+  { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', reward: 50000, chance: 0.01, color: '#d946ef', glowColor: '#f0abfc', isGlobal: true }
 ];
 
 const diveGlobalOptions = [
@@ -73,17 +61,20 @@ const ROTATING_SHOP_ITEMS = [
 const TITLES = [
   { id: 'owner', name: 'Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
   { id: 'admin', name: 'Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks the Admin Panel' },
-  { id: 'veteran', name: 'Veteran', color: '#38bdf8', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
+  { id: 'veteran', name: 'Veteran', color: '#2563eb', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
   { id: 'locked-in', name: 'Locked In', color: '#22d3ee', requirement: 'spins:1000', description: 'Complete 1,000 rolls' },
   { id: 'endless-frequency', name: 'The Endless Frequency', color: '#60a5fa', requirement: 'spins:5000', description: 'Complete 5,000 rolls' },
   { id: 'potato', name: 'Potato', color: '#8b5a2b', requirement: 'old-potato-sticker', description: 'Find an Old Potato Sticker in a Treasure Chest' },
   { id: 'collector', name: 'Rarity Collector', color: '#34d399', requirement: 'drops:10', description: 'Collect 10 rarity drops' },
-  { id: 'global-headliner', name: 'Global Headliner', color: '#fb7185', requirement: 'global:1', description: 'Find a global rarity' },
-  { id: 'tidekeeper', name: 'Tidekeeper', color: '#2dd4bf', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' },
-  { id: 'blacksmith', name: 'Blacksmith', color: '#fb923c', requirement: 'forge-realm', description: 'Permanently unlock Forge Realm' },
-  { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' }
+  { id: 'global-headliner', name: 'Global Headliner', color: '#ec4899', requirement: 'global:1', description: 'Find a global rarity' },
+  { id: 'tidekeeper', name: 'Tidekeeper', color: '#14b8a6', requirement: 'sea-realm', description: 'Permanently unlock Sea Realm' },
+  { id: 'blacksmith', name: 'Blacksmith', color: '#b45309', requirement: 'forge-realm', description: 'Permanently unlock Forge Realm' },
+  { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' },
+  { id: 'multi-millionaire', name: 'Multi-millionaire', color: '#eab308', requirement: 'coins:10000000', description: 'Have more than 10,000,000 coins' },
+  { id: 'willpower', name: 'Willpower', color: '#818cf8', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
+  { id: 'this-is-my-year', name: 'This is my year!', color: '#fda4af', requirement: 'spins:26000', description: 'Complete 26,000 rolls' }
 ];
 
 const CODE_REWARDS = {
@@ -489,6 +480,7 @@ function renderTitles() {
       card.innerHTML = `
         <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
+        <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
       `;
       card.querySelector('.title-equip')?.addEventListener('click', () => setActiveTitle(titleId));
@@ -512,6 +504,118 @@ function renderTitles() {
     });
   }
 }
+
+let activeInboxFolder = 'inbox';
+
+function renderInboxGiftOptions(giftType) {
+  const fieldset = document.getElementById('inbox-gift-fields');
+  const keySelect = document.getElementById('inbox-gift-key');
+  const amountInput = document.getElementById('inbox-gift-amount');
+  if (!fieldset || !keySelect || !amountInput) return;
+  fieldset.hidden = giftType === 'none';
+  fieldset.classList.toggle('coins-gift', giftType === 'coins');
+  const keyLabel = keySelect.closest('label');
+  if (keyLabel) keyLabel.hidden = giftType === 'coins';
+  const options = giftType === 'item'
+    ? [
+      ['fragments', 'Portal Fragment'], ['clovers', 'Clover Leaf'], ['essence', 'Sea Essence'],
+      ['molten_rock', 'Molten Rock'], ['ancient_ore', 'Ancient Ore'], ['event_controller', 'Event Controller'],
+      ['old_potato_sticker', 'Old Potato Sticker'], ['empty_vial', 'Empty Vial'], ['treasure_chest', 'Treasure Chest']
+    ]
+    : giftType === 'potion'
+      ? Object.entries(POTIONS).map(([key, potion]) => [key, potion.name])
+      : [];
+  keySelect.innerHTML = options.map(([key, name]) => `<option value="${escapeHtml(key)}">${escapeHtml(name)}</option>`).join('');
+  keySelect.disabled = giftType === 'coins' || giftType === 'none';
+  amountInput.max = giftType === 'coins' ? '1000000000' : '99';
+  amountInput.value = '1';
+}
+
+async function loadInbox(folder = activeInboxFolder) {
+  activeInboxFolder = folder === 'sent' ? 'sent' : 'inbox';
+  const response = await handleAPI(`/api/inbox?folder=${activeInboxFolder}`);
+  if (!response.success) {
+    if (response.status !== 401) showPopup(response.error || 'Unable to load inbox.', 'error');
+    return;
+  }
+
+  const badge = document.getElementById('inbox-tab-badge');
+  if (badge && activeInboxFolder === 'inbox') {
+    const unreadCount = 0;
+    badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+    badge.hidden = unreadCount === 0;
+  }
+  document.querySelectorAll('[data-inbox-folder]').forEach(button => {
+    const active = button.dataset.inboxFolder === activeInboxFolder;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
+  const list = document.getElementById('inbox-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!response.messages.length) {
+    list.innerHTML = `<div class="inbox-empty">${activeInboxFolder === 'sent' ? 'No sent messages yet.' : 'Your inbox is empty.'}</div>`;
+    return;
+  }
+
+  const giftNames = {
+    fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock',
+    ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker',
+    empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest'
+  };
+  response.messages.forEach(message => {
+    const card = document.createElement('article');
+    card.className = 'inbox-message-card';
+    const otherLabel = activeInboxFolder === 'sent' ? `To ${message.otherUser}` : `From ${message.otherUser}`;
+    const date = formatChatTimestamp(message.createdAt);
+    const hasGift = message.giftType && Number(message.giftAmount) > 0;
+    const giftName = message.giftType === 'coins'
+      ? `${formatCoins(message.giftAmount)} coins`
+      : message.giftType === 'item'
+        ? `${message.giftAmount} × ${giftNames[message.giftKey] || message.giftKey}`
+        : message.giftType === 'potion'
+          ? `${message.giftAmount} × ${POTIONS[message.giftKey]?.name || message.giftKey}`
+          : '';
+    card.innerHTML = `
+      <div class="inbox-message-head"><strong>${escapeHtml(otherLabel)}</strong><time>${escapeHtml(date)}</time></div>
+      ${message.message ? `<div class="inbox-message-copy">${escapeHtml(message.message)}</div>` : ''}
+      ${hasGift ? `<div class="inbox-gift-note">Gift sent: ${escapeHtml(giftName)}</div>` : ''}
+    `;
+    list.appendChild(card);
+  });
+}
+
+async function refreshInboxBadge() {
+  const response = await handleAPI('/api/inbox?folder=inbox&preview=1');
+  if (!response.success) return;
+  const badge = document.getElementById('inbox-tab-badge');
+  if (!badge) return;
+  const unreadCount = Number(response.unreadCount) || 0;
+  badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  badge.hidden = unreadCount === 0;
+}
+
+async function handleIncomingInboxMessage(message) {
+  const inboxTab = document.getElementById('inbox-tab');
+  const inboxIsOpen = inboxTab?.classList.contains('active') && !inboxTab.classList.contains('hidden') && activeInboxFolder === 'inbox';
+  if (inboxIsOpen) {
+    await loadInbox('inbox');
+    return;
+  }
+  const badge = document.getElementById('inbox-tab-badge');
+  if (badge) {
+    const count = (Number.parseInt(badge.textContent, 10) || 0) + 1;
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.hidden = false;
+  }
+  showPopup(`New inbox message from ${message?.sender || 'a player'}.`);
+}
+
+window.loadInbox = loadInbox;
+window.refreshInboxBadge = refreshInboxBadge;
+window.handleIncomingInboxMessage = handleIncomingInboxMessage;
+window.getCurrentGameUsername = () => currentUser?.username || '';
 
 async function setActiveTitle(titleId) {
   const title = TITLES.find(t => t.id === titleId);
@@ -540,6 +644,7 @@ function checkTitleUnlocks(user) {
   if (user.coins >= 1000000) {
     existing.add('millionaire');
   }
+  if (user.coins > 10000000) existing.add('multi-millionaire');
   if (user.portal_unlocked) {
     existing.add('portalmancer');
   }
@@ -547,8 +652,10 @@ function checkTitleUnlocks(user) {
   const rarityTotal = Object.values(rarities).reduce((sum, count) => sum + (Number(count) || 0), 0);
   if ((Number(user.spins) || 0) >= 1000) existing.add('locked-in');
   if ((Number(user.spins) || 0) >= 5000) existing.add('endless-frequency');
+  if ((Number(user.spins) || 0) > 10000) existing.add('willpower');
+  if ((Number(user.spins) || 0) >= 26000) existing.add('this-is-my-year');
   if (rarityTotal >= 10) existing.add('collector');
-  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'mrs-joseph-mcglashan'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'mrs-joseph-mcglashan', 'fisher-baxter', 'pumpkin-baxter', 'grim-reaper', 'lord-crinkle', 'mr-butler'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
   if ((Number(user.items?.old_potato_sticker) || 0) >= 1) existing.add('potato');
   if (user.sea_realm_unlocked) existing.add('tidekeeper');
   gameState.userTitles = Array.from(existing);
@@ -1056,7 +1163,9 @@ async function collectDiveSignal(nodeId, marker) {
     currentUser = result.user;
     updateUI(currentUser);
     const serialText = result.serialNumber ? ` · Serial #${String(result.serialNumber).padStart(6, '0')}` : '';
-    document.getElementById('dive-result').textContent = `${result.name}${serialText} · ${formatRollChance(result.rollChance)}`;
+    const diveResult = document.getElementById('dive-result');
+    diveResult.textContent = `${result.name}${serialText} · ${formatRollChance(result.rollChance)}`;
+    animateRarityAlias(diveResult, result, `${serialText} · ${formatRollChance(result.rollChance)}`);
     if (result.itemType === 'potion') showPopup(`Found ${result.name}; added to your potion inventory.`);
     else if (result.key === 'treasure-chest') showPopup(`Treasure Chest recovered! +${formatCoins(result.reward)} coins.`);
     else showPopup(`Recovered ${result.name}${serialText}! +${formatCoins(result.reward)} coins.`, result.color || '#38bdf8');
@@ -1249,18 +1358,19 @@ function renderRarityCatalog() {
       if (gameState.portalUnlocked) return;
       if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
-      showPopup('Unlock the Portal Gateway to view realm rarities.', 'error');
+      showPopup('Unlock the Portal Gateway to view exclusive rarities.', 'error');
     };
     secretSummary.addEventListener('click', blockLockedAccess);
     secretSummary.addEventListener('keydown', blockLockedAccess);
     secretCatalog.dataset.gateBound = 'true';
   }
-  renderRows('secret-catalog-list', gameState.portalUnlocked ? diveGlobalOptions.filter(rarity => !rarity.isGlobal) : []);
+  const exclusiveRarities = [...diveGlobalOptions, ...rarityOptions.filter(rarity => rarity.halloweenOnly)];
+  renderRows('secret-catalog-list', gameState.portalUnlocked ? exclusiveRarities : []);
   if (secretCatalog) secretCatalog.open = false;
   if (secretSummary) {
     secretSummary.setAttribute('aria-disabled', String(!gameState.portalUnlocked));
     secretSummary.querySelector('span').textContent = gameState.portalUnlocked
-      ? 'Realm rarities · rarest first'
+      ? 'Realm and event rarities · rarest first'
       : 'Locked · unlock Portal Gateway';
   }
 }
@@ -1377,13 +1487,14 @@ function formatChatTimestamp(timestamp) {
   return `${day} · ${time}`;
 }
 
-function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null) {
+function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null, messageId = null) {
   const chatMessages = document.getElementById(isGlobalDrop ? 'global-chat-messages' : 'chat-messages');
   if (!chatMessages) return;
   
   const msgEl = document.createElement('div');
   msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isSystem ? 'chat-message system-message' : 'chat-message';
-  msgEl.dataset.messageId = timestamp;
+  if (isGlobalDrop && title === 'OWNER PANEL DROP') msgEl.classList.add('owner-global-drop-message');
+  msgEl.dataset.messageId = String(messageId || timestamp);
   if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
   
   const time = formatChatTimestamp(timestamp);
@@ -1394,7 +1505,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       <br><small style="opacity: 0.7;">${time}</small>
     `;
   } else {
-    const titleDefinition = TITLES.find(titleOption => titleOption.id === title);
+    const titleDefinition = TITLES.find(titleOption => titleOption.id === title || titleOption.name === title);
     let displayTitle = titleDefinition?.name || title;
     let displayColor = titleDefinition?.color || (/^#[0-9a-f]{6}$/i.test(titleColor || '') ? titleColor : '#7dd3fc');
     let textShadow = `0 0 8px ${displayColor}`;
@@ -1402,7 +1513,9 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       displayColor = '#ffffff';
       textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
     }
-    const titleLabel = displayTitle ? `<span class="chat-title-badge" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
+    const titleRequirement = titleDefinition?.description || '';
+    const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year'].includes(titleDefinition.id);
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
@@ -1423,10 +1536,27 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   msgEl.querySelector('.chat-reply-button')?.addEventListener('click', () => {
     window.setChatReplyTarget?.({ username, message });
   });
+  if (currentUser?.is_admin || currentUser?.titles?.includes('admin')) {
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'chat-delete-button';
+    deleteButton.type = 'button';
+    deleteButton.textContent = '×';
+    deleteButton.title = 'Delete message';
+    deleteButton.setAttribute('aria-label', 'Delete chat message');
+    deleteButton.addEventListener('click', () => deleteChatMessage(msgEl.dataset.messageId, msgEl));
+    msgEl.appendChild(deleteButton);
+  }
   
   chatMessages.appendChild(msgEl);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   if (isGlobalDrop && announceGlobalDrop) showGlobalDropBanner(username, title, message, titleColor);
+}
+
+async function deleteChatMessage(messageId, element) {
+  if (!messageId) return;
+  const response = await handleAPI(`/api/chat/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
+  if (response.success) element?.remove();
+  else showPopup(response.error || 'Unable to delete that message.', 'error');
 }
 
 function renderGlobalRarityCounts(rarities = []) {
@@ -1670,6 +1800,21 @@ async function loadMiniAdminOverview() {
   if (stop) stop.disabled = !response.activeEvent || response.activeEvent.initiatedBy !== currentUser.username;
 }
 
+function updateGlobalDropPreview() {
+  const preview = document.getElementById('global-drop-preview');
+  const type = document.getElementById('global-drop-type')?.value;
+  const reward = document.getElementById('global-drop-key')?.selectedOptions?.[0]?.textContent || 'reward';
+  const amount = Number(document.querySelector('#global-drop-form [name="amount"]')?.value) || 1;
+  if (!preview) return;
+  const label = type === 'rarity' ? 'Rarity to every account' : type === 'potion' ? 'Potion to every account' : 'Item to every account';
+  preview.replaceChildren();
+  const title = document.createElement('strong');
+  title.textContent = `${amount} × ${reward}`;
+  const detail = document.createElement('span');
+  detail.textContent = `${label} · announcement appears gold in Global Drops chat`;
+  preview.append(title, detail);
+}
+
 function renderGlobalDropOptions() {
   const typeSelect = document.getElementById('global-drop-type');
   const keySelect = document.getElementById('global-drop-key');
@@ -1691,11 +1836,14 @@ function renderGlobalDropOptions() {
     seen.add(option.key);
     return true;
   }).map(option => `<option value="${escapeHtml(option.key)}">${escapeHtml(option.name)}</option>`).join('');
+  updateGlobalDropPreview();
 }
 
 function setupAdminTools() {
   const typeSelect = document.getElementById('global-drop-type');
   typeSelect?.addEventListener('change', renderGlobalDropOptions);
+  document.getElementById('global-drop-key')?.addEventListener('change', updateGlobalDropPreview);
+  document.querySelector('#global-drop-form [name="amount"]')?.addEventListener('input', updateGlobalDropPreview);
   renderGlobalDropOptions();
   document.getElementById('global-drop-form')?.addEventListener('submit', async event => {
     event.preventDefault();
@@ -1709,6 +1857,19 @@ function setupAdminTools() {
       return;
     }
     showPopup(`${response.amount} × ${response.name} granted to ${response.count} accounts.`);
+  });
+  document.querySelectorAll('[data-owner-command]').forEach(button => {
+    button.addEventListener('click', async () => {
+      if (!currentUser?.is_admin) {
+        showPopup('Owner Panel access required.', 'error');
+        return;
+      }
+      if (button.dataset.ownerCommand === 'clear-chat' && !confirm('Clear both player and global chat histories?')) return;
+      const response = await handleAPI('/api/admin/owner-command', {
+        method: 'POST', body: { command: button.dataset.ownerCommand }
+      });
+      showPopup(response.success ? response.message : response.error || 'Owner command failed.', response.success ? 'success' : 'error');
+    });
   });
   document.querySelectorAll('[data-mini-event]').forEach(button => button.addEventListener('click', async () => {
     const response = await handleAPI('/api/mini-admin/event', {
@@ -1954,6 +2115,7 @@ async function handleLogin(e) {
       console.log('✅ Logged in as:', currentUser.username);
       window.refreshMultiplayerSession?.();
       window.loadChatFallback?.();
+      window.refreshInboxBadge?.();
       showPopup('Welcome back, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
@@ -2012,6 +2174,7 @@ async function handleRegister(e) {
       currentUser = data.user;
       window.refreshMultiplayerSession?.();
       window.loadChatFallback?.();
+      window.refreshInboxBadge?.();
       showPopup('Account created! Welcome, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
@@ -2043,6 +2206,7 @@ async function loadSession() {
     currentUser = response.user;
     window.refreshMultiplayerSession?.();
     window.loadChatFallback?.();
+    window.refreshInboxBadge?.();
     showGamePage();
     updateUI(response.user);
     window.updatePlayerActivity?.('At the RNG console');
@@ -2078,6 +2242,29 @@ function formatRollChance(chance) {
   const value = Number(chance);
   if (!Number.isFinite(value) || value <= 0) return 'Chance: —';
   return `Chance: ${value < 0.001 ? '<0.001' : value.toFixed(value < 0.01 ? 4 : 3)}%`;
+}
+
+function animateRarityAlias(element, rarity, suffix = '') {
+  if (!rarity?.glitchName) return;
+  const run = (Number(element.dataset.glitchRun) || 0) + 1;
+  element.dataset.glitchRun = String(run);
+  element.classList.add('identity-glitch');
+
+  const typeName = (name, done) => {
+    let index = 0;
+    const typeNext = () => {
+      if (Number(element.dataset.glitchRun) !== run) return;
+      index += 1;
+      element.textContent = `${name.slice(0, index)}${suffix}`;
+      if (index < name.length) setTimeout(typeNext, 48);
+      else if (done) setTimeout(done, 650);
+      else element.classList.remove('identity-glitch');
+    };
+    element.textContent = '';
+    typeNext();
+  };
+
+  typeName(rarity.glitchName, () => typeName(rarity.name));
 }
 
 async function animateRarityRoll(rollDisplay, result) {
@@ -2176,6 +2363,7 @@ function setupRollButton() {
     else rollDisplay.style.removeProperty('--roll-glow');
     const serialDisplay = result.serialNumber ? ` · Serial #${String(result.serialNumber).padStart(6, '0')}` : '';
     rollDisplay.textContent = `${result.name}${serialDisplay}${multiplierDisplay}${luckDisplay}`;
+    animateRarityAlias(rollDisplay, result, `${serialDisplay}${multiplierDisplay}${luckDisplay}`);
     if (chanceDisplay) chanceDisplay.textContent = formatRollChance(result.rollChance);
     
     rewardDisplay.textContent = `🪙 Reward: ${formatCoins(result.reward)} coins`;
@@ -2190,7 +2378,6 @@ function setupRollButton() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-  applyHalloweenTheme();
   // Show landing page and start tagline
   showPage('landing');
   
@@ -2227,6 +2414,43 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       document.getElementById('send-chat')?.click();
     }
+  });
+
+  document.querySelectorAll('[data-inbox-folder]').forEach(button => {
+    button.addEventListener('click', () => loadInbox(button.dataset.inboxFolder));
+  });
+  document.querySelector('[data-tab="inbox"]')?.addEventListener('click', () => loadInbox('inbox'));
+  const inboxGiftType = document.getElementById('inbox-gift-type');
+  inboxGiftType?.addEventListener('change', () => renderInboxGiftOptions(inboxGiftType.value));
+  renderInboxGiftOptions(inboxGiftType?.value || 'none');
+  document.getElementById('inbox-compose-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = document.getElementById('inbox-send-button');
+    const formData = new FormData(form);
+    const giftType = String(formData.get('giftType') || 'none');
+    setLoading(button, true, 'Sending...');
+    const response = await handleAPI('/api/inbox', {
+      method: 'POST',
+      body: {
+        recipient: formData.get('recipient'),
+        message: formData.get('message'),
+        giftType,
+        giftKey: formData.get('giftKey'),
+        giftAmount: giftType === 'none' ? 0 : Number(formData.get('giftAmount'))
+      }
+    });
+    if (response.success) {
+      currentUser = response.user || currentUser;
+      if (currentUser) updateUI(currentUser);
+      form.reset();
+      renderInboxGiftOptions('none');
+      showPopup(`Message sent to ${response.message.recipient}.`);
+      await loadInbox('sent');
+    } else {
+      showPopup(response.error || 'Unable to send your message.', 'error');
+    }
+    setLoading(button, false);
   });
 
   function activateDefaultTabs() {
