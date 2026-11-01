@@ -50,6 +50,7 @@ const POTIONS = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effect: 'luck', effectKey: 'luck' },
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effect: 'luck', effectKey: 'luck' },
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effect: 'luck', effectKey: 'luck', craftOnly: true },
+  coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effect: 'coins', effectKey: 'coin' },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
 };
 
@@ -112,7 +113,7 @@ let gameState = {
   autoRollEnabled: false,
   userTitles: [],
   activeTitle: null,
-  potionInventory: { luck: 0, 'luck-ii': 0, speed: 0 },
+  potionInventory: { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 },
   itemInventory: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
 };
 
@@ -239,7 +240,7 @@ function updatePotionDisplay() {
       return;
     }
     const div = document.createElement('div');
-    const effectName = type === 'luck' ? 'Luck' : type === 'speed' ? 'Speed' : type;
+    const effectName = type === 'luck' ? 'Luck' : type === 'coin' ? 'Coins' : type === 'speed' ? 'Speed' : type;
     div.textContent = `${effectName} effect · ${Number(effect.multiplier) || 1}× · ${remaining}s`;
     container.appendChild(div);
   });
@@ -373,7 +374,7 @@ function renderShop() {
     Object.entries(POTIONS).filter(([, potion]) => !potion.craftOnly).forEach(([key, potion]) => {
       const card = document.createElement('div');
       card.className = 'potion-card';
-      const emoji = key.startsWith('luck') ? '🍀' : '⚡';
+      const emoji = key.startsWith('luck') ? '🍀' : key === 'coin' ? '🪙' : '⚡';
       card.innerHTML = `
         <h4>${emoji} ${potion.name}</h4>
         <p>${potion.multiplier}x ${potion.effect} • ${potion.duration}s duration</p>
@@ -418,7 +419,7 @@ function buyPotion(potionType, quantity = 1) {
   handleAPI('/api/buy-potion', { method: 'POST', body: { potionType, quantity } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
+      gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 };
       updateUI(currentUser);
       showPopup(`Purchased ${quantity} × ${potion.name}! Added to inventory.`);
     } else {
@@ -436,9 +437,9 @@ function usePotion(potionType) {
   handleAPI('/api/use-potion', { method: 'POST', body: { potionType } }).then(response => {
     if (response.success) {
       currentUser = response.user;
-      gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
+      gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 };
       updateUI(currentUser);
-      showPopup(`${POTIONS[potionType].name} used. Matching luck and time effects stack.`);
+      showPopup(`${POTIONS[potionType].name} used. Matching ${POTIONS[potionType].effect} effects stack.`);
     } else {
       showPopup(response.error || 'Unable to use potion', 'error');
     }
@@ -510,6 +511,7 @@ function renderTitles() {
 
 let activeInboxFolder = 'inbox';
 let inboxRecipientsLoaded = false;
+let inboxLoadVersion = 0;
 
 function setInboxUnreadCount(count) {
   const badge = document.getElementById('inbox-tab-badge');
@@ -586,7 +588,10 @@ function renderInboxGiftOptions(giftType) {
 
 async function loadInbox(folder = activeInboxFolder) {
   activeInboxFolder = folder === 'sent' ? 'sent' : 'inbox';
-  const response = await handleAPI(`/api/inbox?folder=${activeInboxFolder}`);
+  const requestedFolder = activeInboxFolder;
+  const loadVersion = ++inboxLoadVersion;
+  const response = await handleAPI(`/api/inbox?folder=${requestedFolder}`);
+  if (loadVersion !== inboxLoadVersion || requestedFolder !== activeInboxFolder) return;
   if (!response.success) {
     if (response.status !== 401) showPopup(response.error || 'Unable to load inbox.', 'error');
     return;
@@ -601,9 +606,11 @@ async function loadInbox(folder = activeInboxFolder) {
 
   const list = document.getElementById('inbox-list');
   if (!list) return;
-  list.innerHTML = '';
   if (!response.messages.length) {
-    list.innerHTML = `<div class="inbox-empty">${activeInboxFolder === 'sent' ? 'No sent messages yet.' : 'Your inbox is empty.'}</div>`;
+    const emptyState = document.createElement('div');
+    emptyState.className = 'inbox-empty';
+    emptyState.textContent = requestedFolder === 'sent' ? 'No sent messages yet.' : 'Your inbox is empty.';
+    list.replaceChildren(emptyState);
     return;
   }
 
@@ -619,10 +626,12 @@ async function loadInbox(folder = activeInboxFolder) {
     'the-ceo': 'The CEO', 'mrs-joseph-mcglashan': 'Mrs Joseph Mcglashan', 'fisher-baxter': 'Fisher Baxter',
     sharky: 'Sharky', 'lord-crinkle': 'Lord Crinkle', 'mr-butler': 'Mr Butler'
   };
+  const messageCards = document.createDocumentFragment();
   response.messages.forEach(message => {
     const card = document.createElement('article');
     card.className = 'inbox-message-card';
-    const otherLabel = activeInboxFolder === 'sent' ? `To ${message.otherUser}` : `From ${message.otherUser}`;
+    const otherUser = message.otherUser || (requestedFolder === 'sent' ? message.recipient : message.sender);
+    const otherLabel = requestedFolder === 'sent' ? `To ${otherUser}` : `From ${otherUser}`;
     const date = formatChatTimestamp(message.createdAt);
     const hasGift = message.giftType && Number(message.giftAmount) > 0;
     const giftName = message.giftType === 'coins'
@@ -639,7 +648,7 @@ async function loadInbox(folder = activeInboxFolder) {
       ${message.message ? `<div class="inbox-message-copy">${escapeHtml(message.message)}</div>` : ''}
       ${hasGift ? `<div class="inbox-gift-note">Gift ${message.claimedAt ? 'claimed' : 'waiting to be claimed'}: ${escapeHtml(giftName)}</div>` : ''}
     `;
-    if (hasGift && !message.claimedAt && activeInboxFolder === 'inbox') {
+    if (hasGift && !message.claimedAt && requestedFolder === 'inbox') {
       const claimButton = document.createElement('button');
       claimButton.className = 'btn inbox-claim-button';
       claimButton.type = 'button';
@@ -647,8 +656,9 @@ async function loadInbox(folder = activeInboxFolder) {
       claimButton.addEventListener('click', () => claimInboxGift(message.id, claimButton));
       card.appendChild(claimButton);
     }
-    list.appendChild(card);
+    messageCards.appendChild(card);
   });
+  list.replaceChildren(messageCards);
 }
 
 async function claimInboxGift(messageId, button) {
@@ -662,7 +672,10 @@ async function claimInboxGift(messageId, button) {
   currentUser = response.user || currentUser;
   if (currentUser) updateUI(currentUser);
   showPopup('Gift claimed and added to your inventory.');
-  await loadInbox(activeInboxFolder);
+  const card = button.closest('.inbox-message-card');
+  const giftNote = card?.querySelector('.inbox-gift-note');
+  if (giftNote) giftNote.textContent = giftNote.textContent.replace('Gift waiting to be claimed:', 'Gift claimed:');
+  button.remove();
 }
 
 async function refreshInboxBadge() {
@@ -1460,7 +1473,7 @@ function updateUI(user) {
   
   // Load game state from user
   gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
-  gameState.potionInventory = user.potions || { luck: 0, 'luck-ii': 0, speed: 0 };
+  gameState.potionInventory = user.potions || { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 };
   gameState.userTitles = user.titles || [];
   gameState.activeTitle = user.active_title || null;
   gameState.activeEffects = user.active_effects || {};
