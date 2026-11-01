@@ -523,13 +523,17 @@ function setInboxUnreadCount(count) {
 }
 
 async function loadInboxRecipients() {
-  const list = document.getElementById('inbox-player-options');
-  if (!list || inboxRecipientsLoaded) return;
+  const select = document.getElementById('inbox-recipient');
+  if (!select || inboxRecipientsLoaded) return;
   const response = await handleAPI('/api/inbox/recipients');
   if (!response.success) return;
-  list.replaceChildren(...response.usernames.map(username => {
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select a player';
+  select.replaceChildren(placeholder, ...response.usernames.map(username => {
     const option = document.createElement('option');
     option.value = username;
+    option.textContent = username;
     return option;
   }));
   inboxRecipientsLoaded = true;
@@ -606,7 +610,14 @@ async function loadInbox(folder = activeInboxFolder) {
   const giftNames = {
     fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock',
     ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker',
-    empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest'
+    empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest',
+    '17-news': '17 News', '17-news-reborn': '17 News Reborn', 'the-daily-ellerslilian': 'The Daily Ellerslilian',
+    'daniel-poole': 'Daniel Poole', 'dominik-procter': 'Dominik Procter', 'gabe-muir': 'Gabe Muir',
+    'inesh-jayasinghe': 'Inesh Jayasinghe', 'leo-thacker': 'Leo Thacker', 'sam-whitworth': 'Sam Whitworth',
+    'john-tan': 'John Tan', 'rison-pandigama': 'Rison Pandigama', 'atticus-lok': 'Atticus Lok',
+    'baxter-walter': 'Baxter Walter', 'mr-fermanski': 'Mr Fernanski', 'ellerslie-schoolcast': 'Ellerslie Schoolcast',
+    'the-ceo': 'The CEO', 'mrs-joseph-mcglashan': 'Mrs Joseph Mcglashan', 'fisher-baxter': 'Fisher Baxter',
+    sharky: 'Sharky', 'lord-crinkle': 'Lord Crinkle', 'mr-butler': 'Mr Butler'
   };
   response.messages.forEach(message => {
     const card = document.createElement('article');
@@ -620,14 +631,38 @@ async function loadInbox(folder = activeInboxFolder) {
         ? `${message.giftAmount} × ${giftNames[message.giftKey] || message.giftKey}`
         : message.giftType === 'potion'
           ? `${message.giftAmount} × ${POTIONS[message.giftKey]?.name || message.giftKey}`
+          : message.giftType === 'rarity'
+            ? `${message.giftAmount} × ${giftNames[message.giftKey] || message.giftKey}`
           : '';
     card.innerHTML = `
       <div class="inbox-message-head"><strong>${escapeHtml(otherLabel)}</strong><time>${escapeHtml(date)}</time></div>
       ${message.message ? `<div class="inbox-message-copy">${escapeHtml(message.message)}</div>` : ''}
-      ${hasGift ? `<div class="inbox-gift-note">Gift sent: ${escapeHtml(giftName)}</div>` : ''}
+      ${hasGift ? `<div class="inbox-gift-note">Gift ${message.claimedAt ? 'claimed' : 'waiting to be claimed'}: ${escapeHtml(giftName)}</div>` : ''}
     `;
+    if (hasGift && !message.claimedAt && activeInboxFolder === 'inbox') {
+      const claimButton = document.createElement('button');
+      claimButton.className = 'btn inbox-claim-button';
+      claimButton.type = 'button';
+      claimButton.textContent = 'Claim gift';
+      claimButton.addEventListener('click', () => claimInboxGift(message.id, claimButton));
+      card.appendChild(claimButton);
+    }
     list.appendChild(card);
   });
+}
+
+async function claimInboxGift(messageId, button) {
+  setLoading(button, true, 'Claiming...');
+  const response = await handleAPI(`/api/inbox/${encodeURIComponent(messageId)}/claim`, { method: 'POST' });
+  if (!response.success) {
+    showPopup(response.error || 'Unable to claim this gift.', 'error');
+    setLoading(button, false);
+    return;
+  }
+  currentUser = response.user || currentUser;
+  if (currentUser) updateUI(currentUser);
+  showPopup('Gift claimed and added to your inventory.');
+  await loadInbox(activeInboxFolder);
 }
 
 async function refreshInboxBadge() {
@@ -1296,8 +1331,8 @@ function renderInventory(user) {
           <span class="rarity-reward">🪙 ${formatCoins(rarity.reward)} per drop</span>
           ${serialLabel}
         `;
-        animateRarityAlias(card.querySelector('.glitch-rarity-name'), rarity, '', true);
         rarGrid.appendChild(card);
+        animateRarityAlias(card.querySelector('.glitch-rarity-name'), rarity, '', true);
       });
     }
   }
@@ -1384,8 +1419,8 @@ function renderRarityCatalog() {
       if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
       const rarityTag = rarity.diveOnly ? ' SEA ONLY' : rarity.halloweenOnly ? ' HALLOWEEN ONLY' : '';
       row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong><span class="glitch-rarity-name">${escapeHtml(rarity.name)}</span>${rarityTag ? `<small>${rarityTag}</small>` : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
-      animateRarityAlias(row.querySelector('.glitch-rarity-name'), rarity, '', true);
       list.appendChild(row);
+      animateRarityAlias(row.querySelector('.glitch-rarity-name'), rarity, '', true);
     });
   };
   const normalRarities = [...rarityOptions.filter(rarity => !rarity.halloweenOnly), ...globalOptions, ...diveGlobalOptions.filter(rarity => rarity.isGlobal)];
@@ -1892,13 +1927,13 @@ function setupAdminTools() {
     const fields = new FormData(event.currentTarget);
     const response = await handleAPI('/api/admin/global-drop', {
       method: 'POST',
-      body: { type: fields.get('type'), key: fields.get('key'), amount: Number(fields.get('amount')) }
+      body: { type: fields.get('type'), key: fields.get('key'), amount: Number(fields.get('amount')), message: fields.get('message') }
     });
     if (!response.success) {
       showPopup(response.error || 'Unable to send the global drop.', 'error');
       return;
     }
-    showPopup(`${response.amount} × ${response.name} granted to ${response.count} accounts.`);
+    showPopup(`${response.amount} × ${response.name} sent to ${response.count} inboxes; players must claim it.`);
   });
   document.querySelectorAll('[data-owner-command]').forEach(button => {
     button.addEventListener('click', async () => {
