@@ -84,7 +84,6 @@ const ROTATING_SHOP_ITEMS = [
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_STACKED_EFFECT_MULTIPLIER = 5;
-const MAX_TOTAL_LUCK_MULTIPLIER = 100;
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
@@ -174,6 +173,7 @@ const POTION_CATALOG = {
   luck: { name: 'Luck Potion I', cost: 5000, multiplier: 2, duration: 120, effectKey: 'luck', effect: 'luck' },
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effectKey: 'luck', effect: 'luck' },
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effectKey: 'luck', effect: 'luck', craftOnly: true },
+  coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effectKey: 'coin', effect: 'coins' },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effectKey: 'speed', effect: 'speed' },
 };
 const activeDiveSessions = new Map();
@@ -296,9 +296,12 @@ function setUserActiveEffect(username, effectType, data) {
   const now = Date.now();
   const current = existing[effectType]?.endTime > now ? existing[effectType] : null;
   const remainingMs = current ? current.endTime - now : 0;
+  const stackedMultiplier = Math.max(1, Number(current?.multiplier) || 1) * Math.max(1, Number(data.multiplier) || 1);
   existing[effectType] = {
     ...data,
-    multiplier: Math.min(MAX_STACKED_EFFECT_MULTIPLIER, Math.max(1, Number(current?.multiplier) || 1) * Math.max(1, Number(data.multiplier) || 1)),
+    multiplier: effectType === 'luck' || effectType === 'deep-luck'
+      ? stackedMultiplier
+      : Math.min(MAX_STACKED_EFFECT_MULTIPLIER, stackedMultiplier),
     endTime: now + remainingMs + Math.max(0, Number(data.endTime) - now)
   };
   activeEffectsStore[key] = existing;
@@ -312,10 +315,10 @@ function getActiveEffectMultiplier(username, effectType) {
 
 function getLuckMultiplier(username, dimension = null) {
   const eventLuckMultiplier = getActiveGameEvent()?.luckMultiplier || 1;
-  return Math.min(MAX_TOTAL_LUCK_MULTIPLIER, getActiveEffectMultiplier(username, 'luck')
+  return getActiveEffectMultiplier(username, 'luck')
     * getActiveEffectMultiplier(username, 'deep-luck')
     * (dimension === 'deep-sea' ? 4 : 1)
-    * eventLuckMultiplier);
+    * eventLuckMultiplier;
 }
 
 function computeSpinMultiplier() {
@@ -323,7 +326,10 @@ function computeSpinMultiplier() {
 }
 
 function selectWeightedOption(options, luckMultiplier = 1) {
-  const weightFor = option => option.chance * (option.chance < 20 ? luckMultiplier : 1);
+  const normalizedLuckMultiplier = Math.max(1, Number(luckMultiplier) || 1);
+  const weightFor = option => option.chance < 20
+    ? option.chance
+    : option.chance / normalizedLuckMultiplier;
   const totalWeight = options.reduce((total, option) => total + weightFor(option), 0);
   const roll = Math.random() * totalWeight;
   let cursor = 0;
@@ -405,7 +411,7 @@ async function findUser(username) {
     if (!result.rows.length) return null;
     const user = result.rows[0];
     const inventory = normalizeInventory(user.inventory);
-    const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
+    const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
     const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
     const titles = getUnlockedTitles({ ...user, inventory });
     return {
@@ -436,7 +442,7 @@ async function findUser(username) {
     ...stored,
     inventory: normalizeInventory(stored.inventory),
     achievements: normalizeList(stored.achievements),
-    potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, speed: 0 }),
+    potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 }),
     items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
     titles: getUnlockedTitles(stored),
     redeemed_codes: normalizeList(stored.redeemed_codes),
@@ -465,7 +471,7 @@ async function saveUser(user) {
         user.spins,
         JSON.stringify(user.inventory),
         JSON.stringify(user.achievements),
-        JSON.stringify(user.potions || { luck: 0, 'luck-ii': 0, speed: 0 }),
+        JSON.stringify(user.potions || { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 }),
         JSON.stringify(user.items || { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
         JSON.stringify(user.titles || []),
         JSON.stringify(user.redeemed_codes || []),
@@ -1165,7 +1171,7 @@ app.post('/api/register', async (req, res) => {
     spins: 0,
     inventory: { rarities: {} },
     achievements: [],
-    potions: { luck: 0, 'luck-ii': 0, speed: 0 },
+    potions: { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 },
     items: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 },
     titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
     portal_unlocked: false,
@@ -1334,7 +1340,7 @@ app.post('/api/spin', async (req, res) => {
   const multiplier = computeSpinMultiplier() * (event?.coinMultiplier || 1);
   const rawReward = result.reward;
   const eventBonus = event?.bonusCoins || 0;
-  const finalReward = Math.round(rawReward * multiplier) + eventBonus;
+  const finalReward = Math.round((Math.round(rawReward * multiplier) + eventBonus) * getActiveEffectMultiplier(req.session.username, 'coin'));
 
   const newSpins = (Number(user.spins) || 0) + 1;
   const newCoins = (Number(user.coins) || 0) + finalReward;
@@ -1810,9 +1816,9 @@ app.post('/api/sea/dive/collect', async (req, res) => {
   const result = { ...selection.result, rollChance: selection.rollChance };
   const inventory = normalizeInventory(user.inventory);
   const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 });
-  const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
+  const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
   if (result.itemType === 'potion') {
-    const potionType = ['luck', 'luck-ii', 'speed'][Math.floor(Math.random() * 3)];
+    const potionType = ['luck', 'luck-ii', 'coin', 'speed'][Math.floor(Math.random() * 4)];
     potions[potionType] = (Number(potions[potionType]) || 0) + 1;
     result.name = `${POTION_CATALOG[potionType].name} Cache`;
     result.potionType = potionType;
@@ -1823,7 +1829,7 @@ app.post('/api/sea/dive/collect', async (req, res) => {
   }
   result.serialNumber = await assignHalloweenSerial(result.key, inventory);
   const event = getActiveGameEvent();
-  const reward = Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0);
+  const reward = Math.round((Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0)) * getActiveEffectMultiplier(username, 'coin'));
   const coins = Number(user.coins || 0) + reward;
   result.reward = reward;
   const titles = getUnlockedTitles({ ...user, inventory, items, coins });
@@ -1941,7 +1947,7 @@ app.post('/api/admin/users/:username', async (req, res) => {
         }
         updates = { coins: quantity };
       } else if (type === 'potion' && Object.prototype.hasOwnProperty.call(POTION_CATALOG, potion) && quantity >= 1 && quantity <= 99) {
-        const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, speed: 0 });
+        const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
         potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
         updates = { potions: JSON.stringify(potions) };
       } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
@@ -2311,20 +2317,33 @@ app.get('/api/inbox', async (req, res) => {
     let messages;
     let unreadCount = 0;
     if (pool) {
-      if (folder === 'inbox') {
-        const unread = await executeQuery('SELECT COUNT(*)::int AS count FROM inbox_messages WHERE recipient = $1 AND read_at IS NULL', [username]);
-        unreadCount = unread.rows[0].count;
-        if (!previewOnly) {
-          await executeQuery('UPDATE inbox_messages SET read_at = NOW() WHERE recipient = $1 AND read_at IS NULL', [username]);
-        }
-      }
       const ownerColumn = folder === 'sent' ? 'sender' : 'recipient';
       const otherColumn = folder === 'sent' ? 'recipient' : 'sender';
-      const result = previewOnly ? { rows: [] } : await executeQuery(
-        `SELECT id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at, claimed_at
-         FROM inbox_messages WHERE ${ownerColumn} = $1 ORDER BY created_at DESC LIMIT 100`,
-        [username]
-      );
+      let result = { rows: [] };
+      if (folder === 'inbox' && previewOnly) {
+        const unread = await executeQuery('SELECT COUNT(*)::int AS count FROM inbox_messages WHERE recipient = $1 AND read_at IS NULL', [username]);
+        unreadCount = unread.rows[0].count;
+      } else if (folder === 'inbox') {
+        result = await executeQuery(
+          `WITH unread AS (
+             SELECT COUNT(*)::int AS count FROM inbox_messages WHERE recipient = $1 AND read_at IS NULL
+           ), marked AS (
+             UPDATE inbox_messages SET read_at = NOW() WHERE recipient = $1 AND read_at IS NULL RETURNING id
+           )
+           SELECT id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at, claimed_at,
+                  unread.count AS unread_count
+           FROM inbox_messages CROSS JOIN unread
+           WHERE recipient = $1 ORDER BY created_at DESC LIMIT 100`,
+          [username]
+        );
+        unreadCount = Number(result.rows[0]?.unread_count) || 0;
+      } else if (!previewOnly) {
+        result = await executeQuery(
+          `SELECT id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at, claimed_at
+           FROM inbox_messages WHERE ${ownerColumn} = $1 ORDER BY created_at DESC LIMIT 100`,
+          [username]
+        );
+      }
       messages = result.rows.map(row => ({
         id: row.id,
         sender: row.sender,
