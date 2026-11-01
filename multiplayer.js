@@ -67,6 +67,18 @@ function updateTypingIndicator() {
   indicator.classList.remove('hidden');
 }
 
+function showReplyNotification(message) {
+  const currentUsername = window.getCurrentGameUsername?.();
+  if (!currentUsername || !message?.replyTo?.username || message.replyTo.username.toLowerCase() !== currentUsername.toLowerCase()) return;
+  document.querySelector('.reply-notification')?.remove();
+  const notification = document.createElement('aside');
+  notification.className = 'reply-notification';
+  notification.setAttribute('role', 'status');
+  notification.textContent = `${message.username || 'A player'} replied to your message.`;
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 6000);
+}
+
 function setLocalChatTyping(isTyping) {
   if (!socket?.connected) {
     isTyping = false;
@@ -117,7 +129,7 @@ async function loadChatFallback() {
   if (!container) return;
   container.innerHTML = '';
   response.messages.filter(message => !message.isGlobalDrop).forEach((message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null, message.id);
   });
 }
 
@@ -129,7 +141,7 @@ async function loadGlobalChatFallback() {
   if (container) {
     container.innerHTML = '';
     response.messages.forEach(message => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false, null, message.id);
     });
   }
   window.renderGlobalRarityCounts?.(response.rarities || []);
@@ -174,7 +186,7 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.filter(message => !message.isGlobalDrop).forEach((message) => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null, message.id);
     });
   });
 
@@ -183,26 +195,35 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.forEach(message => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false, null, message.id);
     });
   });
 
   socket.on('chat-message', (message) => {
+    showReplyNotification(message);
     if (message.isGlobalDrop) {
       if (!isChatViewOpen('globals')) bumpChatUnread('globals');
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id);
       refreshGlobalRarityCounts();
       return;
     }
     if (!isChatViewOpen('players')) bumpChatUnread('players');
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false, message.replyTo || null);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false, message.replyTo || null, message.id);
   });
 
   socket.on('global-chat-message', message => {
     if (!message) return;
     if (!isChatViewOpen('globals')) bumpChatUnread('globals');
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id);
     refreshGlobalRarityCounts();
+  });
+
+  socket.on('inbox-message', message => {
+    window.handleIncomingInboxMessage?.(message);
+  });
+
+  socket.on('inbox-message', message => {
+    window.handleIncomingInboxMessage?.(message);
   });
 
   socket.on('system-message', (message) => {
@@ -267,6 +288,13 @@ function initMultiplayer() {
       chatTypingTimers.delete(username);
     }
     updateTypingIndicator();
+  });
+
+  socket.on('chat-message-deleted', ({ id } = {}) => {
+    if (!id) return;
+    document.querySelectorAll('.chat-message').forEach(message => {
+      if (message.dataset.messageId === String(id)) message.remove();
+    });
   });
 
   socket.on('disconnect', () => {
