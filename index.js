@@ -69,8 +69,10 @@ if (USE_POSTGRES) {
 
 const inMemoryStore = {
   users: {},
-  chatMessages: []
+  chatMessages: [],
+  inboxMessages: []
 };
+const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
 const ROTATING_SHOP_ITEMS = [
   { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
@@ -83,14 +85,15 @@ const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 2);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
-  { key: '17-news', name: '17 News', chance: 66.13, reward: 150, color: '#0f172a' },
+  { key: '17-news', name: '17 News', chance: 63.59, reward: 150, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
+  { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', chance: 2.5, reward: 800, color: '#a16207' },
   { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450, color: '#166534' },
   { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450, color: '#0d9488' },
   { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450, color: '#115e59' },
   { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550, color: '#7c3aed' },
   { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700, color: '#2dd4bf' },
-  { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700, color: '#f97316' },
+  { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700, color: '#ea580c' },
   { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050, color: '#f87171' },
   { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 1250, color: '#c084fc' },
   { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 1750, color: '#ddd6fe' },
@@ -98,11 +101,13 @@ const CORE_RARITIES = [
   { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 3333, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
   { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 5000, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
   { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' },
-  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', chance: 0.07, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#4ade80' }
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', chance: 0.07, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#4ade80' },
+  { key: 'lord-crinkle', name: 'Lord Crinkle', chance: 0.03, reward: 25000, isGlobal: true, color: '#e11d48', glowColor: '#fda4af' },
+  { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', chance: 0.01, reward: 50000, isGlobal: true, color: '#d946ef', glowColor: '#f0abfc' }
 ];
 const HALLOWEEN_RARITIES = [
-  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 12000, color: '#f97316', glowColor: '#fdba74', halloweenOnly: true, isGlobal: true },
-  { key: 'grim-reaper', name: 'Grim Reaper', chance: 0.01, reward: 50000, color: '#7c3aed', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
+  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 12000, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
+  { key: 'grim-reaper', name: 'Grim Reaper', chance: 0.01, reward: 50000, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
 ];
 const halloweenRaritySerials = new Map();
 const limitedCodeClaims = new Map();
@@ -112,11 +117,15 @@ function isHalloweenUpdateActive(now = Date.now()) {
 }
 
 function getActiveCoreRarities() {
-  return isHalloweenUpdateActive() ? [...CORE_RARITIES, ...HALLOWEEN_RARITIES] : CORE_RARITIES;
+  const halloweenAdjustment = isHalloweenUpdateActive() ? 0.11 : 0;
+  const rarities = CORE_RARITIES.map(rarity => rarity.key === '17-news'
+    ? { ...rarity, chance: rarity.chance - halloweenAdjustment }
+    : rarity);
+  return isHalloweenUpdateActive() ? [...rarities, ...HALLOWEEN_RARITIES] : rarities;
 }
 
 const DIVE_OPTIONS = [
-  ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 64.08 } : rarity),
+  ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 61.04 } : rarity),
   { key: 'treasure-chest', name: 'Treasure Chest', chance: 0.5, reward: 350, isItem: true, color: '#fbbf24' },
   { key: 'potion-cache', name: 'Potion Cache', chance: 1.5, reward: 0, isItem: true, itemType: 'potion', color: '#a3e635' },
   { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true, isGlobal: true },
@@ -124,7 +133,10 @@ const DIVE_OPTIONS = [
 ];
 
 function getActiveDiveOptions() {
-  return isHalloweenUpdateActive() ? [...DIVE_OPTIONS, ...HALLOWEEN_RARITIES] : DIVE_OPTIONS;
+  const options = isHalloweenUpdateActive()
+    ? DIVE_OPTIONS.map(option => option.key === '17-news' ? { ...option, chance: option.chance - 0.11 } : option)
+    : DIVE_OPTIONS;
+  return isHalloweenUpdateActive() ? [...options, ...HALLOWEEN_RARITIES] : options;
 }
 
 async function assignHalloweenSerial(rarityKey, inventory) {
@@ -191,17 +203,20 @@ function getShopRotation(timestamp = Date.now()) {
 const TITLE_CATALOG = {
   owner: { name: 'Owner', color: '#fbbf24' },
   admin: { name: 'Admin', color: '#fb7185' },
-  veteran: { name: 'Veteran', color: '#38bdf8' },
+  veteran: { name: 'Veteran', color: '#2563eb' },
   millionaire: { name: 'Millionaire', color: '#4ade80' },
   portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
   'locked-in': { name: 'Locked In', color: '#22d3ee' },
   'endless-frequency': { name: 'The Endless Frequency', color: '#60a5fa' },
   potato: { name: 'Potato', color: '#8b5a2b' },
   collector: { name: 'Rarity Collector', color: '#34d399' },
-  'global-headliner': { name: 'Global Headliner', color: '#fb7185' },
-  tidekeeper: { name: 'Tidekeeper', color: '#2dd4bf' },
-  blacksmith: { name: 'Blacksmith', color: '#fb923c' },
-  'halloween-2026': { name: 'Halloween 2026', color: '#f97316' }
+  'global-headliner': { name: 'Global Headliner', color: '#ec4899' },
+  tidekeeper: { name: 'Tidekeeper', color: '#14b8a6' },
+  blacksmith: { name: 'Blacksmith', color: '#b45309' },
+  'halloween-2026': { name: 'Halloween 2026', color: '#f97316' },
+  'multi-millionaire': { name: 'Multi-millionaire', color: '#eab308' },
+  willpower: { name: 'Willpower', color: '#818cf8' },
+  'this-is-my-year': { name: 'This is my year!', color: '#fda4af' }
 };
 
 function isAdministratorUser(user) {
@@ -220,9 +235,12 @@ function getUnlockedTitles(user) {
 
   if (isAdministratorUser(user)) titles.add('owner');
   if ((Number(user?.coins) || 0) >= 1000000) titles.add('millionaire');
+  if ((Number(user?.coins) || 0) > 10000000) titles.add('multi-millionaire');
   if (user?.portal_unlocked) titles.add('portalmancer');
   if (spins >= 1000) titles.add('locked-in');
   if (spins >= 5000) titles.add('endless-frequency');
+  if (spins > 10000) titles.add('willpower');
+  if (spins >= 26000) titles.add('this-is-my-year');
   if ((Number(items.old_potato_sticker) || 0) >= 1) titles.add('potato');
   if (rarityTotal >= 10) titles.add('collector');
   if (hasGlobalDrop) titles.add('global-headliner');
@@ -571,6 +589,20 @@ async function ensureDatabase() {
     )
   `);
   await executeQuery(`
+    CREATE TABLE IF NOT EXISTS inbox_messages (
+      id BIGSERIAL PRIMARY KEY,
+      sender TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+      recipient TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+      message TEXT NOT NULL DEFAULT '',
+      gift_type TEXT,
+      gift_key TEXT,
+      gift_amount INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      read_at TIMESTAMPTZ
+    )
+  `);
+  await executeQuery('CREATE INDEX IF NOT EXISTS inbox_messages_recipient_idx ON inbox_messages (recipient, created_at DESC)');
+  await executeQuery(`
     CREATE TABLE IF NOT EXISTS limited_code_redemptions (
       code TEXT NOT NULL,
       username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
@@ -754,12 +786,13 @@ let connectedUsers = 0;
 async function getRecentChatMessages(limit = 60, globalOnly = null) {
   if (pool) {
     const result = await executeQuery(
-      `SELECT username, message, created_at, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message
+      `SELECT id, username, message, created_at, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message
        FROM chat_messages ${globalOnly === null ? '' : 'WHERE is_global = $1'}
        ORDER BY created_at DESC LIMIT $${globalOnly === null ? 1 : 2}`,
       globalOnly === null ? [limit] : [globalOnly, limit]
     );
     return result.rows.reverse().map(row => ({
+      id: row.id,
       username: row.username,
       message: row.message,
       title: row.title,
@@ -801,6 +834,7 @@ function normalizeChatReply(replyTo) {
 
 async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false, replyTo = null) {
   const record = {
+    id: null,
     username: username || 'Guest',
     message,
     title,
@@ -813,11 +847,13 @@ async function saveChatMessage(username, message, title = null, titleColor = '#7
   };
 
   if (pool) {
-    await executeQuery(
-      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    const result = await executeQuery(
+      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
       [record.username, record.message, title, titleColor, system, isGlobalDrop, isAnnouncement, record.replyTo?.username || null, record.replyTo?.message || null]
     );
+    record.id = result.rows[0].id;
   } else {
+    record.id = crypto.randomUUID();
     inMemoryStore.chatMessages.push(record);
     if (inMemoryStore.chatMessages.length > 200) {
       inMemoryStore.chatMessages.shift();
@@ -832,6 +868,49 @@ async function clearChatHistory() {
     await executeQuery('TRUNCATE chat_messages');
   }
   inMemoryStore.chatMessages = [];
+}
+
+function prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, amount) {
+  if (!giftType || giftType === 'none') return { senderUpdates: {}, recipientUpdates: {} };
+  if (giftType === 'coins') {
+    const senderCoins = Number(sender.coins) || 0;
+    const recipientCoins = Number(recipient.coins) || 0;
+    if (senderCoins < amount) return { error: 'You do not have enough coins to send that gift.' };
+    if (recipientCoins + amount > 2147483647) return { error: 'The recipient cannot hold that many coins.' };
+    return { senderUpdates: { coins: senderCoins - amount }, recipientUpdates: { coins: recipientCoins + amount } };
+  }
+
+  if (giftType === 'item' && INBOX_ITEM_GIFTS.has(giftKey)) {
+    const senderItems = normalizeRecord(sender.items);
+    const recipientItems = normalizeRecord(recipient.items);
+    const senderCount = Number(senderItems[giftKey]) || 0;
+    const recipientCount = Number(recipientItems[giftKey]) || 0;
+    if (senderCount < amount) return { error: 'You do not have enough of that item to send.' };
+    if (recipientCount + amount > 999) return { error: 'The recipient cannot hold any more of that item.' };
+    senderItems[giftKey] = senderCount - amount;
+    recipientItems[giftKey] = recipientCount + amount;
+    return {
+      senderUpdates: { items: JSON.stringify(senderItems) },
+      recipientUpdates: { items: JSON.stringify(recipientItems) }
+    };
+  }
+
+  if (giftType === 'potion' && POTION_CATALOG[giftKey]) {
+    const senderPotions = normalizeRecord(sender.potions);
+    const recipientPotions = normalizeRecord(recipient.potions);
+    const senderCount = Number(senderPotions[giftKey]) || 0;
+    const recipientCount = Number(recipientPotions[giftKey]) || 0;
+    if (senderCount < amount) return { error: 'You do not have enough of that potion to send.' };
+    if (recipientCount + amount > 999) return { error: 'The recipient cannot hold any more of that potion.' };
+    senderPotions[giftKey] = senderCount - amount;
+    recipientPotions[giftKey] = recipientCount + amount;
+    return {
+      senderUpdates: { potions: JSON.stringify(senderPotions) },
+      recipientUpdates: { potions: JSON.stringify(recipientPotions) }
+    };
+  }
+
+  return { error: 'Choose a valid gift type and item.' };
 }
 
 async function isAdminSocket(socket) {
@@ -1903,7 +1982,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
     const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : itemNames[key];
     const announcement = `Admin ${admin.username} granted ${amount} × ${name} to every player.`;
-    const chatRecord = await saveChatMessage('System', announcement, 'GLOBAL DROP', '#fbbf24', true, true);
+    const chatRecord = await saveChatMessage('System', announcement, 'OWNER PANEL DROP', '#fbbf24', true, true);
     io.emit('global-chat-message', chatRecord);
     io.emit('global-drop', { type, key, amount, name });
     return res.json({ success: true, count: targets.length, name, amount });
@@ -2114,6 +2193,31 @@ app.post('/api/admin/shutdown', async (req, res) => {
   res.json({ success: true, active: gameShutdown });
 });
 
+app.post('/api/admin/owner-command', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const owner = await findUser(req.session.username);
+    if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+    const command = String(req.body?.command || '');
+    if (command === 'clear-chat') {
+      await clearChatHistory();
+      io.emit('chat-history', []);
+      io.emit('global-chat-history', []);
+      return res.json({ success: true, message: 'Player and global chats cleared.' });
+    }
+    if (command === 'end-active-event') {
+      const event = getActiveGameEvent();
+      if (!event) return res.status(409).json({ success: false, error: 'No event is currently active.' });
+      stopGameEvent(event.eventName);
+      return res.json({ success: true, message: `${event.title} ended.` });
+    }
+    return res.status(400).json({ success: false, error: 'Unknown Owner Panel command.' });
+  } catch (error) {
+    console.error('Owner command error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to run that Owner Panel command.' });
+  }
+});
+
 // Admin broadcast message to all players (short chat message)
 app.post('/api/broadcast', async (req, res) => {
   if (!req.session || !req.session.username) {
@@ -2164,6 +2268,163 @@ app.get('/api/global-chat', async (req, res) => {
   }
 });
 
+app.get('/api/inbox', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required to view your inbox.' });
+  const username = req.session.username.trim();
+  const folder = req.query.folder === 'sent' ? 'sent' : 'inbox';
+  const previewOnly = req.query.preview === '1';
+  try {
+    let messages;
+    let unreadCount = 0;
+    if (pool) {
+      if (folder === 'inbox') {
+        const unread = await executeQuery('SELECT COUNT(*)::int AS count FROM inbox_messages WHERE recipient = $1 AND read_at IS NULL', [username]);
+        unreadCount = unread.rows[0].count;
+        if (!previewOnly) {
+          await executeQuery('UPDATE inbox_messages SET read_at = NOW() WHERE recipient = $1 AND read_at IS NULL', [username]);
+        }
+      }
+      const ownerColumn = folder === 'sent' ? 'sender' : 'recipient';
+      const otherColumn = folder === 'sent' ? 'recipient' : 'sender';
+      const result = previewOnly ? { rows: [] } : await executeQuery(
+        `SELECT id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at
+         FROM inbox_messages WHERE ${ownerColumn} = $1 ORDER BY created_at DESC LIMIT 100`,
+        [username]
+      );
+      messages = result.rows.map(row => ({
+        id: row.id,
+        sender: row.sender,
+        recipient: row.recipient,
+        otherUser: row[otherColumn],
+        message: row.message,
+        giftType: row.gift_type,
+        giftKey: row.gift_key,
+        giftAmount: row.gift_amount,
+        createdAt: row.created_at,
+        readAt: row.read_at
+      }));
+    } else {
+      if (folder === 'inbox') {
+        unreadCount = inMemoryStore.inboxMessages.filter(row => row.recipient === username && !row.readAt).length;
+      }
+      messages = previewOnly ? [] : inMemoryStore.inboxMessages
+        .filter(row => row[folder === 'sent' ? 'sender' : 'recipient'] === username)
+        .slice(-100)
+        .reverse()
+        .map(row => {
+          if (folder === 'inbox') row.readAt ||= new Date().toISOString();
+          return { ...row, otherUser: folder === 'sent' ? row.recipient : row.sender };
+        });
+    }
+    res.json({ success: true, folder, messages, unreadCount });
+  } catch (error) {
+    console.error('Inbox load error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to load your inbox.' });
+  }
+});
+
+app.post('/api/inbox', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required to send a message.' });
+  const senderName = req.session.username.trim();
+  const recipientName = String(req.body?.recipient || '').trim().slice(0, 32);
+  const message = String(req.body?.message || '').trim().slice(0, 500);
+  const rawGiftType = String(req.body?.giftType || 'none').trim();
+  const giftType = rawGiftType === 'none' ? null : rawGiftType;
+  const giftKey = giftType ? String(req.body?.giftKey || '').trim() : null;
+  const giftAmount = giftType ? Number(req.body?.giftAmount) : 0;
+
+  if (!recipientName || normalizeUsername(recipientName) === normalizeUsername(senderName)) {
+    return res.status(400).json({ success: false, error: 'Choose another player as the recipient.' });
+  }
+  if (!message && !giftType) return res.status(400).json({ success: false, error: 'Write a message or include a gift.' });
+  if (giftType && !['coins', 'item', 'potion'].includes(giftType)) {
+    return res.status(400).json({ success: false, error: 'Choose coins, an item, or a potion as the gift.' });
+  }
+  const maxGiftAmount = giftType === 'coins' ? 1000000000 : 99;
+  if (giftType && (!Number.isSafeInteger(giftAmount) || giftAmount < 1 || giftAmount > maxGiftAmount)) {
+    return res.status(400).json({ success: false, error: `Gift quantity must be from 1 to ${maxGiftAmount.toLocaleString()}.` });
+  }
+  if (giftType === 'item' && !INBOX_ITEM_GIFTS.has(giftKey)) {
+    return res.status(400).json({ success: false, error: 'Choose a valid item gift.' });
+  }
+  if (giftType === 'potion' && !POTION_CATALOG[giftKey]) {
+    return res.status(400).json({ success: false, error: 'Choose a valid potion gift.' });
+  }
+
+  try {
+    let record;
+    if (pool) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const accountNames = [senderName, recipientName].sort((left, right) => left.localeCompare(right));
+        const accounts = await client.query(
+          'SELECT * FROM users WHERE username = ANY($1::text[]) ORDER BY username FOR UPDATE',
+          [accountNames]
+        );
+        const sender = accounts.rows.find(user => user.username === senderName);
+        const recipient = accounts.rows.find(user => user.username === recipientName);
+        if (!sender || !recipient) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Recipient not found.' });
+        }
+        const transfer = prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, giftAmount);
+        if (transfer.error) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, error: transfer.error });
+        }
+        const applyUpdates = async (username, updates) => {
+          const keys = Object.keys(updates);
+          if (!keys.length) return;
+          const values = keys.map(key => updates[key]);
+          const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+          await client.query(`UPDATE users SET ${setClause} WHERE username = $${keys.length + 1}`, [...values, username]);
+        };
+        await applyUpdates(senderName, transfer.senderUpdates);
+        await applyUpdates(recipientName, transfer.recipientUpdates);
+        const inserted = await client.query(
+          `INSERT INTO inbox_messages (sender, recipient, message, gift_type, gift_key, gift_amount)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at`,
+          [senderName, recipientName, message, giftType, giftKey, giftAmount]
+        );
+        await client.query('COMMIT');
+        const row = inserted.rows[0];
+        record = {
+          id: row.id, sender: row.sender, recipient: row.recipient, message: row.message,
+          giftType: row.gift_type, giftKey: row.gift_key, giftAmount: row.gift_amount,
+          createdAt: row.created_at, readAt: row.read_at
+        };
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      const sender = await findUser(senderName);
+      const recipient = await findUser(recipientName);
+      if (!sender || !recipient) return res.status(404).json({ success: false, error: 'Recipient not found.' });
+      const transfer = prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, giftAmount);
+      if (transfer.error) return res.status(400).json({ success: false, error: transfer.error });
+      await updateUser(senderName, transfer.senderUpdates);
+      await updateUser(recipientName, transfer.recipientUpdates);
+      record = {
+        id: crypto.randomUUID(), sender: senderName, recipient: recipientName, message,
+        giftType, giftKey, giftAmount, createdAt: new Date().toISOString(), readAt: null
+      };
+      inMemoryStore.inboxMessages.push(record);
+    }
+
+    io.to(`user:${normalizeUsername(recipientName)}`).emit('inbox-message', record);
+    const updatedSender = await findUser(senderName);
+    res.json({ success: true, message: record, user: sanitizeUser(updatedSender) });
+  } catch (error) {
+    console.error('Inbox send error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to send your message.' });
+  }
+});
+
 app.post('/api/chat', async (req, res) => {
   if (!req.session || !req.session.username) {
     return res.status(401).json({ success: false, error: 'Login required to chat.' });
@@ -2181,6 +2442,32 @@ app.post('/api/chat', async (req, res) => {
   } catch (error) {
     console.error('Chat message error:', error);
     res.status(500).json({ success: false, error: 'Unable to send chat message.' });
+  }
+});
+
+app.delete('/api/chat/:messageId', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user || (!user.is_admin && !getUnlockedTitles(user).includes('admin'))) {
+      return res.status(403).json({ success: false, error: 'Admin Panel or Owner Panel access required.' });
+    }
+    const messageId = String(req.params.messageId || '').slice(0, 64);
+    let deleted = false;
+    if (pool) {
+      const result = await executeQuery('DELETE FROM chat_messages WHERE id = $1 RETURNING id', [messageId]);
+      deleted = result.rowCount > 0;
+    } else {
+      const previousLength = inMemoryStore.chatMessages.length;
+      inMemoryStore.chatMessages = inMemoryStore.chatMessages.filter(message => String(message.id) !== messageId);
+      deleted = inMemoryStore.chatMessages.length < previousLength;
+    }
+    if (!deleted) return res.status(404).json({ success: false, error: 'Chat message not found.' });
+    io.emit('chat-message-deleted', { id: messageId });
+    res.json({ success: true, id: messageId });
+  } catch (error) {
+    console.error('Chat message delete error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to delete that chat message.' });
   }
 });
 
