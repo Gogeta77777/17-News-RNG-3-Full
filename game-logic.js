@@ -24,7 +24,10 @@ const rarityOptions = [
   { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
   { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
   { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' },
+  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
+];
+
+const halloweenRarities = [
   { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', reward: 12000, chance: 0.1, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
   { key: 'grim-reaper', name: 'Grim Reaper', reward: 50000, chance: 0.01, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
 ];
@@ -506,6 +509,52 @@ function renderTitles() {
 }
 
 let activeInboxFolder = 'inbox';
+let inboxRecipientsLoaded = false;
+
+function setInboxUnreadCount(count) {
+  const badge = document.getElementById('inbox-tab-badge');
+  const button = document.getElementById('open-inbox-btn');
+  if (!badge || !button) return;
+  const unreadCount = Math.max(0, Number(count) || 0);
+  badge.dataset.count = String(unreadCount);
+  badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  badge.hidden = unreadCount === 0;
+  button.classList.toggle('has-unread', unreadCount > 0);
+}
+
+async function loadInboxRecipients() {
+  const list = document.getElementById('inbox-player-options');
+  if (!list || inboxRecipientsLoaded) return;
+  const response = await handleAPI('/api/inbox/recipients');
+  if (!response.success) return;
+  list.replaceChildren(...response.usernames.map(username => {
+    const option = document.createElement('option');
+    option.value = username;
+    return option;
+  }));
+  inboxRecipientsLoaded = true;
+}
+
+function openInboxPanel() {
+  const inboxPane = document.getElementById('inbox-tab');
+  const button = document.getElementById('open-inbox-btn');
+  if (inboxPane?.classList.contains('active') && !inboxPane.classList.contains('hidden')) {
+    const inventoryTab = document.querySelector('[data-tab="inventory"]');
+    inventoryTab?.click();
+    button?.setAttribute('aria-expanded', 'false');
+    return;
+  }
+  document.querySelectorAll('.content-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(pane => {
+    pane.classList.remove('active');
+    pane.classList.add('hidden');
+  });
+  inboxPane?.classList.remove('hidden');
+  inboxPane?.classList.add('active');
+  button?.setAttribute('aria-expanded', 'true');
+  loadInboxRecipients();
+  loadInbox('inbox');
+}
 
 function renderInboxGiftOptions(giftType) {
   const fieldset = document.getElementById('inbox-gift-fields');
@@ -539,12 +588,7 @@ async function loadInbox(folder = activeInboxFolder) {
     return;
   }
 
-  const badge = document.getElementById('inbox-tab-badge');
-  if (badge && activeInboxFolder === 'inbox') {
-    const unreadCount = 0;
-    badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
-    badge.hidden = unreadCount === 0;
-  }
+  if (activeInboxFolder === 'inbox') setInboxUnreadCount(0);
   document.querySelectorAll('[data-inbox-folder]').forEach(button => {
     const active = button.dataset.inboxFolder === activeInboxFolder;
     button.classList.toggle('active', active);
@@ -589,11 +633,7 @@ async function loadInbox(folder = activeInboxFolder) {
 async function refreshInboxBadge() {
   const response = await handleAPI('/api/inbox?folder=inbox&preview=1');
   if (!response.success) return;
-  const badge = document.getElementById('inbox-tab-badge');
-  if (!badge) return;
-  const unreadCount = Number(response.unreadCount) || 0;
-  badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
-  badge.hidden = unreadCount === 0;
+  setInboxUnreadCount(response.unreadCount);
 }
 
 async function handleIncomingInboxMessage(message) {
@@ -604,11 +644,8 @@ async function handleIncomingInboxMessage(message) {
     return;
   }
   const badge = document.getElementById('inbox-tab-badge');
-  if (badge) {
-    const count = (Number.parseInt(badge.textContent, 10) || 0) + 1;
-    badge.textContent = count > 99 ? '99+' : String(count);
-    badge.hidden = false;
-  }
+  const count = (Number(badge?.dataset.count) || 0) + 1;
+  setInboxUnreadCount(count);
   showPopup(`New inbox message from ${message?.sender || 'a player'}.`);
 }
 
@@ -1240,7 +1277,7 @@ function renderInventory(user) {
       rarGrid.innerHTML = '<div style="grid-column:1/-1;color:rgba(241,245,249,0.7);text-align:center; padding: 20px;">🎲 No rare items yet. Roll to collect!</div>';
     } else {
       Object.entries(rarities).forEach(([key, count]) => {
-        const rarity = [...rarityOptions, ...globalOptions, ...diveGlobalOptions].find(r => r.key === key);
+        const rarity = [...rarityOptions, ...globalOptions, ...diveGlobalOptions, ...halloweenRarities].find(r => r.key === key);
         if (!rarity) return;
         const card = document.createElement('div');
         const rarityColor = ['#0f172a', '#000000', '#1e3a8a'].includes(rarity.color.toLowerCase()) ? '#93c5fd' : rarity.color;
@@ -1253,12 +1290,13 @@ function renderInventory(user) {
           : '';
         card.innerHTML = `
           <div class="rarity-card-head">
-            <h4>${escapeHtml(rarity.name)}</h4>
+            <h4><span class="glitch-rarity-name">${escapeHtml(rarity.name)}</span></h4>
             <span class="rarity-count">x${Number(count) || 0}</span>
           </div>
           <span class="rarity-reward">🪙 ${formatCoins(rarity.reward)} per drop</span>
           ${serialLabel}
         `;
+        animateRarityAlias(card.querySelector('.glitch-rarity-name'), rarity, '', true);
         rarGrid.appendChild(card);
       });
     }
@@ -1345,11 +1383,15 @@ function renderRarityCatalog() {
       row.style.setProperty('--rarity-color', rarityColor);
       if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
       const rarityTag = rarity.diveOnly ? ' SEA ONLY' : rarity.halloweenOnly ? ' HALLOWEEN ONLY' : '';
-      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(rarity.name)}${rarityTag ? `<small>${rarityTag}</small>` : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
+      row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong><span class="glitch-rarity-name">${escapeHtml(rarity.name)}</span>${rarityTag ? `<small>${rarityTag}</small>` : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
+      animateRarityAlias(row.querySelector('.glitch-rarity-name'), rarity, '', true);
       list.appendChild(row);
     });
   };
-  renderRows('rarity-catalog-list', [...rarityOptions, ...globalOptions, ...diveGlobalOptions.filter(rarity => rarity.isGlobal)]);
+  const normalRarities = [...rarityOptions.filter(rarity => !rarity.halloweenOnly), ...globalOptions, ...diveGlobalOptions.filter(rarity => rarity.isGlobal)];
+  renderRows('rarity-catalog-list', normalRarities);
+  const normalRarityCount = document.getElementById('rarity-catalog-count');
+  if (normalRarityCount) normalRarityCount.textContent = `${normalRarities.length} drops · rarest first`;
 
   const secretCatalog = document.getElementById('secret-index');
   const secretSummary = secretCatalog?.querySelector('summary');
@@ -1364,7 +1406,7 @@ function renderRarityCatalog() {
     secretSummary.addEventListener('keydown', blockLockedAccess);
     secretCatalog.dataset.gateBound = 'true';
   }
-  const exclusiveRarities = [...diveGlobalOptions, ...rarityOptions.filter(rarity => rarity.halloweenOnly)];
+  const exclusiveRarities = [...diveGlobalOptions, ...halloweenRarities];
   renderRows('secret-catalog-list', gameState.portalUnlocked ? exclusiveRarities : []);
   if (secretCatalog) secretCatalog.open = false;
   if (secretSummary) {
@@ -1536,7 +1578,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   msgEl.querySelector('.chat-reply-button')?.addEventListener('click', () => {
     window.setChatReplyTarget?.({ username, message });
   });
-  if (currentUser?.is_admin || currentUser?.titles?.includes('admin')) {
+  if (messageId && (currentUser?.is_admin || currentUser?.titles?.includes('admin'))) {
     const deleteButton = document.createElement('button');
     deleteButton.className = 'chat-delete-button';
     deleteButton.type = 'button';
@@ -1820,7 +1862,7 @@ function renderGlobalDropOptions() {
   const keySelect = document.getElementById('global-drop-key');
   if (!typeSelect || !keySelect) return;
   const optionsByType = {
-    rarity: [...rarityOptions, ...globalOptions, ...diveGlobalOptions].filter(option => !option.isItem),
+    rarity: [...rarityOptions, ...globalOptions, ...diveGlobalOptions].filter(option => !option.isItem && !option.halloweenOnly),
     potion: Object.entries(POTIONS).map(([key, potion]) => ({ key, name: potion.name })),
     item: [
       { key: 'fragments', name: 'Portal Fragment' }, { key: 'clovers', name: 'Clover Leaf' },
@@ -2244,8 +2286,9 @@ function formatRollChance(chance) {
   return `Chance: ${value < 0.001 ? '<0.001' : value.toFixed(value < 0.01 ? 4 : 3)}%`;
 }
 
-function animateRarityAlias(element, rarity, suffix = '') {
+function animateRarityAlias(element, rarity, suffix = '', repeat = false) {
   if (!rarity?.glitchName) return;
+  if (!element) return;
   const run = (Number(element.dataset.glitchRun) || 0) + 1;
   element.dataset.glitchRun = String(run);
   element.classList.add('identity-glitch');
@@ -2253,18 +2296,19 @@ function animateRarityAlias(element, rarity, suffix = '') {
   const typeName = (name, done) => {
     let index = 0;
     const typeNext = () => {
-      if (Number(element.dataset.glitchRun) !== run) return;
+      if (Number(element.dataset.glitchRun) !== run || !element.isConnected) return;
       index += 1;
       element.textContent = `${name.slice(0, index)}${suffix}`;
       if (index < name.length) setTimeout(typeNext, 48);
-      else if (done) setTimeout(done, 650);
+      else if (done) setTimeout(done, 900);
       else element.classList.remove('identity-glitch');
     };
     element.textContent = '';
     typeNext();
   };
 
-  typeName(rarity.glitchName, () => typeName(rarity.name));
+  const repeatGlitch = () => typeName(rarity.glitchName, () => typeName(rarity.name, repeat ? () => setTimeout(repeatGlitch, 2800) : null));
+  repeatGlitch();
 }
 
 async function animateRarityRoll(rollDisplay, result) {
@@ -2419,7 +2463,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-inbox-folder]').forEach(button => {
     button.addEventListener('click', () => loadInbox(button.dataset.inboxFolder));
   });
-  document.querySelector('[data-tab="inbox"]')?.addEventListener('click', () => loadInbox('inbox'));
+  document.getElementById('open-inbox-btn')?.addEventListener('click', openInboxPanel);
   const inboxGiftType = document.getElementById('inbox-gift-type');
   inboxGiftType?.addEventListener('change', () => renderInboxGiftOptions(inboxGiftType.value));
   renderInboxGiftOptions(inboxGiftType?.value || 'none');
