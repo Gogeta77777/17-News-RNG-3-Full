@@ -82,7 +82,7 @@ const ROTATING_SHOP_ITEMS = [
   { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
-const HALLOWEEN_END_AT = Date.UTC(2026, 10, 2);
+const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
   { key: '17-news', name: '17 News', chance: 63.59, reward: 150, color: '#0f172a' },
@@ -1393,7 +1393,7 @@ app.post('/api/redeem-code', async (req, res) => {
     'THETHREEQUEL': { title: 'veteran' },
     'UPD3ISHERE!!': { coins: 20000, item: { key: 'ancient_ore', amount: 5 }, rewardMessage: '5 Ancient Ore and 20,000 coins' },
     'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' },
-    'MRFERNANSKIHALLOW2026': { coins: 1000000, item: { key: 'event_controller', amount: 3 }, rewardMessage: '1,000,000 coins and 3 Event Controllers', maxUses: 2, expiresAt: HALLOWEEN_END_AT }
+    'MRFERNANSKIHALLOW2026': { coins: 1000000, item: { key: 'event_controller', amount: 3 }, rewardMessage: '1,000,000 coins and 3 Event Controllers', maxUses: 2 }
   };
 
   const reward = codeRewards[normalizedCode];
@@ -1950,7 +1950,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
     }
 
-    const rarity = [...CORE_RARITIES, ...HALLOWEEN_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem);
+    const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem && !option.halloweenOnly);
     const itemKeys = ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
     if (!((type === 'rarity' && rarity) || (type === 'potion' && POTION_CATALOG[key]) || (type === 'item' && itemKeys.includes(key)))) {
       return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
@@ -2320,6 +2320,20 @@ app.get('/api/inbox', async (req, res) => {
   } catch (error) {
     console.error('Inbox load error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to load your inbox.' });
+  }
+});
+
+app.get('/api/inbox/recipients', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required.' });
+  try {
+    const currentUsername = req.session.username.trim();
+    const usernames = pool
+      ? (await executeQuery('SELECT username FROM users WHERE username <> $1 ORDER BY username LIMIT 500', [currentUsername])).rows.map(row => row.username)
+      : Object.keys(inMemoryStore.users).filter(username => username !== currentUsername).sort((left, right) => left.localeCompare(right)).slice(0, 500);
+    res.json({ success: true, usernames });
+  } catch (error) {
+    console.error('Inbox recipient load error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to load player list.' });
   }
 });
 
