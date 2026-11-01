@@ -72,6 +72,7 @@ const inMemoryStore = {
   chatMessages: [],
   inboxMessages: []
 };
+const inboxClaimsInFlight = new Set();
 const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
 const ROTATING_SHOP_ITEMS = [
@@ -82,6 +83,8 @@ const ROTATING_SHOP_ITEMS = [
   { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
+const MAX_STACKED_EFFECT_MULTIPLIER = 5;
+const MAX_TOTAL_LUCK_MULTIPLIER = 100;
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
@@ -295,7 +298,7 @@ function setUserActiveEffect(username, effectType, data) {
   const remainingMs = current ? current.endTime - now : 0;
   existing[effectType] = {
     ...data,
-    multiplier: Math.max(1, Number(current?.multiplier) || 1) * Math.max(1, Number(data.multiplier) || 1),
+    multiplier: Math.min(MAX_STACKED_EFFECT_MULTIPLIER, Math.max(1, Number(current?.multiplier) || 1) * Math.max(1, Number(data.multiplier) || 1)),
     endTime: now + remainingMs + Math.max(0, Number(data.endTime) - now)
   };
   activeEffectsStore[key] = existing;
@@ -309,10 +312,10 @@ function getActiveEffectMultiplier(username, effectType) {
 
 function getLuckMultiplier(username, dimension = null) {
   const eventLuckMultiplier = getActiveGameEvent()?.luckMultiplier || 1;
-  return getActiveEffectMultiplier(username, 'luck')
+  return Math.min(MAX_TOTAL_LUCK_MULTIPLIER, getActiveEffectMultiplier(username, 'luck')
     * getActiveEffectMultiplier(username, 'deep-luck')
     * (dimension === 'deep-sea' ? 4 : 1)
-    * eventLuckMultiplier;
+    * eventLuckMultiplier);
 }
 
 function computeSpinMultiplier() {
@@ -598,9 +601,13 @@ async function ensureDatabase() {
       gift_key TEXT,
       gift_amount INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      read_at TIMESTAMPTZ
+      read_at TIMESTAMPTZ,
+      claimed_at TIMESTAMPTZ
+      claimed_at TIMESTAMPTZ
     )
+  await executeQuery('ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ');
   `);
+  await executeQuery('ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ');
   await executeQuery('CREATE INDEX IF NOT EXISTS inbox_messages_recipient_idx ON inbox_messages (recipient, created_at DESC)');
   await executeQuery(`
     CREATE TABLE IF NOT EXISTS limited_code_redemptions (
@@ -911,6 +918,38 @@ function prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, amount)
   }
 
   return { error: 'Choose a valid gift type and item.' };
+}
+
+function prepareInboxGiftClaim(recipient, giftType, giftKey, amount) {
+  if (giftType === 'coins') {
+    const coins = Number(recipient.coins) || 0;
+    if (coins + amount > 2147483647) return { error: 'You cannot hold any more coins.' };
+    return { updates: { coins: coins + amount } };
+  }
+  if (giftType === 'item' && INBOX_ITEM_GIFTS.has(giftKey)) {
+    const items = normalizeRecord(recipient.items);
+    const count = Number(items[giftKey]) || 0;
+    if (count + amount > 999) return { error: 'You cannot hold any more of that item.' };
+    items[giftKey] = count + amount;
+    return { updates: { items: JSON.stringify(items) } };
+  }
+  if (giftType === 'potion' && POTION_CATALOG[giftKey]) {
+    const potions = normalizeRecord(recipient.potions);
+    const count = Number(potions[giftKey]) || 0;
+    if (count + amount > 999) return { error: 'You cannot hold any more of that potion.' };
+    potions[giftKey] = count + amount;
+    return { updates: { potions: JSON.stringify(potions) } };
+  }
+  if (giftType === 'rarity') {
+    const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === giftKey && !option.isItem && !option.halloweenOnly);
+    if (!rarity) return { error: 'That rarity can no longer be claimed.' };
+    const inventory = normalizeInventory(recipient.inventory);
+    const count = Number(inventory.rarities[giftKey]) || 0;
+    if (count + amount > 999) return { error: 'You cannot hold any more of that rarity.' };
+    inventory.rarities[giftKey] = count + amount;
+    return { updates: { inventory: JSON.stringify(inventory), titles: JSON.stringify(getUnlockedTitles({ ...recipient, inventory })) } };
+  }
+  return { error: 'This inbox entry has no claimable gift.' };
 }
 
 async function isAdminSocket(socket) {
@@ -1946,6 +1985,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     const type = String(req.body?.type || '');
     const key = String(req.body?.key || '');
     const amount = Number(req.body?.amount);
+    const ownerMessage = String(req.body?.message || '').trim().slice(0, 500);
     if (!Number.isSafeInteger(amount) || amount < 1 || amount > 99) {
       return res.status(400).json({ success: false, error: 'Choose a quantity from 1 to 99.' });
     }
@@ -1956,36 +1996,32 @@ app.post('/api/admin/global-drop', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
     }
 
-    const targets = pool
-      ? (await executeQuery('SELECT * FROM users')).rows
-      : Object.values(inMemoryStore.users);
-    for (const target of targets) {
-      const updates = {};
-      if (type === 'rarity') {
-        const inventory = normalizeInventory(target.inventory);
-        inventory.rarities[key] = Math.min(999, (Number(inventory.rarities[key]) || 0) + amount);
-        updates.inventory = JSON.stringify(inventory);
-        updates.titles = JSON.stringify(getUnlockedTitles({ ...target, inventory }));
-      } else if (type === 'potion') {
-        const potions = normalizeRecord(target.potions);
-        potions[key] = Math.min(999, (Number(potions[key]) || 0) + amount);
-        updates.potions = JSON.stringify(potions);
-      } else {
-        const items = normalizeRecord(target.items);
-        items[key] = Math.min(999, (Number(items[key]) || 0) + amount);
-        updates.items = JSON.stringify(items);
-        updates.titles = JSON.stringify(getUnlockedTitles({ ...target, items }));
-      }
-      await updateUser(target.username, updates);
-    }
+    const recipients = pool
+      ? (await executeQuery('SELECT username FROM users')).rows.map(user => user.username)
+      : Object.keys(inMemoryStore.users);
 
     const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
     const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : itemNames[key];
-    const announcement = `Admin ${admin.username} granted ${amount} × ${name} to every player.`;
-    const chatRecord = await saveChatMessage('System', announcement, 'OWNER PANEL DROP', '#fbbf24', true, true);
+    if (pool) {
+      await executeQuery(
+        `INSERT INTO inbox_messages (sender, recipient, message, gift_type, gift_key, gift_amount)
+         SELECT $1, recipient, $2, $3, $4, $5 FROM unnest($6::text[]) AS targets(recipient)`,
+        [admin.username, ownerMessage, type, key, amount, recipients]
+      );
+    } else {
+      recipients.forEach(recipient => inMemoryStore.inboxMessages.push({
+        id: crypto.randomUUID(), sender: admin.username, recipient, message: ownerMessage,
+        giftType: type, giftKey: key, giftAmount: amount, createdAt: new Date().toISOString(), readAt: null, claimedAt: null
+      }));
+    }
+    recipients.forEach(recipient => io.to(`user:${normalizeUsername(recipient)}`).emit('inbox-message', {
+      sender: admin.username, recipient, message: ownerMessage, giftType: type, giftKey: key, giftAmount: amount
+    }));
+    const announcement = `${admin.username} sent ${amount} × ${name} to every inbox. Claim it there.${ownerMessage ? ` ${ownerMessage}` : ''}`;
+    const chatRecord = await saveChatMessage(admin.username, announcement, 'OWNER PANEL DROP', '#fbbf24', false, true);
     io.emit('global-chat-message', chatRecord);
-    io.emit('global-drop', { type, key, amount, name });
-    return res.json({ success: true, count: targets.length, name, amount });
+    io.emit('global-drop', { type, key, amount, name, pendingClaim: true });
+    return res.json({ success: true, count: recipients.length, name, amount, pendingClaim: true });
   } catch (error) {
     console.error('Global drop error:', error.message || error);
     return res.status(503).json({ success: false, error: 'Unable to grant the global drop.' });
@@ -2287,7 +2323,7 @@ app.get('/api/inbox', async (req, res) => {
       const ownerColumn = folder === 'sent' ? 'sender' : 'recipient';
       const otherColumn = folder === 'sent' ? 'recipient' : 'sender';
       const result = previewOnly ? { rows: [] } : await executeQuery(
-        `SELECT id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at
+        `SELECT id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at, claimed_at
          FROM inbox_messages WHERE ${ownerColumn} = $1 ORDER BY created_at DESC LIMIT 100`,
         [username]
       );
@@ -2301,7 +2337,8 @@ app.get('/api/inbox', async (req, res) => {
         giftKey: row.gift_key,
         giftAmount: row.gift_amount,
         createdAt: row.created_at,
-        readAt: row.read_at
+        readAt: row.read_at,
+        claimedAt: row.claimed_at
       }));
     } else {
       if (folder === 'inbox') {
@@ -2395,11 +2432,10 @@ app.post('/api/inbox', async (req, res) => {
           await client.query(`UPDATE users SET ${setClause} WHERE username = $${keys.length + 1}`, [...values, username]);
         };
         await applyUpdates(senderName, transfer.senderUpdates);
-        await applyUpdates(recipientName, transfer.recipientUpdates);
         const inserted = await client.query(
           `INSERT INTO inbox_messages (sender, recipient, message, gift_type, gift_key, gift_amount)
            VALUES ($1, $2, $3, $4, $5, $6)
-           RETURNING id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at`,
+           RETURNING id, sender, recipient, message, gift_type, gift_key, gift_amount, created_at, read_at, claimed_at`,
           [senderName, recipientName, message, giftType, giftKey, giftAmount]
         );
         await client.query('COMMIT');
@@ -2407,7 +2443,7 @@ app.post('/api/inbox', async (req, res) => {
         record = {
           id: row.id, sender: row.sender, recipient: row.recipient, message: row.message,
           giftType: row.gift_type, giftKey: row.gift_key, giftAmount: row.gift_amount,
-          createdAt: row.created_at, readAt: row.read_at
+          createdAt: row.created_at, readAt: row.read_at, claimedAt: row.claimed_at
         };
       } catch (error) {
         await client.query('ROLLBACK');
@@ -2422,10 +2458,9 @@ app.post('/api/inbox', async (req, res) => {
       const transfer = prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, giftAmount);
       if (transfer.error) return res.status(400).json({ success: false, error: transfer.error });
       await updateUser(senderName, transfer.senderUpdates);
-      await updateUser(recipientName, transfer.recipientUpdates);
       record = {
         id: crypto.randomUUID(), sender: senderName, recipient: recipientName, message,
-        giftType, giftKey, giftAmount, createdAt: new Date().toISOString(), readAt: null
+        giftType, giftKey, giftAmount, createdAt: new Date().toISOString(), readAt: null, claimedAt: null
       };
       inMemoryStore.inboxMessages.push(record);
     }
@@ -2436,6 +2471,78 @@ app.post('/api/inbox', async (req, res) => {
   } catch (error) {
     console.error('Inbox send error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to send your message.' });
+  }
+});
+
+app.post('/api/inbox/:messageId/claim', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required.' });
+  const username = req.session.username.trim();
+  const messageId = String(req.params.messageId || '').slice(0, 64);
+  const claimKey = `${normalizeUsername(username)}:${messageId}`;
+  if (inboxClaimsInFlight.has(claimKey)) return res.status(409).json({ success: false, error: 'This gift is already being claimed.' });
+  inboxClaimsInFlight.add(claimKey);
+
+  try {
+    let updatedUser;
+    if (pool) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const messageResult = await client.query(
+          'SELECT * FROM inbox_messages WHERE id = $1 AND recipient = $2 FOR UPDATE',
+          [messageId, username]
+        );
+        const message = messageResult.rows[0];
+        if (!message) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Inbox message not found.' });
+        }
+        if (message.claimed_at || !message.gift_type) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ success: false, error: 'This inbox entry has no unclaimed gift.' });
+        }
+        const recipientResult = await client.query('SELECT * FROM users WHERE username = $1 FOR UPDATE', [username]);
+        const recipient = recipientResult.rows[0];
+        if (!recipient) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Player not found.' });
+        }
+        const claim = prepareInboxGiftClaim(recipient, message.gift_type, message.gift_key, Number(message.gift_amount));
+        if (claim.error) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ success: false, error: claim.error });
+        }
+        const keys = Object.keys(claim.updates);
+        const values = keys.map(key => claim.updates[key]);
+        const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+        await client.query(`UPDATE users SET ${setClause} WHERE username = $${keys.length + 1}`, [...values, username]);
+        await client.query('UPDATE inbox_messages SET claimed_at = NOW() WHERE id = $1', [message.id]);
+        await client.query('COMMIT');
+        updatedUser = await findUser(username);
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      const message = inMemoryStore.inboxMessages.find(entry => String(entry.id) === messageId && entry.recipient === username);
+      if (!message) return res.status(404).json({ success: false, error: 'Inbox message not found.' });
+      if (message.claimedAt || !message.giftType) return res.status(409).json({ success: false, error: 'This inbox entry has no unclaimed gift.' });
+      const recipient = await findUser(username);
+      if (!recipient) return res.status(404).json({ success: false, error: 'Player not found.' });
+      const claim = prepareInboxGiftClaim(recipient, message.giftType, message.giftKey, Number(message.giftAmount));
+      if (claim.error) return res.status(400).json({ success: false, error: claim.error });
+      message.claimedAt = new Date().toISOString();
+      await updateUser(username, claim.updates);
+      updatedUser = await findUser(username);
+    }
+    res.json({ success: true, user: sanitizeUser(updatedUser) });
+  } catch (error) {
+    console.error('Inbox claim error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to claim this gift.' });
+  } finally {
+    inboxClaimsInFlight.delete(claimKey);
   }
 });
 
