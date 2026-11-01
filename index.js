@@ -603,9 +603,7 @@ async function ensureDatabase() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       read_at TIMESTAMPTZ,
       claimed_at TIMESTAMPTZ
-      claimed_at TIMESTAMPTZ
     )
-  await executeQuery('ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ');
   `);
   await executeQuery('ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ');
   await executeQuery('CREATE INDEX IF NOT EXISTS inbox_messages_recipient_idx ON inbox_messages (recipient, created_at DESC)');
