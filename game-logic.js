@@ -2509,9 +2509,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finnReplies = {
-    flicker: 'I used to call it a bad connection. Then the same star appeared on both sides of the glass, a heartbeat apart. The gateway is showing us an echo of somewhere.',
-    beyond: 'Not another sea or forge. The readings disagree about where it is. One says close enough to touch, another says it has not happened yet.',
-    signal: 'Three notes, a pause, then three more. Every time I answer, it changes one note. It may be listening for a voice that sounds like ours.'
+    flicker: 'You saw it too? It is not a dying light. Every time the gateway skips a beat, one new star appears on my chart. None of them belong to our sky.',
+    beyond: 'The map folds in on itself past the known routes. I can make out a shoreline made of static, and something moving where the horizon should be. I have not crossed.',
+    signal: 'Three notes, a pause, then three more. I answered once. Every screen in this room lit up, even the ones with no power. It is learning how we speak.'
   };
   const finnChat = document.getElementById('finn-chat');
   const finnChoices = document.getElementById('finn-choices');
@@ -2521,7 +2521,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const finnDialog = document.getElementById('finn-dialog-panel');
   const finnOpen = document.getElementById('finn-open');
   const finnClose = document.getElementById('finn-close');
-  const finnOrbs = [...document.querySelectorAll('[data-finn-gaze]')];
+  const finnEnergies = [...document.querySelectorAll('[data-finn-energy]')];
+  const finnFlash = document.getElementById('finn-exit-flash');
   let finnConversationStarted = false;
   const finnQuestionOptions = [
     { key: 'flicker', prompt: 'Why does it stutter?' },
@@ -2539,7 +2540,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetFinnConversation = () => {
     if (!finnChat || !finnChoices || !finnReset) return;
     finnChat.replaceChildren();
-    appendFinnLine('Finn', 'I keep seeing a star where the map says there should be nothing.');
+    appendFinnLine('Lord Finn', 'I keep seeing a star where the map says there should be nothing. Ask me what you like.');
     const questionButtons = finnQuestionOptions.map(({ key, prompt }) => {
       const button = document.createElement('button');
       button.className = 'finn-choice';
@@ -2559,6 +2560,15 @@ document.addEventListener('DOMContentLoaded', () => {
     finnOpen?.focus();
   };
 
+  const sendFinnOut = () => {
+    closeFinnDialog();
+    finnFlash?.classList.remove('active');
+    void finnFlash?.offsetWidth;
+    finnFlash?.classList.add('active');
+    clearTimeout(finnFlash?.animationTimer);
+    if (finnFlash) finnFlash.animationTimer = setTimeout(() => finnFlash.classList.remove('active'), 560);
+  };
+
   finnOpen?.addEventListener('click', () => {
     if (!finnConversationStarted) {
       resetFinnConversation();
@@ -2575,17 +2585,24 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && finnOverlay && !finnOverlay.classList.contains('hidden')) closeFinnDialog();
   });
+  let finnPointerFrame = 0;
   document.addEventListener('pointermove', event => {
-    finnOrbs.forEach(orb => {
-      const bounds = orb.getBoundingClientRect();
-      const deltaX = event.clientX - (bounds.left + bounds.width / 2);
-      const deltaY = event.clientY - (bounds.top + bounds.height / 2);
-      const distance = Math.hypot(deltaX, deltaY) || 1;
-      const maxTravel = orb.classList.contains('finn-orb-large') ? 6 : 2;
-      const scale = Math.min(1, maxTravel / distance);
-      orb.querySelectorAll('.finn-orb-pupil').forEach(pupil => {
-        pupil.style.setProperty('--gaze-x', `${deltaX * scale}px`);
-        pupil.style.setProperty('--gaze-y', `${deltaY * scale}px`);
+    if (finnPointerFrame) return;
+    const pointerX = event.clientX;
+    const pointerY = event.clientY;
+    finnPointerFrame = requestAnimationFrame(() => {
+      finnPointerFrame = 0;
+      finnEnergies.forEach(energy => {
+        const orb = energy.parentElement;
+        if (!orb) return;
+        const bounds = orb.getBoundingClientRect();
+        const deltaX = pointerX - (bounds.left + bounds.width / 2);
+        const deltaY = pointerY - (bounds.top + bounds.height / 2);
+        const distance = Math.hypot(deltaX, deltaY) || 1;
+        const maxTravel = orb.classList.contains('finn-orb-large') ? 10 : 4;
+        const scale = Math.min(1, maxTravel / distance);
+        energy.style.setProperty('--energy-x', `${deltaX * scale}px`);
+        energy.style.setProperty('--energy-y', `${deltaY * scale}px`);
       });
     });
   }, { passive: true });
@@ -2595,17 +2612,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!button) return;
     if (button === finnReset) {
       resetFinnConversation();
+      sendFinnOut();
       return;
     }
     const key = button.dataset.finnQuestion;
     const reply = finnReplies[key];
     if (!reply || !finnChat || !portalContainer) return;
     appendFinnLine('You', button.textContent.trim(), true);
-    appendFinnLine('Finn', reply);
+    appendFinnLine('Lord Finn', reply);
     button.remove();
     finnChat.scrollTop = finnChat.scrollHeight;
     if (!finnChoices.querySelector('[data-finn-question]')) {
-      appendFinnLine('Finn', 'That is all I can make of it for now. Keep an eye on the stars.');
+      appendFinnLine('Lord Finn', 'That is all I can tell you for now. Keep an eye on the stars.');
       finnReset.classList.add('visible');
     }
     portalContainer.classList.remove('finn-speaking');
