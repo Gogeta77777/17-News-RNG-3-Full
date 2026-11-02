@@ -2509,9 +2509,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finnReplies = {
-    flicker: 'You saw it too? It is not a dying light. Every time the gateway skips a beat, one new star appears on my chart. None of them belong to our sky.',
-    beyond: 'The map folds in on itself past the known routes. I can make out a shoreline made of static, and something moving where the horizon should be. I have not crossed.',
-    signal: 'Three notes, a pause, then three more. I answered once. Every screen in this room lit up, even the ones with no power. It is learning how we speak.'
+    flicker: 'The gateway signal is unstable. Each pulse briefly shows a different star chart.',
+    beyond: 'A new route branches past the known realms. I cannot map its endpoint yet.',
+    signal: 'Three pulses, a pause, then three more. The pattern repeats after I answer.'
   };
   const finnChat = document.getElementById('finn-chat');
   const finnChoices = document.getElementById('finn-choices');
@@ -2521,6 +2521,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const finnDialog = document.getElementById('finn-dialog-panel');
   const finnOpen = document.getElementById('finn-open');
   const finnClose = document.getElementById('finn-close');
+  const finnWatchButton = document.getElementById('finn-watch-button');
+  const finnTalkView = document.getElementById('finn-talk-view');
+  const finnWatchView = document.getElementById('finn-watch-view');
   const finnEnergies = [...document.querySelectorAll('[data-finn-energy]')];
   const finnFlash = document.getElementById('finn-exit-flash');
   let finnConversationStarted = false;
@@ -2540,7 +2543,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetFinnConversation = () => {
     if (!finnChat || !finnChoices || !finnReset) return;
     finnChat.replaceChildren();
-    appendFinnLine('Lord Finn', 'I keep seeing a star where the map says there should be nothing. Ask me what you like.');
+    appendFinnLine('Lord Finn', 'The gateway is showing a second signal. Ask me what I know.');
     const questionButtons = finnQuestionOptions.map(({ key, prompt }) => {
       const button = document.createElement('button');
       button.className = 'finn-choice';
@@ -2560,6 +2563,14 @@ document.addEventListener('DOMContentLoaded', () => {
     finnOpen?.focus();
   };
 
+  const showFinnWatch = watching => {
+    finnTalkView?.classList.toggle('hidden', watching);
+    finnWatchView?.classList.toggle('hidden', !watching);
+    finnDialog?.classList.toggle('finn-watching', watching);
+    finnWatchButton?.setAttribute('aria-pressed', String(watching));
+    if (finnWatchButton) finnWatchButton.textContent = watching ? 'Back to chat' : 'Gateway Watch';
+  };
+
   const sendFinnOut = () => {
     closeFinnDialog();
     finnFlash?.classList.remove('active');
@@ -2574,11 +2585,16 @@ document.addEventListener('DOMContentLoaded', () => {
       resetFinnConversation();
       finnConversationStarted = true;
     }
+    showFinnWatch(false);
     finnOverlay?.classList.remove('hidden');
     document.body.classList.add('finn-dialog-open');
     requestAnimationFrame(() => (finnChoices?.querySelector('[data-finn-question]') || finnDialog)?.focus());
   });
   finnClose?.addEventListener('click', closeFinnDialog);
+  finnWatchButton?.addEventListener('click', () => {
+    const watching = finnWatchButton.getAttribute('aria-pressed') !== 'true';
+    showFinnWatch(watching);
+  });
   finnOverlay?.addEventListener('click', event => {
     if (event.target === finnOverlay) closeFinnDialog();
   });
