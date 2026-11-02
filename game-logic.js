@@ -2514,9 +2514,15 @@ document.addEventListener('DOMContentLoaded', () => {
     signal: 'Three notes, a pause, then three more. Every time I answer, it changes one note. It may be listening for a voice that sounds like ours.'
   };
   const finnChat = document.getElementById('finn-chat');
-  const finnChoices = document.querySelector('.finn-choices');
+  const finnChoices = document.getElementById('finn-choices');
   const finnReset = document.getElementById('finn-reset');
   const portalContainer = document.getElementById('portal-container');
+  const finnOverlay = document.getElementById('finn-dialog-overlay');
+  const finnDialog = document.getElementById('finn-dialog-panel');
+  const finnOpen = document.getElementById('finn-open');
+  const finnClose = document.getElementById('finn-close');
+  const finnOrbs = [...document.querySelectorAll('[data-finn-gaze]')];
+  let finnConversationStarted = false;
   const finnQuestionOptions = [
     { key: 'flicker', prompt: 'Why does it stutter?' },
     { key: 'beyond', prompt: 'Where does that path lead?' },
@@ -2544,7 +2550,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     finnReset.classList.remove('visible');
     finnChoices.replaceChildren(...questionButtons, finnReset);
+    questionButtons[0]?.focus();
   };
+
+  const closeFinnDialog = () => {
+    finnOverlay?.classList.add('hidden');
+    document.body.classList.remove('finn-dialog-open');
+    finnOpen?.focus();
+  };
+
+  finnOpen?.addEventListener('click', () => {
+    if (!finnConversationStarted) {
+      resetFinnConversation();
+      finnConversationStarted = true;
+    }
+    finnOverlay?.classList.remove('hidden');
+    document.body.classList.add('finn-dialog-open');
+    requestAnimationFrame(() => (finnChoices?.querySelector('[data-finn-question]') || finnDialog)?.focus());
+  });
+  finnClose?.addEventListener('click', closeFinnDialog);
+  finnOverlay?.addEventListener('click', event => {
+    if (event.target === finnOverlay) closeFinnDialog();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && finnOverlay && !finnOverlay.classList.contains('hidden')) closeFinnDialog();
+  });
+  document.addEventListener('pointermove', event => {
+    finnOrbs.forEach(orb => {
+      const bounds = orb.getBoundingClientRect();
+      const deltaX = event.clientX - (bounds.left + bounds.width / 2);
+      const deltaY = event.clientY - (bounds.top + bounds.height / 2);
+      const distance = Math.hypot(deltaX, deltaY) || 1;
+      const maxTravel = orb.classList.contains('finn-orb-large') ? 6 : 2;
+      const scale = Math.min(1, maxTravel / distance);
+      orb.querySelectorAll('.finn-orb-pupil').forEach(pupil => {
+        pupil.style.setProperty('--gaze-x', `${deltaX * scale}px`);
+        pupil.style.setProperty('--gaze-y', `${deltaY * scale}px`);
+      });
+    });
+  }, { passive: true });
+
   finnChoices?.addEventListener('click', event => {
     const button = event.target.closest('button');
     if (!button) return;
