@@ -3173,20 +3173,6 @@
                         }
                     }
 
-                    .portal-info {
-            flex: 1;
-        }
-
-        .portal-info p {
-            color: var(--light-blue);
-            margin: 8px 0;
-        }
-
-        #portal-status {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--accent-blue);
-        }
 
         /* Deep Sea Dimension */
         .dimension-container {
@@ -4316,14 +4302,20 @@
         }
 
         .realm-art-unknown {
+            position: relative;
+            overflow: hidden;
             display: grid;
             place-items: center;
             background-color: #111827;
             background-image: linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
             background-size: 22px 22px;
         }
+        .realm-fracture { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+        .realm-fracture path { fill: none; stroke: url(#realm-fracture-gradient); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(194, 139, 255, 0.9)); animation: fractureGlint 4.8s ease-in-out infinite; }
+        @keyframes fractureGlint { 0%, 62%, 100% { opacity: 0.48; } 68%, 76% { opacity: 0.95; } }
         .realm-art-unknown .realm-question-logo {
             position: relative;
+            z-index: 2;
             display: grid;
             place-items: center;
             width: 68px;
@@ -4446,7 +4438,16 @@
 
         @keyframes finnOrbFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
         @keyframes finnAura { 0%, 100% { opacity: 0.48; transform: scale(0.98); } 50% { opacity: 0.9; transform: scale(1.05); } }
-        @keyframes finnEnergyOrbit { to { rotate: 360deg; } }
+        @keyframes finnEnergyOrbit {
+            0% { rotate: 0deg; transform: translate(0, 0); }
+            28% { rotate: 102deg; transform: translate(0, 0); }
+            29% { rotate: 102deg; transform: translate(2px, -1px); }
+            32% { rotate: 117deg; transform: translate(-1px, 1px); }
+            64% { rotate: 232deg; transform: translate(0, 0); }
+            65% { rotate: 232deg; transform: translate(-2px, 1px); }
+            69% { rotate: 248deg; transform: translate(1px, -1px); }
+            100% { rotate: 360deg; transform: translate(0, 0); }
+        }
 
         .finn-talk-bubble {
             position: relative;
@@ -4542,6 +4543,8 @@
         .finn-line { margin: 0; overflow-wrap: anywhere; }
         .finn-line strong { color: #83e8f2; }
         .finn-line-you strong { color: #f0c77b; }
+        .finn-typing-cursor { color: #d3a8ff; animation: finnCursorBlink 650ms steps(2, end) infinite; }
+        @keyframes finnCursorBlink { 50% { opacity: 0; } }
         .finn-choices { display: grid; gap: 6px; }
         .finn-choice {
             min-width: 0;
@@ -4567,6 +4570,7 @@
             color: #fff;
             outline: none;
         }
+        .finn-choice:disabled { opacity: 0.48; cursor: wait; }
 
         .portal-glitch-spiral {
             position: absolute;
@@ -4585,7 +4589,16 @@
 
         .portal-glitch-spiral-a { animation: portalGlitchOrbit 5.5s linear infinite, portalGlitchFlicker 4.6s steps(1, end) infinite; }
         .portal-glitch-spiral-b { width: 124px; height: 166px; border-width: 2px; opacity: 0.8; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 4.1s steps(1, end) infinite 0.6s; }
-        @keyframes portalGlitchOrbit { to { rotate: 360deg; } }
+        @keyframes portalGlitchOrbit {
+            0% { rotate: 0deg; transform: translate(0, 0); }
+            27% { rotate: 96deg; transform: translate(0, 0); }
+            28% { rotate: 96deg; transform: translate(3px, -2px); }
+            31% { rotate: 113deg; transform: translate(-1px, 1px); }
+            62% { rotate: 226deg; transform: translate(0, 0); }
+            63% { rotate: 226deg; transform: translate(-2px, 2px); }
+            67% { rotate: 244deg; transform: translate(1px, 0); }
+            100% { rotate: 360deg; transform: translate(0, 0); }
+        }
         @keyframes portalGlitchFlicker { 0%, 14%, 58%, 92%, 100% { opacity: 0; } 16%, 51%, 61%, 85% { opacity: 0.92; } 54%, 88% { opacity: 0.56; } }
 
         .portal-orb { overflow: hidden; }
@@ -4600,21 +4613,6 @@
             pointer-events: none;
         }
 
-        .portal-crack {
-            position: absolute;
-            z-index: 1;
-            width: 14px;
-            background: linear-gradient(90deg, transparent, #e1b5ff 45%, #a955ff 58%, transparent);
-            filter: drop-shadow(0 0 5px rgba(198, 129, 255, 0.96));
-            opacity: 0.8;
-            clip-path: polygon(55% 0, 100% 0, 48% 32%, 82% 43%, 20% 69%, 54% 76%, 0 100%, 28% 62%, 0 50%, 50% 29%);
-            animation: portalCrackPulse 2.9s ease-in-out infinite;
-        }
-
-        .portal-crack-a { top: 8%; left: 34%; height: 55%; }
-        .portal-crack-b { top: 38%; left: 59%; height: 49%; transform: rotate(154deg); animation-delay: -1s; }
-        .portal-crack-c { top: 17%; left: 71%; height: 32%; transform: rotate(28deg); opacity: 0.58; animation-delay: -1.8s; }
-        @keyframes portalCrackPulse { 0%, 100% { opacity: 0.28; filter: drop-shadow(0 0 2px rgba(198, 129, 255, 0.5)); } 48% { opacity: 0.95; filter: drop-shadow(0 0 8px rgba(216, 167, 255, 1)); } }
         @keyframes portalInterference { 0%, 40%, 42%, 76%, 78%, 100% { opacity: 0.16; transform: translateY(0); } 41%, 77% { opacity: 0.75; transform: translateY(2px); } }
 
         .finn-watch-view.hidden { display: none; }
@@ -4641,13 +4639,8 @@
         .finn-watch-screen::before { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 48%, rgba(192, 132, 252, 0.16) 50%, transparent 52%); content: ''; opacity: 0.6; animation: watchScan 4s linear infinite; pointer-events: none; }
         @keyframes watchScan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
         .finn-watch-portal { position: relative; display: grid; width: min(230px, 100%); aspect-ratio: 1; place-items: center; justify-self: center; }
-        .finn-watch-ring { position: absolute; border: 1px solid rgba(198, 155, 255, 0.7); border-radius: 50%; box-shadow: 0 0 18px rgba(165, 111, 255, 0.36), inset 0 0 20px rgba(153, 101, 255, 0.16); }
-        .finn-watch-ring-a { inset: 4%; border-style: dashed; animation: portalGlitchOrbit 12s linear infinite; }
-        .finn-watch-ring-b { inset: 13%; border-color: rgba(238, 195, 255, 0.8); animation: portalGlitchOrbit 8s linear infinite reverse; }
-        .finn-watch-core { position: absolute; inset: 24%; overflow: hidden; border: 1px solid rgba(225, 192, 255, 0.84); border-radius: 50%; background: radial-gradient(circle at 42% 38%, #f5eaff 0 2%, #bd82ff 10%, #542a94 42%, #100d2b 78%); box-shadow: 0 0 28px rgba(176, 113, 255, 0.78), inset 0 0 24px rgba(219, 180, 255, 0.4); }
-        .finn-watch-core::before { position: absolute; inset: -20%; border: 2px solid #dcb4ff; border-radius: 48% 52% 62% 38%; content: ''; opacity: 0.7; rotate: 28deg; animation: portalGlitchOrbit 3s linear infinite; }
-        .finn-watch-crack { position: absolute; top: 8%; left: 44%; width: 12px; height: 72%; background: linear-gradient(90deg, transparent, #f0d7ff, #ac64ff, transparent); clip-path: polygon(55% 0, 100% 0, 42% 36%, 88% 43%, 20% 72%, 56% 77%, 0 100%, 28% 63%, 0 50%, 50% 32%); filter: drop-shadow(0 0 5px #dc9cff); animation: portalCrackPulse 2.2s ease-in-out infinite; }
-        .finn-watch-crack-b { top: 34%; left: 67%; height: 48%; transform: rotate(150deg); animation-delay: -1s; }
+        .finn-watch-portal .portal-base { width: 100%; height: 100%; pointer-events: none; cursor: default; }
+        .finn-watch-portal .portal-lock { pointer-events: none; cursor: default; }
         .finn-watch-readout { display: grid; align-content: center; gap: 10px; min-width: 0; }
         .finn-watch-readout > strong { color: #eee5ff; font-size: 0.9rem; }
         .finn-watch-readout p { margin: 0; color: #b6b0d1; font-size: 0.74rem; line-height: 1.45; }
@@ -5332,6 +5325,7 @@
             .finn-watch-view { padding-top: 5px; }
             .finn-watch-screen { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px; }
             .finn-watch-portal { width: 156px; }
+            .finn-watch-portal .portal-base { width: 156px; height: 156px; }
             .finn-watch-readout { gap: 6px; }
             .finn-name { font-size: 0.82rem; }
             .finn-name small { font-size: 0.56rem; }
@@ -6392,11 +6386,7 @@
                                         <span class="portal-glitch-spiral portal-glitch-spiral-a" aria-hidden="true"></span>
                                         <span class="portal-glitch-spiral portal-glitch-spiral-b" aria-hidden="true"></span>
                                         <button class="portal-lock" id="portal-lock" type="button" aria-label="Unlock the portal">🔒</button>
-                                        <span class="portal-orb" aria-hidden="true">
-                                            <i class="portal-crack portal-crack-a"></i>
-                                            <i class="portal-crack portal-crack-b"></i>
-                                            <i class="portal-crack portal-crack-c"></i>
-                                        </span>
+                                        <span class="portal-orb" aria-hidden="true"></span>
                                         <span class="portal-core" aria-hidden="true"></span>
                                     </div>
                                     <section class="finn-companion" aria-label="Talk to Lord Finn">
@@ -6449,15 +6439,11 @@
                     <span class="finn-watch-live">SIGNAL ACTIVE</span>
                 </div>
                 <div class="finn-watch-screen">
-                    <div class="finn-watch-portal" aria-hidden="true">
-                        <span class="finn-watch-ring finn-watch-ring-a"></span>
-                        <span class="finn-watch-ring finn-watch-ring-b"></span>
-                        <span class="finn-watch-core"><i class="finn-watch-crack"></i><i class="finn-watch-crack finn-watch-crack-b"></i></span>
-                    </div>
+                    <div class="finn-watch-portal portal-open" id="finn-watch-portal" aria-hidden="true"></div>
                     <div class="finn-watch-readout">
-                        <span class="finn-watch-live">UNMAPPED PULSE · 03:03</span>
-                        <strong>Surface is shifting</strong>
-                        <p>The gateway opens a second path between signal bursts. Its endpoint is still unclear.</p>
+                        <span class="finn-watch-live">SIGNAL TRACE · LIVE</span>
+                        <strong id="finn-watch-status">Portal locked</strong>
+                        <p>A second route appears between pulses. Its endpoint remains unclear.</p>
                         <label class="finn-watch-meter">SIGNAL COHERENCE<i></i></label>
                     </div>
                 </div>
@@ -6481,7 +6467,13 @@
                     <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Forge Realm</h3><p>Craft potions and event tools with collected items.</p><span class="realm-status" id="forge-realm-status"></span><button class="btn" id="forge-realm-action" type="button">UNLOCK · 1 ORE + 30 ROCK</button></div>
                 </article>
                 <article class="realm-card realm-coming" aria-disabled="true">
-                    <div class="realm-art realm-art-unknown" aria-label="Unknown realm" role="img"><span class="realm-question-logo">?</span></div>
+                    <div class="realm-art realm-art-unknown" aria-label="Unknown realm with one violet fracture" role="img">
+                        <svg class="realm-fracture" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true">
+                            <defs><linearGradient id="realm-fracture-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d2ff"/><stop offset=".45" stop-color="#b969ff"/><stop offset="1" stop-color="#7045c4"/></linearGradient></defs>
+                            <path d="M283 2 274 18 281 29 260 42 268 53 247 66 255 78 235 91 243 104 221 116 229 128 206 140 212 151 191 166 M260 42 279 47 286 60 M247 66 229 59 222 47 M243 104 264 110 271 121 M221 116 203 107 195 94"/>
+                        </svg>
+                        <span class="realm-question-logo">?</span>
+                    </div>
                     <div class="realm-copy"><span class="realm-kicker">UNRELEASED</span><h3>Unknown</h3><p>This destination has not been revealed.</p><span class="realm-soon">COMING SOON</span></div>
                 </article>
             </div>
