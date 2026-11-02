@@ -4380,101 +4380,167 @@
             box-shadow: inset 0 0 30px rgba(147, 197, 253, 0.08), 0 22px 35px rgba(2, 6, 23, 0.45);
         }
 
-        .portal-container::after {
-            position: absolute;
-            z-index: 4;
-            inset: 0;
-            border-radius: inherit;
-            background: linear-gradient(transparent 47%, rgba(56, 189, 248, 0.3) 49%, transparent 52%);
-            content: '';
-            opacity: 0;
-            pointer-events: none;
-            animation: portalSignalFlicker 2.8s steps(1, end) infinite;
-        }
-
-        @keyframes portalSignalFlicker {
-            0%, 39%, 41%, 52%, 54%, 76%, 79%, 89%, 91%, 100% { opacity: 0; transform: translateX(0); }
-            40%, 77%, 90% { opacity: 0.48; transform: translateX(2px); }
-            53%, 78% { opacity: 0.2; transform: translateX(-1px); }
-        }
-
         .finn-companion {
-            display: grid;
+            display: flex;
             min-width: 0;
-            grid-template-columns: 64px minmax(0, 1fr);
             align-items: center;
-            gap: 12px;
-            padding-left: 16px;
+            justify-content: center;
+            gap: 8px;
+            padding-left: 10px;
             border-left: 1px solid rgba(125, 211, 252, 0.18);
         }
 
-        .finn-portrait {
+        .finn-orb {
+            position: relative;
             display: grid;
-            width: 64px;
-            height: 82px;
+            flex: 0 0 auto;
+            width: 54px;
+            aspect-ratio: 1;
             place-items: center;
-            transform-origin: center bottom;
-            animation: finnIdle 2.8s ease-in-out infinite;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(247, 255, 255, 0.96), rgba(137, 211, 235, 0.72) 48%, rgba(116, 117, 200, 0.8)) padding-box,
+                conic-gradient(from 25deg, #ff5577, #ffce62, #77f2ae, #60dfff, #9c79ff, #ff70d0, #ff5577) border-box;
+            box-shadow: 0 0 14px rgba(140, 120, 255, 0.5), inset 0 0 14px rgba(255, 255, 255, 0.72);
+            animation: finnOrbFloat 3s ease-in-out infinite;
         }
 
-        .finn-portrait svg { display: block; width: 64px; height: 78px; overflow: visible; }
-        .finn-eyes { transform-box: fill-box; transform-origin: center; animation: finnBlink 5.4s ease-in-out infinite; }
-
-        @keyframes finnIdle {
-            0%, 100% { transform: translateY(0) rotate(0); }
-            50% { transform: translateY(-4px) rotate(1deg); }
+        .finn-orb::before {
+            position: absolute;
+            inset: -5px;
+            border: 1px solid rgba(255, 121, 219, 0.6);
+            border-radius: inherit;
+            content: '';
+            pointer-events: none;
+            animation: finnAura 3.2s ease-in-out infinite;
         }
 
-        @keyframes finnBlink {
-            0%, 92%, 100% { transform: scaleY(1); }
-            94%, 96% { transform: scaleY(0.08); }
+        .finn-orb-eyes { display: flex; align-items: center; gap: 5px; }
+        .finn-orb-eye {
+            display: grid;
+            width: 13px;
+            height: 16px;
+            place-items: center;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            background: conic-gradient(#ff5577, #ffce62, #77f2ae, #60dfff, #9c79ff, #ff70d0, #ff5577);
+            box-shadow: 0 0 7px rgba(92, 228, 255, 0.9);
         }
 
-        .finn-speaking .finn-portrait { animation: finnTalk 0.38s ease-in-out 3; }
-        .finn-speaking .finn-chat { animation: finnBubbleIn 220ms ease-out; }
-
-        @keyframes finnTalk {
-            0%, 100% { transform: translateY(0) rotate(0); }
-            50% { transform: translateY(-3px) rotate(-2deg); }
+        .finn-orb-pupil {
+            width: 5px;
+            height: 6px;
+            transform: translate(var(--gaze-x, 0), var(--gaze-y, 0));
+            border-radius: 50%;
+            background: #10152b;
+            box-shadow: 0 0 2px #fff;
+            transition: transform 80ms ease-out;
         }
 
-        @keyframes finnBubbleIn {
-            from { opacity: 0.5; transform: translateY(3px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes finnOrbFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+        @keyframes finnAura { 0%, 100% { opacity: 0.48; transform: scale(0.98); } 50% { opacity: 0.9; transform: scale(1.05); } }
+
+        .finn-talk-bubble {
+            position: relative;
+            min-height: 32px;
+            padding: 5px 10px;
+            border: 1px solid rgba(159, 220, 247, 0.42);
+            border-radius: 12px 12px 12px 3px;
+            background: rgba(8, 24, 47, 0.9);
+            color: #dff8ff;
+            font: inherit;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(108, 189, 255, 0.12);
         }
 
-        .finn-dialogue { display: grid; min-width: 0; gap: 6px; }
-        .finn-name { display: flex; align-items: baseline; gap: 8px; color: #bfdbfe; font-weight: 800; }
-        .finn-name small { color: #78c9da; font-size: 0.64rem; font-weight: 600; }
+        .finn-talk-bubble::before {
+            position: absolute;
+            right: 100%;
+            bottom: 5px;
+            border: 5px solid transparent;
+            border-right-color: rgba(159, 220, 247, 0.42);
+            content: '';
+        }
+
+        .finn-talk-bubble:hover, .finn-talk-bubble:focus-visible { border-color: #b6f1ff; color: #fff; outline: 2px solid rgba(103, 232, 249, 0.3); }
+
+        .finn-dialog-overlay {
+            position: fixed;
+            z-index: 1300;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background: rgba(2, 6, 18, 0.78);
+            backdrop-filter: blur(9px);
+        }
+
+        .finn-dialog-overlay.hidden { display: none; }
+        body.finn-dialog-open { overflow: hidden; }
+
+        .finn-dialog-panel {
+            position: relative;
+            display: grid;
+            width: min(540px, 100%);
+            max-height: min(640px, 92vh);
+            grid-template-columns: minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            overflow: auto;
+            padding: clamp(18px, 4vw, 30px);
+            border: 1px solid rgba(151, 185, 255, 0.3);
+            border-top: 2px solid #a68cff;
+            border-radius: 8px;
+            background: radial-gradient(ellipse at 18% 44%, rgba(115, 82, 210, 0.19), transparent 42%), linear-gradient(145deg, #111a38, #070c1e 76%);
+            box-shadow: 0 26px 90px rgba(0, 0, 0, 0.6), 0 0 32px rgba(140, 104, 255, 0.16);
+        }
+
+        .finn-dialog-header { position: absolute; top: 12px; right: 12px; left: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .finn-dialog-title { margin: 0; color: #e8e4ff; font-size: 0.88rem; font-weight: 800; }
+        .finn-dialog-close { width: 34px; height: 34px; border: 1px solid rgba(201, 191, 255, 0.25); border-radius: 4px; background: rgba(255, 255, 255, 0.04); color: #f0edff; font-size: 1.35rem; cursor: pointer; }
+        .finn-dialog-orbit { display: grid; min-height: 145px; place-items: center; }
+        .finn-orb-large { width: 142px; box-shadow: 0 0 34px rgba(140, 120, 255, 0.68), inset 0 0 24px rgba(255, 255, 255, 0.78); }
+        .finn-orb-large .finn-orb-eye { width: 28px; height: 34px; }
+        .finn-orb-large .finn-orb-pupil { width: 10px; height: 12px; }
+        .finn-orb-large .finn-orb-eyes { gap: 12px; }
+        .finn-speaking .finn-orb { animation: finnTalkPulse 420ms ease-in-out 2; }
+        @keyframes finnTalkPulse { 50% { transform: scale(1.04); filter: brightness(1.16); } }
+
+        .finn-dialogue { display: grid; min-width: 0; gap: 8px; padding-top: 20px; }
+        .finn-name { display: flex; align-items: baseline; gap: 8px; color: #e5e2ff; font-weight: 800; }
+        .finn-name small { color: #b6a5ff; font-size: 0.64rem; font-weight: 600; }
         .finn-chat {
             display: grid;
-            max-height: 100px;
-            gap: 5px;
+            max-height: 220px;
+            min-height: 86px;
+            gap: 7px;
             overflow-y: auto;
-            padding: 7px 8px;
-            border: 1px solid rgba(125, 211, 252, 0.2);
-            border-radius: 4px 10px 10px 10px;
-            background: rgba(5, 15, 30, 0.78);
-            color: #d7e8f5;
-            font-size: 0.73rem;
-            line-height: 1.4;
+            padding: 10px;
+            border: 1px solid rgba(173, 153, 255, 0.2);
+            border-radius: 4px;
+            background: rgba(4, 8, 22, 0.74);
+            color: #e0def1;
+            font-size: 0.82rem;
+            line-height: 1.5;
         }
 
         .finn-line { margin: 0; overflow-wrap: anywhere; }
         .finn-line strong { color: #83e8f2; }
         .finn-line-you strong { color: #f0c77b; }
-        .finn-choices { display: flex; flex-wrap: wrap; gap: 4px; }
+        .finn-choices { display: grid; gap: 6px; }
         .finn-choice {
-            flex: 1 1 124px;
             min-width: 0;
-            min-height: 27px;
-            padding: 4px 7px;
-            border: 1px solid rgba(96, 165, 250, 0.22);
+            min-height: 36px;
+            padding: 7px 10px;
+            border: 1px solid rgba(166, 140, 255, 0.24);
             border-radius: 3px;
-            background: rgba(16, 39, 67, 0.56);
-            color: #a9d8e7;
+            background: rgba(47, 38, 91, 0.34);
+            color: #ded8ff;
             font: inherit;
-            font-size: 0.7rem;
+            font-size: 0.76rem;
             text-align: left;
             cursor: pointer;
             transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
@@ -4484,11 +4550,31 @@
         .finn-reset.visible { display: inline-flex; }
 
         .finn-choice:hover, .finn-choice:focus-visible {
-            border-color: rgba(103, 232, 249, 0.62);
-            background: rgba(14, 116, 144, 0.24);
-            color: #e0f2fe;
+            border-color: rgba(191, 173, 255, 0.72);
+            background: rgba(101, 75, 181, 0.3);
+            color: #fff;
             outline: none;
         }
+
+        .portal-glitch-spiral {
+            position: absolute;
+            z-index: 2;
+            width: 142px;
+            height: 78px;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            background: conic-gradient(from 10deg, transparent 0 22%, rgba(191, 126, 255, 0.1) 28%, #ba80ff 40%, transparent 52% 72%, #7d59eb 82%, transparent 94%) border-box;
+            filter: drop-shadow(0 0 5px rgba(173, 120, 255, 0.78));
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .portal-glitch-spiral-a { animation: portalGlitchOrbit 5.5s linear infinite, portalGlitchFlicker 2.2s steps(1, end) infinite; }
+        .portal-glitch-spiral-b { width: 104px; height: 148px; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 1.8s steps(1, end) infinite 0.4s; }
+        @keyframes portalGlitchOrbit { to { rotate: 360deg; } }
+        @keyframes portalGlitchFlicker { 0%, 25%, 28%, 64%, 67%, 100% { opacity: 0; } 26%, 65% { opacity: 0.8; } 27%, 66% { opacity: 0.35; } }
 
         .portal-base {
             position: relative;
@@ -5147,17 +5233,21 @@
             }
 
             .finn-companion {
-                grid-template-columns: 42px minmax(0, 1fr);
                 gap: 8px;
                 padding-left: 9px;
             }
 
-            .finn-portrait { width: 42px; height: 58px; }
-            .finn-portrait svg { width: 42px; height: 54px; }
+            .finn-orb { width: 46px; }
+            .finn-talk-bubble { min-height: 29px; padding: 4px 8px; font-size: 0.66rem; }
+            .finn-dialog-overlay { padding: 10px; }
+            .finn-dialog-panel { grid-template-columns: minmax(0, 1fr); gap: 8px; max-height: 92dvh; padding: 52px 15px 15px; }
+            .finn-dialog-orbit { min-height: 94px; }
+            .finn-orb-large { width: 82px; }
+            .finn-dialogue { gap: 6px; padding-top: 0; }
             .finn-name { font-size: 0.82rem; }
             .finn-name small { font-size: 0.56rem; }
-            .finn-chat { max-height: 88px; padding: 6px; font-size: 0.67rem; }
-            .finn-choice { flex-basis: 110px; min-height: 27px; padding: 4px 6px; font-size: 0.62rem; }
+            .finn-chat { max-height: 160px; min-height: 64px; padding: 7px; font-size: 0.72rem; }
+            .finn-choice { min-height: 32px; padding: 6px 8px; font-size: 0.7rem; }
 
             .admin-user-tools {
                 grid-template-columns: minmax(0, 1fr);
@@ -6210,43 +6300,17 @@
                                         <span class="portal-ring portal-ring-inner" aria-hidden="true"></span>
                                         <span class="portal-spiral portal-spiral-a" aria-hidden="true"></span>
                                         <span class="portal-spiral portal-spiral-b" aria-hidden="true"></span>
+                                        <span class="portal-glitch-spiral portal-glitch-spiral-a" aria-hidden="true"></span>
+                                        <span class="portal-glitch-spiral portal-glitch-spiral-b" aria-hidden="true"></span>
                                         <button class="portal-lock" id="portal-lock" type="button" aria-label="Unlock the portal">🔒</button>
                                         <span class="portal-orb" aria-hidden="true"></span>
                                         <span class="portal-core" aria-hidden="true"></span>
                                     </div>
                                     <section class="finn-companion" aria-label="Talk to Finn">
-                                        <div class="finn-portrait" aria-hidden="true">
-                                            <svg viewBox="0 0 64 78">
-                                                <defs>
-                                                    <radialGradient id="finn-aura"><stop stop-color="#f8ffff" stop-opacity=".72"/><stop offset="1" stop-color="#6bdcf2" stop-opacity="0"/></radialGradient>
-                                                    <linearGradient id="finn-white" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".55" stop-color="#e5f7ff"/><stop offset="1" stop-color="#a9d8ec"/></linearGradient>
-                                                    <linearGradient id="finn-rainbow" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#ff536f"/><stop offset=".2" stop-color="#ffcf5a"/><stop offset=".4" stop-color="#7effa4"/><stop offset=".62" stop-color="#54dfff"/><stop offset=".82" stop-color="#8d7bff"/><stop offset="1" stop-color="#ff79db"/></linearGradient>
-                                                    <filter id="finn-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
-                                                </defs>
-                                                <circle cx="32" cy="39" r="29" fill="url(#finn-aura)" filter="url(#finn-glow)"/>
-                                                <path d="M7 77c1-14 8-23 17-26l8 7 8-7c9 3 16 12 17 26z" fill="url(#finn-white)" stroke="#fff" stroke-width="1.5"/>
-                                                <path d="M14 41C9 19 18 5 32 5s23 14 18 36l-5-8c-5 1-10-2-13-7-4 6-10 9-18 9z" fill="url(#finn-white)" stroke="#fff" stroke-width="1.5"/>
-                                                <path d="M19 36c0-14 5-22 13-22s13 8 13 22v8c0 11-5 17-13 17s-13-6-13-17z" fill="url(#finn-white)" stroke="#d5f3ff" stroke-width="1.2"/>
-                                                <g class="finn-eyes" style="filter: drop-shadow(0 0 3px #8dfaff)">
-                                                    <path d="M21 37q4-5 8 0-4 5-8 0m7 0q4-5 8 0-4 5-8 0" fill="url(#finn-rainbow)" stroke="#fff" stroke-width=".6"/>
-                                                </g>
-                                                <path d="M28 48q4 2 8 0" fill="none" stroke="#a4cbdc" stroke-width="1.3" stroke-linecap="round"/>
-                                                <path d="M21 65 32 70 43 65" fill="none" stroke="#fff" stroke-width="2" opacity=".8"/>
-                                                <path d="m11 27 2-3m39 12 2-2M16 56l2 1m29 7 2-2" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-                                            </svg>
+                                        <div class="finn-orb" data-finn-gaze aria-hidden="true">
+                                            <span class="finn-orb-eyes"><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i></span>
                                         </div>
-                                        <div class="finn-dialogue">
-                                            <div class="finn-name">Finn <small>GATEWAY WATCH</small></div>
-                                            <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Finn" aria-live="polite" aria-relevant="additions">
-                                                <p class="finn-line"><strong>Finn:</strong> I keep seeing a star where the map says there should be nothing.</p>
-                                            </div>
-                                            <div class="finn-choices" role="group" aria-label="Ask Finn about the gateway">
-                                                <button class="finn-choice" type="button" data-finn-question="flicker">Why does it stutter?</button>
-                                                <button class="finn-choice" type="button" data-finn-question="beyond">Where does that path lead?</button>
-                                                <button class="finn-choice" type="button" data-finn-question="signal">What is that repeating signal?</button>
-                                                <button class="finn-choice finn-reset" id="finn-reset" type="button">Talk again</button>
-                                            </div>
-                                        </div>
+                                        <button class="finn-talk-bubble" id="finn-open" type="button" aria-haspopup="dialog" aria-controls="finn-dialog-overlay">Talk</button>
                                     </section>
                                     <div class="portal-info">
                                         <p id="portal-status">Portal Locked</p>
@@ -6260,6 +6324,27 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="finn-dialog-overlay hidden" id="finn-dialog-overlay" role="presentation">
+        <section class="finn-dialog-panel" id="finn-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="finn-dialog-title" tabindex="-1">
+            <header class="finn-dialog-header">
+                <h2 class="finn-dialog-title" id="finn-dialog-title">A quiet signal</h2>
+                <button class="finn-dialog-close" id="finn-close" type="button" aria-label="Close conversation">×</button>
+            </header>
+            <div class="finn-dialog-orbit" aria-hidden="true">
+                <div class="finn-orb finn-orb-large" data-finn-gaze>
+                    <span class="finn-orb-eyes"><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i></span>
+                </div>
+            </div>
+            <div class="finn-dialogue">
+                <div class="finn-name">Finn <small>GATEWAY WATCH</small></div>
+                <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Finn" aria-live="polite" aria-relevant="additions"></div>
+                <div class="finn-choices" id="finn-choices" role="group" aria-label="Ask Finn about the strange signal">
+                    <button class="finn-choice finn-reset" id="finn-reset" type="button">Start over</button>
+                </div>
+            </div>
+        </section>
     </div>
 
     <div class="realm-selector hidden" id="realm-selector" role="dialog" aria-modal="true" aria-labelledby="realm-selector-title">
