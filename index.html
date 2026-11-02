@@ -4505,9 +4505,15 @@
             box-shadow: 0 26px 90px rgba(0, 0, 0, 0.6), 0 0 32px rgba(140, 104, 255, 0.16);
         }
 
-        .finn-dialog-header { position: absolute; top: 12px; right: 12px; left: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .finn-dialog-panel.finn-watching { width: min(760px, 100%); }
+
+        .finn-dialog-header { position: absolute; z-index: 2; top: 12px; right: 12px; left: 18px; display: flex; justify-content: space-between; align-items: center; }
+        .finn-dialog-actions { display: flex; align-items: center; gap: 7px; }
         .finn-dialog-title { margin: 0; color: #e8e4ff; font-size: 0.88rem; font-weight: 800; }
         .finn-dialog-close { width: 34px; height: 34px; border: 1px solid rgba(201, 191, 255, 0.25); border-radius: 4px; background: rgba(255, 255, 255, 0.04); color: #f0edff; font-size: 1.35rem; cursor: pointer; }
+        .finn-watch-button { min-height: 32px; padding: 5px 9px; border: 1px solid rgba(178, 149, 255, 0.38); border-radius: 3px; background: rgba(86, 62, 153, 0.2); color: #e5dcff; font: inherit; font-size: 0.7rem; font-weight: 700; cursor: pointer; }
+        .finn-watch-button:hover, .finn-watch-button:focus-visible { border-color: #d3baff; background: rgba(126, 87, 194, 0.34); outline: none; }
+        .finn-talk-view { display: grid; grid-template-columns: minmax(100px, 0.52fr) minmax(0, 1fr); align-items: center; gap: 16px; padding-top: 30px; }
         .finn-dialog-orbit { display: grid; min-height: 145px; place-items: center; }
         .finn-orb-large { width: 142px; box-shadow: 0 0 34px rgba(140, 120, 255, 0.68), inset 0 0 24px rgba(255, 255, 255, 0.78); }
         .finn-orb-large .finn-energy::before,
@@ -4577,10 +4583,78 @@
             pointer-events: none;
         }
 
-        .portal-glitch-spiral-a { animation: portalGlitchOrbit 5.5s linear infinite, portalGlitchFlicker 2.2s steps(1, end) infinite; }
-        .portal-glitch-spiral-b { width: 124px; height: 166px; border-width: 2px; opacity: 0.8; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 1.8s steps(1, end) infinite 0.4s; }
+        .portal-glitch-spiral-a { animation: portalGlitchOrbit 5.5s linear infinite, portalGlitchFlicker 4.6s steps(1, end) infinite; }
+        .portal-glitch-spiral-b { width: 124px; height: 166px; border-width: 2px; opacity: 0.8; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 4.1s steps(1, end) infinite 0.6s; }
         @keyframes portalGlitchOrbit { to { rotate: 360deg; } }
-        @keyframes portalGlitchFlicker { 0%, 25%, 28%, 64%, 67%, 100% { opacity: 0; } 26%, 65% { opacity: 1; } 27%, 66% { opacity: 0.55; } }
+        @keyframes portalGlitchFlicker { 0%, 14%, 58%, 92%, 100% { opacity: 0; } 16%, 51%, 61%, 85% { opacity: 0.92; } 54%, 88% { opacity: 0.56; } }
+
+        .portal-orb { overflow: hidden; }
+        .portal-orb::after {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: repeating-linear-gradient(0deg, transparent 0 7px, rgba(229, 184, 255, 0.14) 8px, transparent 9px 15px);
+            content: '';
+            opacity: 0.45;
+            animation: portalInterference 3.6s steps(1, end) infinite;
+            pointer-events: none;
+        }
+
+        .portal-crack {
+            position: absolute;
+            z-index: 1;
+            width: 14px;
+            background: linear-gradient(90deg, transparent, #e1b5ff 45%, #a955ff 58%, transparent);
+            filter: drop-shadow(0 0 5px rgba(198, 129, 255, 0.96));
+            opacity: 0.8;
+            clip-path: polygon(55% 0, 100% 0, 48% 32%, 82% 43%, 20% 69%, 54% 76%, 0 100%, 28% 62%, 0 50%, 50% 29%);
+            animation: portalCrackPulse 2.9s ease-in-out infinite;
+        }
+
+        .portal-crack-a { top: 8%; left: 34%; height: 55%; }
+        .portal-crack-b { top: 38%; left: 59%; height: 49%; transform: rotate(154deg); animation-delay: -1s; }
+        .portal-crack-c { top: 17%; left: 71%; height: 32%; transform: rotate(28deg); opacity: 0.58; animation-delay: -1.8s; }
+        @keyframes portalCrackPulse { 0%, 100% { opacity: 0.28; filter: drop-shadow(0 0 2px rgba(198, 129, 255, 0.5)); } 48% { opacity: 0.95; filter: drop-shadow(0 0 8px rgba(216, 167, 255, 1)); } }
+        @keyframes portalInterference { 0%, 40%, 42%, 76%, 78%, 100% { opacity: 0.16; transform: translateY(0); } 41%, 77% { opacity: 0.75; transform: translateY(2px); } }
+
+        .finn-watch-view.hidden { display: none; }
+        .finn-watch-view { display: grid; gap: 10px; padding-top: 40px; }
+        .finn-watch-hud { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: #d9d0ff; font-size: 0.72rem; }
+        .finn-watch-hud strong { color: #f1eaff; font-size: 0.75rem; letter-spacing: 0; }
+        .finn-watch-live { display: inline-flex; align-items: center; gap: 6px; color: #d2a7ff; font-size: 0.62rem; font-weight: 800; }
+        .finn-watch-live::before { width: 7px; height: 7px; border-radius: 50%; background: #d38bff; box-shadow: 0 0 8px #c784ff; content: ''; animation: watchLivePulse 1.2s ease-in-out infinite; }
+        @keyframes watchLivePulse { 50% { opacity: 0.35; } }
+        .finn-watch-screen {
+            position: relative;
+            display: grid;
+            min-height: 270px;
+            grid-template-columns: minmax(0, 1fr) minmax(150px, 0.62fr);
+            align-items: center;
+            gap: 10px;
+            overflow: hidden;
+            padding: 18px;
+            border: 1px solid rgba(173, 132, 255, 0.32);
+            border-radius: 4px;
+            background: radial-gradient(ellipse at 34% 50%, rgba(120, 63, 197, 0.2), transparent 49%), repeating-linear-gradient(0deg, rgba(180, 147, 255, 0.035) 0 1px, transparent 1px 5px), #070a1b;
+            box-shadow: inset 0 0 28px rgba(105, 69, 173, 0.16), 0 0 18px rgba(109, 72, 196, 0.1);
+        }
+        .finn-watch-screen::before { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 48%, rgba(192, 132, 252, 0.16) 50%, transparent 52%); content: ''; opacity: 0.6; animation: watchScan 4s linear infinite; pointer-events: none; }
+        @keyframes watchScan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+        .finn-watch-portal { position: relative; display: grid; width: min(230px, 100%); aspect-ratio: 1; place-items: center; justify-self: center; }
+        .finn-watch-ring { position: absolute; border: 1px solid rgba(198, 155, 255, 0.7); border-radius: 50%; box-shadow: 0 0 18px rgba(165, 111, 255, 0.36), inset 0 0 20px rgba(153, 101, 255, 0.16); }
+        .finn-watch-ring-a { inset: 4%; border-style: dashed; animation: portalGlitchOrbit 12s linear infinite; }
+        .finn-watch-ring-b { inset: 13%; border-color: rgba(238, 195, 255, 0.8); animation: portalGlitchOrbit 8s linear infinite reverse; }
+        .finn-watch-core { position: absolute; inset: 24%; overflow: hidden; border: 1px solid rgba(225, 192, 255, 0.84); border-radius: 50%; background: radial-gradient(circle at 42% 38%, #f5eaff 0 2%, #bd82ff 10%, #542a94 42%, #100d2b 78%); box-shadow: 0 0 28px rgba(176, 113, 255, 0.78), inset 0 0 24px rgba(219, 180, 255, 0.4); }
+        .finn-watch-core::before { position: absolute; inset: -20%; border: 2px solid #dcb4ff; border-radius: 48% 52% 62% 38%; content: ''; opacity: 0.7; rotate: 28deg; animation: portalGlitchOrbit 3s linear infinite; }
+        .finn-watch-crack { position: absolute; top: 8%; left: 44%; width: 12px; height: 72%; background: linear-gradient(90deg, transparent, #f0d7ff, #ac64ff, transparent); clip-path: polygon(55% 0, 100% 0, 42% 36%, 88% 43%, 20% 72%, 56% 77%, 0 100%, 28% 63%, 0 50%, 50% 32%); filter: drop-shadow(0 0 5px #dc9cff); animation: portalCrackPulse 2.2s ease-in-out infinite; }
+        .finn-watch-crack-b { top: 34%; left: 67%; height: 48%; transform: rotate(150deg); animation-delay: -1s; }
+        .finn-watch-readout { display: grid; align-content: center; gap: 10px; min-width: 0; }
+        .finn-watch-readout > strong { color: #eee5ff; font-size: 0.9rem; }
+        .finn-watch-readout p { margin: 0; color: #b6b0d1; font-size: 0.74rem; line-height: 1.45; }
+        .finn-watch-meter { display: grid; gap: 4px; color: #a7a1c8; font-size: 0.62rem; }
+        .finn-watch-meter i { display: block; height: 4px; overflow: hidden; background: rgba(214, 196, 255, 0.12); }
+        .finn-watch-meter i::after { display: block; width: 74%; height: 100%; background: linear-gradient(90deg, #8652e8, #e4a9ff); content: ''; animation: watchMeter 2.5s ease-in-out infinite alternate; }
+        @keyframes watchMeter { to { width: 92%; } }
 
         .finn-exit-flash { position: fixed; z-index: 1500; inset: 0; background: radial-gradient(circle, rgba(255, 255, 255, 0.96), rgba(221, 193, 255, 0.72) 28%, rgba(157, 111, 255, 0.18) 68%, transparent 100%); opacity: 0; pointer-events: none; }
         .finn-exit-flash.active { animation: finnExitFlash 520ms ease-out forwards; }
@@ -5251,9 +5325,14 @@
             .finn-talk-bubble { min-height: 29px; padding: 4px 8px; font-size: 0.66rem; }
             .finn-dialog-overlay { padding: 10px; }
             .finn-dialog-panel { grid-template-columns: minmax(0, 1fr); gap: 8px; max-height: 92dvh; padding: 52px 15px 15px; }
+            .finn-talk-view { grid-template-columns: minmax(0, 1fr); gap: 4px; padding-top: 4px; }
             .finn-dialog-orbit { min-height: 94px; }
             .finn-orb-large { width: 82px; }
             .finn-dialogue { gap: 6px; padding-top: 0; }
+            .finn-watch-view { padding-top: 5px; }
+            .finn-watch-screen { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px; }
+            .finn-watch-portal { width: 156px; }
+            .finn-watch-readout { gap: 6px; }
             .finn-name { font-size: 0.82rem; }
             .finn-name small { font-size: 0.56rem; }
             .finn-chat { max-height: 160px; min-height: 64px; padding: 7px; font-size: 0.72rem; }
@@ -6313,7 +6392,11 @@
                                         <span class="portal-glitch-spiral portal-glitch-spiral-a" aria-hidden="true"></span>
                                         <span class="portal-glitch-spiral portal-glitch-spiral-b" aria-hidden="true"></span>
                                         <button class="portal-lock" id="portal-lock" type="button" aria-label="Unlock the portal">🔒</button>
-                                        <span class="portal-orb" aria-hidden="true"></span>
+                                        <span class="portal-orb" aria-hidden="true">
+                                            <i class="portal-crack portal-crack-a"></i>
+                                            <i class="portal-crack portal-crack-b"></i>
+                                            <i class="portal-crack portal-crack-c"></i>
+                                        </span>
                                         <span class="portal-core" aria-hidden="true"></span>
                                     </div>
                                     <section class="finn-companion" aria-label="Talk to Lord Finn">
@@ -6341,20 +6424,44 @@
         <section class="finn-dialog-panel" id="finn-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="finn-dialog-title" tabindex="-1">
             <header class="finn-dialog-header">
                 <h2 class="finn-dialog-title" id="finn-dialog-title">A quiet signal</h2>
-                <button class="finn-dialog-close" id="finn-close" type="button" aria-label="Close conversation">×</button>
+                <div class="finn-dialog-actions">
+                    <button class="finn-watch-button" id="finn-watch-button" type="button" aria-pressed="false">Gateway Watch</button>
+                    <button class="finn-dialog-close" id="finn-close" type="button" aria-label="Close conversation">×</button>
+                </div>
             </header>
-            <div class="finn-dialog-orbit" aria-hidden="true">
-                <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
-                    <span class="finn-energy" data-finn-energy></span>
+            <div class="finn-talk-view" id="finn-talk-view">
+                <div class="finn-dialog-orbit" aria-hidden="true">
+                    <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
+                        <span class="finn-energy" data-finn-energy></span>
+                    </div>
+                </div>
+                <div class="finn-dialogue">
+                    <div class="finn-name">Lord Finn <small>GATEWAY WATCH</small></div>
+                    <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Lord Finn" aria-live="polite" aria-relevant="additions"></div>
+                    <div class="finn-choices" id="finn-choices" role="group" aria-label="Ask Lord Finn about the strange signal">
+                        <button class="finn-choice finn-reset" id="finn-reset" type="button">Start over</button>
+                    </div>
                 </div>
             </div>
-            <div class="finn-dialogue">
-                <div class="finn-name">Lord Finn <small>GATEWAY WATCH</small></div>
-                <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Lord Finn" aria-live="polite" aria-relevant="additions"></div>
-                <div class="finn-choices" id="finn-choices" role="group" aria-label="Ask Lord Finn about the strange signal">
-                    <button class="finn-choice finn-reset" id="finn-reset" type="button">Start over</button>
+            <section class="finn-watch-view hidden" id="finn-watch-view" aria-label="Gateway Watch live monitor">
+                <div class="finn-watch-hud">
+                    <strong>GATEWAY SURFACE / LIVE FEED</strong>
+                    <span class="finn-watch-live">SIGNAL ACTIVE</span>
                 </div>
-            </div>
+                <div class="finn-watch-screen">
+                    <div class="finn-watch-portal" aria-hidden="true">
+                        <span class="finn-watch-ring finn-watch-ring-a"></span>
+                        <span class="finn-watch-ring finn-watch-ring-b"></span>
+                        <span class="finn-watch-core"><i class="finn-watch-crack"></i><i class="finn-watch-crack finn-watch-crack-b"></i></span>
+                    </div>
+                    <div class="finn-watch-readout">
+                        <span class="finn-watch-live">UNMAPPED PULSE · 03:03</span>
+                        <strong>Surface is shifting</strong>
+                        <p>The gateway opens a second path between signal bursts. Its endpoint is still unclear.</p>
+                        <label class="finn-watch-meter">SIGNAL COHERENCE<i></i></label>
+                    </div>
+                </div>
+            </section>
         </section>
     </div>
 
