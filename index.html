@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <meta name="theme-color" content="#1e3a8a">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <title>17 News RNG 3 - The Next Generation</title>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -4363,8 +4362,10 @@
         }
 
         .portal-container {
+            position: relative;
+            isolation: isolate;
             display: grid;
-            grid-template-columns: 168px minmax(0, 1fr);
+            grid-template-columns: 168px minmax(150px, 0.75fr) minmax(260px, 1fr);
             min-height: 190px;
             align-items: center;
             gap: 24px;
@@ -4377,6 +4378,107 @@
                 radial-gradient(ellipse at 50% 110%, rgba(45, 212, 191, 0.16), transparent 38%),
                 linear-gradient(135deg, rgba(12, 25, 44, 0.96), rgba(6, 13, 25, 0.94));
             box-shadow: inset 0 0 30px rgba(147, 197, 253, 0.08), 0 22px 35px rgba(2, 6, 23, 0.45);
+        }
+
+        .portal-container::after {
+            position: absolute;
+            z-index: 4;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(transparent 47%, rgba(56, 189, 248, 0.3) 49%, transparent 52%);
+            content: '';
+            opacity: 0;
+            pointer-events: none;
+            animation: portalSignalFlicker 8s steps(1, end) infinite;
+        }
+
+        @keyframes portalSignalFlicker {
+            0%, 95%, 100% { opacity: 0; transform: translateX(0); }
+            96% { opacity: 0.48; transform: translateX(2px); }
+            97% { opacity: 0.16; transform: translateX(-1px); }
+            98% { opacity: 0; transform: translateX(0); }
+        }
+
+        .finn-companion {
+            display: grid;
+            min-width: 0;
+            grid-template-columns: 64px minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+            padding-left: 16px;
+            border-left: 1px solid rgba(125, 211, 252, 0.18);
+        }
+
+        .finn-portrait {
+            display: grid;
+            width: 64px;
+            height: 82px;
+            place-items: center;
+            transform-origin: center bottom;
+            animation: finnIdle 2.8s ease-in-out infinite;
+        }
+
+        .finn-portrait svg { display: block; width: 64px; height: 78px; overflow: visible; }
+        .finn-eyes { transform-box: fill-box; transform-origin: center; animation: finnBlink 5.4s ease-in-out infinite; }
+
+        @keyframes finnIdle {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-4px) rotate(1deg); }
+        }
+
+        @keyframes finnBlink {
+            0%, 92%, 100% { transform: scaleY(1); }
+            94%, 96% { transform: scaleY(0.08); }
+        }
+
+        .finn-speaking .finn-portrait { animation: finnTalk 0.38s ease-in-out 3; }
+        .finn-speaking .finn-bubble { animation: finnBubbleIn 220ms ease-out; }
+
+        @keyframes finnTalk {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-3px) rotate(-2deg); }
+        }
+
+        @keyframes finnBubbleIn {
+            from { opacity: 0.5; transform: translateY(3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .finn-dialogue { display: grid; min-width: 0; gap: 7px; }
+        .finn-name { display: flex; align-items: baseline; gap: 8px; color: #bfdbfe; font-weight: 800; }
+        .finn-name small { color: #78c9da; font-size: 0.64rem; font-weight: 600; }
+        .finn-bubble {
+            min-height: 46px;
+            padding: 8px 10px;
+            border: 1px solid rgba(125, 211, 252, 0.2);
+            border-radius: 4px 10px 10px 10px;
+            background: rgba(5, 15, 30, 0.78);
+            color: #d7e8f5;
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+
+        .finn-choices { display: grid; gap: 5px; }
+        .finn-choice {
+            width: 100%;
+            min-height: 30px;
+            padding: 5px 8px;
+            border: 1px solid rgba(96, 165, 250, 0.22);
+            border-radius: 3px;
+            background: rgba(16, 39, 67, 0.56);
+            color: #a9d8e7;
+            font: inherit;
+            font-size: 0.7rem;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+        }
+
+        .finn-choice:hover, .finn-choice:focus-visible {
+            border-color: rgba(103, 232, 249, 0.62);
+            background: rgba(14, 116, 144, 0.24);
+            color: #e0f2fe;
+            outline: none;
         }
 
         .portal-base {
@@ -5023,15 +5125,30 @@
             }
 
             .portal-container {
-                grid-template-columns: 1fr;
-                justify-items: center;
-                gap: 12px;
+                grid-template-columns: 76px minmax(0, 1fr);
+                justify-items: stretch;
+                align-items: center;
+                gap: 10px;
             }
 
             .portal-info {
                 width: 100%;
+                grid-column: 1 / -1;
                 text-align: center;
             }
+
+            .finn-companion {
+                grid-template-columns: 42px minmax(0, 1fr);
+                gap: 8px;
+                padding-left: 9px;
+            }
+
+            .finn-portrait { width: 42px; height: 58px; }
+            .finn-portrait svg { width: 42px; height: 54px; }
+            .finn-name { font-size: 0.82rem; }
+            .finn-name small { font-size: 0.56rem; }
+            .finn-bubble { min-height: 40px; padding: 6px 8px; font-size: 0.7rem; }
+            .finn-choice { min-height: 28px; padding: 5px 7px; font-size: 0.64rem; }
 
             .admin-user-tools {
                 grid-template-columns: minmax(0, 1fr);
@@ -6088,6 +6205,27 @@
                                         <span class="portal-orb" aria-hidden="true"></span>
                                         <span class="portal-core" aria-hidden="true"></span>
                                     </div>
+                                    <section class="finn-companion" aria-label="Talk to Finn">
+                                        <div class="finn-portrait" aria-hidden="true">
+                                            <svg viewBox="0 0 64 78">
+                                                <path d="M11 76c1-15 8-23 21-23s20 8 21 23" fill="#147c8a" stroke="#65d5df" stroke-width="2"/>
+                                                <path d="M17 33c0-15 6-24 16-24s16 9 16 24v11c0 11-7 18-16 18s-16-7-16-18z" fill="#e8b88b" stroke="#ffd8ae" stroke-width="2"/>
+                                                <path d="M16 33c-2-16 6-27 18-27 11 0 17 8 17 21-5-1-8-5-10-10-5 5-13 8-25 7z" fill="#28364b" stroke="#405672" stroke-width="2"/>
+                                                <g class="finn-eyes"><path d="M23 37h5m8 0h5" stroke="#172638" stroke-width="2.5" stroke-linecap="round"/></g>
+                                                <path d="M28 47c2 2 6 2 8 0" fill="none" stroke="#9b534c" stroke-width="1.8" stroke-linecap="round"/>
+                                                <path d="m21 62 11 7 11-7" fill="none" stroke="#e1b54c" stroke-width="3"/>
+                                            </svg>
+                                        </div>
+                                        <div class="finn-dialogue">
+                                            <div class="finn-name">Finn <small>GATEWAY WATCH</small></div>
+                                            <div class="finn-bubble" id="finn-bubble" role="status" aria-live="polite">Hey. That gateway has been acting a little strange lately.</div>
+                                            <div class="finn-choices" role="group" aria-label="Ask Finn about the gateway">
+                                                <button class="finn-choice" type="button" data-finn-question="flicker">What is that flicker?</button>
+                                                <button class="finn-choice" type="button" data-finn-question="beyond">What lies beyond the known realms?</button>
+                                                <button class="finn-choice" type="button" data-finn-question="signal">How do I find the strange signal?</button>
+                                            </div>
+                                        </div>
+                                    </section>
                                     <div class="portal-info">
                                         <p id="portal-status">Portal Locked</p>
                                         <p id="portal-fragments-needed">Requires: 10 Portal Fragments</p>
