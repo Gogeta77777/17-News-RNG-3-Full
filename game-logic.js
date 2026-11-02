@@ -2509,23 +2509,65 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finnReplies = {
-    flicker: 'That is not the gateway failing. For a blink, it shows a route that should not be there. I only catch it when the lights skip.',
-    beyond: 'I cannot be sure. The signal sounds like our world played back slightly out of tune. Something on the other side answers a beat late.',
-    signal: 'Watch for the gateway to stutter, then follow the odd signal. Do not force it. Whatever is there seems to notice when you listen.'
+    flicker: 'I used to call it a bad connection. Then the same star appeared on both sides of the glass, a heartbeat apart. The gateway is showing us an echo of somewhere.',
+    beyond: 'Not another sea or forge. The readings disagree about where it is. One says close enough to touch, another says it has not happened yet.',
+    signal: 'Three notes, a pause, then three more. Every time I answer, it changes one note. It may be listening for a voice that sounds like ours.'
   };
-  const finnBubble = document.getElementById('finn-bubble');
+  const finnChat = document.getElementById('finn-chat');
+  const finnChoices = document.querySelector('.finn-choices');
+  const finnReset = document.getElementById('finn-reset');
   const portalContainer = document.getElementById('portal-container');
-  document.querySelectorAll('[data-finn-question]').forEach(button => {
-    button.addEventListener('click', () => {
-      const reply = finnReplies[button.dataset.finnQuestion];
-      if (!reply || !finnBubble || !portalContainer) return;
-      finnBubble.textContent = reply;
-      portalContainer.classList.remove('finn-speaking');
-      void portalContainer.offsetWidth;
-      portalContainer.classList.add('finn-speaking');
-      clearTimeout(portalContainer.finnAnimationTimer);
-      portalContainer.finnAnimationTimer = setTimeout(() => portalContainer.classList.remove('finn-speaking'), 1200);
+  const finnQuestionOptions = [
+    { key: 'flicker', prompt: 'Why does it stutter?' },
+    { key: 'beyond', prompt: 'Where does that path lead?' },
+    { key: 'signal', prompt: 'What is that repeating signal?' }
+  ];
+  const appendFinnLine = (speaker, text, isPlayer = false) => {
+    const line = document.createElement('p');
+    line.className = `finn-line${isPlayer ? ' finn-line-you' : ''}`;
+    const label = document.createElement('strong');
+    label.textContent = `${speaker}:`;
+    line.append(label, document.createTextNode(` ${text}`));
+    finnChat?.appendChild(line);
+  };
+  const resetFinnConversation = () => {
+    if (!finnChat || !finnChoices || !finnReset) return;
+    finnChat.replaceChildren();
+    appendFinnLine('Finn', 'I keep seeing a star where the map says there should be nothing.');
+    const questionButtons = finnQuestionOptions.map(({ key, prompt }) => {
+      const button = document.createElement('button');
+      button.className = 'finn-choice';
+      button.type = 'button';
+      button.dataset.finnQuestion = key;
+      button.textContent = prompt;
+      return button;
     });
+    finnReset.classList.remove('visible');
+    finnChoices.replaceChildren(...questionButtons, finnReset);
+  };
+  finnChoices?.addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button === finnReset) {
+      resetFinnConversation();
+      return;
+    }
+    const key = button.dataset.finnQuestion;
+    const reply = finnReplies[key];
+    if (!reply || !finnChat || !portalContainer) return;
+    appendFinnLine('You', button.textContent.trim(), true);
+    appendFinnLine('Finn', reply);
+    button.remove();
+    finnChat.scrollTop = finnChat.scrollHeight;
+    if (!finnChoices.querySelector('[data-finn-question]')) {
+      appendFinnLine('Finn', 'That is all I can make of it for now. Keep an eye on the stars.');
+      finnReset.classList.add('visible');
+    }
+    portalContainer.classList.remove('finn-speaking');
+    void portalContainer.offsetWidth;
+    portalContainer.classList.add('finn-speaking');
+    clearTimeout(portalContainer.finnAnimationTimer);
+    portalContainer.finnAnimationTimer = setTimeout(() => portalContainer.classList.remove('finn-speaking'), 1200);
   });
 
   document.querySelectorAll('[data-inbox-folder]').forEach(button => {
