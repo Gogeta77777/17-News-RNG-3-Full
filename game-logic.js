@@ -2524,9 +2524,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const finnWatchButton = document.getElementById('finn-watch-button');
   const finnTalkView = document.getElementById('finn-talk-view');
   const finnWatchView = document.getElementById('finn-watch-view');
+  const finnWatchPortal = document.getElementById('finn-watch-portal');
+  const finnWatchStatus = document.getElementById('finn-watch-status');
   const finnEnergies = [...document.querySelectorAll('[data-finn-energy]')];
   const finnFlash = document.getElementById('finn-exit-flash');
   let finnConversationStarted = false;
+  const livePortalVisual = portalContainer?.querySelector('.portal-base');
+  if (finnWatchPortal && livePortalVisual) {
+    const portalClone = livePortalVisual.cloneNode(true);
+    portalClone.classList.add('portal-base-watch');
+    portalClone.removeAttribute('role');
+    portalClone.removeAttribute('tabindex');
+    portalClone.removeAttribute('aria-label');
+    portalClone.setAttribute('aria-hidden', 'true');
+    const sourcePortalLock = livePortalVisual.querySelector('.portal-lock');
+    const watchPortalLock = portalClone.querySelector('.portal-lock');
+    if (watchPortalLock) {
+      watchPortalLock.removeAttribute('id');
+      watchPortalLock.setAttribute('tabindex', '-1');
+    }
+    finnWatchPortal.replaceChildren(portalClone);
+    const syncWatchPortalState = () => {
+      const portalIsOpen = portalContainer.classList.contains('portal-open');
+      finnWatchPortal.classList.toggle('portal-open', portalIsOpen);
+      if (finnWatchStatus) finnWatchStatus.textContent = portalIsOpen ? 'Gateway online' : 'Portal locked';
+      if (sourcePortalLock && watchPortalLock) {
+        watchPortalLock.style.display = sourcePortalLock.style.display;
+        watchPortalLock.textContent = sourcePortalLock.textContent;
+      }
+    };
+    syncWatchPortalState();
+    if (window.MutationObserver) {
+      new MutationObserver(syncWatchPortalState).observe(portalContainer, { attributes: true, attributeFilter: ['class', 'style'], subtree: true });
+    }
+  }
   const finnQuestionOptions = [
     { key: 'flicker', prompt: 'Why does it stutter?' },
     { key: 'beyond', prompt: 'Where does that path lead?' },
@@ -2537,9 +2568,32 @@ document.addEventListener('DOMContentLoaded', () => {
     line.className = `finn-line${isPlayer ? ' finn-line-you' : ''}`;
     const label = document.createElement('strong');
     label.textContent = `${speaker}:`;
-    line.append(label, document.createTextNode(` ${text}`));
+    const content = document.createTextNode(` ${text}`);
+    line.append(label, content);
     finnChat?.appendChild(line);
+    return { line, content };
   };
+  const typeFinnReply = (line, text) => new Promise(resolve => {
+    const label = line.querySelector('strong');
+    const content = document.createTextNode(' ');
+    const cursor = document.createElement('span');
+    cursor.className = 'finn-typing-cursor';
+    cursor.textContent = '▋';
+    line.replaceChildren(label, content, cursor);
+    let position = 0;
+    const typeNext = () => {
+      position = Math.min(text.length, position + 2);
+      content.textContent = ` ${text.slice(0, position)}`;
+      finnChat.scrollTop = finnChat.scrollHeight;
+      if (position >= text.length) {
+        cursor.remove();
+        resolve();
+        return;
+      }
+      setTimeout(typeNext, 24);
+    };
+    typeNext();
+  });
   const resetFinnConversation = () => {
     if (!finnChat || !finnChoices || !finnReset) return;
     finnChat.replaceChildren();
@@ -2635,18 +2689,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const reply = finnReplies[key];
     if (!reply || !finnChat || !portalContainer) return;
     appendFinnLine('You', button.textContent.trim(), true);
-    appendFinnLine('Lord Finn', reply);
     button.remove();
+    const remainingQuestions = [...finnChoices.querySelectorAll('[data-finn-question]')];
+    remainingQuestions.forEach(question => { question.disabled = true; });
+    finnReset.disabled = true;
+    const { line: replyLine, content: replyContent } = appendFinnLine('Lord Finn', 'Checking the portal signal · 3.0s');
     finnChat.scrollTop = finnChat.scrollHeight;
-    if (!finnChoices.querySelector('[data-finn-question]')) {
-      appendFinnLine('Lord Finn', 'That is all I can tell you for now. Keep an eye on the stars.');
-      finnReset.classList.add('visible');
-    }
-    portalContainer.classList.remove('finn-speaking');
-    void portalContainer.offsetWidth;
-    portalContainer.classList.add('finn-speaking');
-    clearTimeout(portalContainer.finnAnimationTimer);
-    portalContainer.finnAnimationTimer = setTimeout(() => portalContainer.classList.remove('finn-speaking'), 1200);
+    const cooldownEndsAt = Date.now() + 3000;
+    const countdown = setInterval(() => {
+      const remainingMs = Math.max(0, cooldownEndsAt - Date.now());
+      replyContent.textContent = ` Checking the portal signal · ${(remainingMs / 1000).toFixed(1)}s`;
+      finnChat.scrollTop = finnChat.scrollHeight;
+      if (remainingMs > 0) return;
+      clearInterval(countdown);
+      typeFinnReply(replyLine, reply).then(() => {
+        remainingQuestions.forEach(question => { question.disabled = false; });
+        finnReset.disabled = false;
+        if (!remainingQuestions.length) {
+          appendFinnLine('Lord Finn', 'That is all I know for now. Keep watching the signal.');
+          finnReset.classList.add('visible');
+        }
+        finnChat.scrollTop = finnChat.scrollHeight;
+        portalContainer.classList.remove('finn-speaking');
+        void portalContainer.offsetWidth;
+        portalContainer.classList.add('finn-speaking');
+        clearTimeout(portalContainer.finnAnimationTimer);
+        portalContainer.finnAnimationTimer = setTimeout(() => portalContainer.classList.remove('finn-speaking'), 1200);
+      });
+    }, 100);
   });
 
   document.querySelectorAll('[data-inbox-folder]').forEach(button => {
