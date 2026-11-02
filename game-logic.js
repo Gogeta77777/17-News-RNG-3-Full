@@ -2508,6 +2508,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  const finnReplies = {
+    flicker: 'That is not the gateway failing. For a blink, it shows a route that should not be there. I only catch it when the lights skip.',
+    beyond: 'I cannot be sure. The signal sounds like our world played back slightly out of tune. Something on the other side answers a beat late.',
+    signal: 'Watch for the gateway to stutter, then follow the odd signal. Do not force it. Whatever is there seems to notice when you listen.'
+  };
+  const finnBubble = document.getElementById('finn-bubble');
+  const portalContainer = document.getElementById('portal-container');
+  document.querySelectorAll('[data-finn-question]').forEach(button => {
+    button.addEventListener('click', () => {
+      const reply = finnReplies[button.dataset.finnQuestion];
+      if (!reply || !finnBubble || !portalContainer) return;
+      finnBubble.textContent = reply;
+      portalContainer.classList.remove('finn-speaking');
+      void portalContainer.offsetWidth;
+      portalContainer.classList.add('finn-speaking');
+      clearTimeout(portalContainer.finnAnimationTimer);
+      portalContainer.finnAnimationTimer = setTimeout(() => portalContainer.classList.remove('finn-speaking'), 1200);
+    });
+  });
+
   document.querySelectorAll('[data-inbox-folder]').forEach(button => {
     button.addEventListener('click', () => loadInbox(button.dataset.inboxFolder));
   });
