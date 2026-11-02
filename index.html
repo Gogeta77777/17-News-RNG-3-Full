@@ -4424,11 +4424,14 @@
             transition: transform 100ms ease-out;
             border: 1.5px solid transparent;
             border-radius: 50%;
-            background: radial-gradient(circle at 35% 32%, #fff 0 8%, #dafaff 16%, #6563b7 42%, #17152f 70%) padding-box,
-                conic-gradient(from 25deg, #ff5577, #ffce62, #77f2ae, #60dfff, #9c79ff, #ff70d0, #ff5577) border-box;
-            box-shadow: 0 0 8px rgba(125, 232, 255, 0.9), 0 0 14px rgba(176, 115, 255, 0.55);
+            background: radial-gradient(circle at 34% 30%, #fff 0 5%, rgba(255, 255, 255, 0.55) 10%, transparent 20%),
+                conic-gradient(#ff1744, #ff9100, #ffee00, #00e676, #00e5ff, #2979ff, #d500f9, #ff1744);
+            animation: finnEyeChroma 2.4s linear infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 20px rgba(213, 0, 249, 0.8), 0 0 28px rgba(0, 229, 255, 0.65);
             pointer-events: none;
         }
+
+        @keyframes finnEyeChroma { to { filter: hue-rotate(360deg); } }
 
         .finn-energy::before,
         .finn-energy::after {
