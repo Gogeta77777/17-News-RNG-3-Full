@@ -2526,7 +2526,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const finnWatchView = document.getElementById('finn-watch-view');
   const finnWatchPortal = document.getElementById('finn-watch-portal');
   const finnWatchStatus = document.getElementById('finn-watch-status');
-  const finnEnergies = [...document.querySelectorAll('[data-finn-energy]')];
+  const finnEyes = [...document.querySelectorAll('[data-finn-eye]')];
   const finnFlash = document.getElementById('finn-exit-flash');
   let finnConversationStarted = false;
   const livePortalVisual = portalContainer?.querySelector('.portal-base');
@@ -2656,23 +2656,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.key === 'Escape' && finnOverlay && !finnOverlay.classList.contains('hidden')) closeFinnDialog();
   });
   let finnPointerFrame = 0;
+  let finnPointerX = 0;
+  let finnPointerY = 0;
   document.addEventListener('pointermove', event => {
+    finnPointerX = event.clientX;
+    finnPointerY = event.clientY;
     if (finnPointerFrame) return;
-    const pointerX = event.clientX;
-    const pointerY = event.clientY;
     finnPointerFrame = requestAnimationFrame(() => {
       finnPointerFrame = 0;
-      finnEnergies.forEach(energy => {
-        const orb = energy.parentElement;
+      finnEyes.forEach(eye => {
+        const orb = eye.parentElement;
         if (!orb) return;
         const bounds = orb.getBoundingClientRect();
-        const deltaX = pointerX - (bounds.left + bounds.width / 2);
-        const deltaY = pointerY - (bounds.top + bounds.height / 2);
+        const deltaX = finnPointerX - (bounds.left + bounds.width / 2);
+        const deltaY = finnPointerY - (bounds.top + bounds.height / 2);
         const distance = Math.hypot(deltaX, deltaY) || 1;
         const maxTravel = orb.classList.contains('finn-orb-large') ? 10 : 4;
         const scale = Math.min(1, maxTravel / distance);
-        energy.style.setProperty('--energy-x', `${deltaX * scale}px`);
-        energy.style.setProperty('--energy-y', `${deltaY * scale}px`);
+        eye.style.setProperty('--eye-x', `${deltaX * scale}px`);
+        eye.style.setProperty('--eye-y', `${deltaY * scale}px`);
       });
     });
   }, { passive: true });
