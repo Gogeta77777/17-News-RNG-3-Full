@@ -4415,31 +4415,38 @@
             animation: finnAura 3.2s ease-in-out infinite;
         }
 
-        .finn-orb-eyes { display: flex; align-items: center; gap: 5px; }
-        .finn-orb-eye {
-            display: grid;
-            width: 13px;
-            height: 16px;
-            place-items: center;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            background: conic-gradient(#ff5577, #ffce62, #77f2ae, #60dfff, #9c79ff, #ff70d0, #ff5577);
-            box-shadow: 0 0 7px rgba(92, 228, 255, 0.9);
+        .finn-energy {
+            position: absolute;
+            inset: 12%;
+            transform: translate(var(--energy-x, 0), var(--energy-y, 0));
+            transition: transform 100ms ease-out;
+            pointer-events: none;
         }
 
-        .finn-orb-pupil {
-            width: 5px;
-            height: 6px;
-            transform: translate(var(--gaze-x, 0), var(--gaze-y, 0));
+        .finn-energy::before,
+        .finn-energy::after {
+            position: absolute;
+            inset: 20% -6%;
+            border: 2px solid transparent;
             border-radius: 50%;
-            background: #10152b;
-            box-shadow: 0 0 2px #fff;
-            transition: transform 80ms ease-out;
+            background: conic-gradient(from 25deg, transparent 0 8%, #ff5577 14%, #ffce62 25%, #77f2ae 38%, #60dfff 52%, #9c79ff 67%, #ff70d0 82%, transparent 92%) border-box;
+            content: '';
+            filter: drop-shadow(0 0 5px rgba(255, 105, 235, 0.92));
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+        }
+
+        .finn-energy::before { animation: finnEnergyOrbit 1.8s linear infinite; }
+        .finn-energy::after {
+            inset: 8% -10%;
+            border-width: 1px;
+            opacity: 0.72;
+            animation: finnEnergyOrbit 2.4s linear infinite reverse;
         }
 
         @keyframes finnOrbFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
         @keyframes finnAura { 0%, 100% { opacity: 0.48; transform: scale(0.98); } 50% { opacity: 0.9; transform: scale(1.05); } }
+        @keyframes finnEnergyOrbit { to { rotate: 360deg; } }
 
         .finn-talk-bubble {
             position: relative;
@@ -4503,9 +4510,8 @@
         .finn-dialog-close { width: 34px; height: 34px; border: 1px solid rgba(201, 191, 255, 0.25); border-radius: 4px; background: rgba(255, 255, 255, 0.04); color: #f0edff; font-size: 1.35rem; cursor: pointer; }
         .finn-dialog-orbit { display: grid; min-height: 145px; place-items: center; }
         .finn-orb-large { width: 142px; box-shadow: 0 0 34px rgba(140, 120, 255, 0.68), inset 0 0 24px rgba(255, 255, 255, 0.78); }
-        .finn-orb-large .finn-orb-eye { width: 28px; height: 34px; }
-        .finn-orb-large .finn-orb-pupil { width: 10px; height: 12px; }
-        .finn-orb-large .finn-orb-eyes { gap: 12px; }
+        .finn-orb-large .finn-energy::before,
+        .finn-orb-large .finn-energy::after { border-width: 3px; filter: drop-shadow(0 0 9px rgba(255, 105, 235, 1)); }
         .finn-speaking .finn-orb { animation: finnTalkPulse 420ms ease-in-out 2; }
         @keyframes finnTalkPulse { 50% { transform: scale(1.04); filter: brightness(1.16); } }
 
@@ -4559,12 +4565,12 @@
         .portal-glitch-spiral {
             position: absolute;
             z-index: 2;
-            width: 142px;
-            height: 78px;
-            border: 2px solid transparent;
+            width: 166px;
+            height: 104px;
+            border: 3px solid transparent;
             border-radius: 50%;
-            background: conic-gradient(from 10deg, transparent 0 22%, rgba(191, 126, 255, 0.1) 28%, #ba80ff 40%, transparent 52% 72%, #7d59eb 82%, transparent 94%) border-box;
-            filter: drop-shadow(0 0 5px rgba(173, 120, 255, 0.78));
+            background: conic-gradient(from 10deg, transparent 0 15%, #d7a2ff 24%, #a66aff 38%, transparent 52% 66%, #744cff 78%, #f0abfc 87%, transparent 96%) border-box;
+            filter: drop-shadow(0 0 8px rgba(191, 126, 255, 0.98));
             mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             mask-composite: exclude;
             opacity: 0;
@@ -4572,9 +4578,13 @@
         }
 
         .portal-glitch-spiral-a { animation: portalGlitchOrbit 5.5s linear infinite, portalGlitchFlicker 2.2s steps(1, end) infinite; }
-        .portal-glitch-spiral-b { width: 104px; height: 148px; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 1.8s steps(1, end) infinite 0.4s; }
+        .portal-glitch-spiral-b { width: 124px; height: 166px; border-width: 2px; opacity: 0.8; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 1.8s steps(1, end) infinite 0.4s; }
         @keyframes portalGlitchOrbit { to { rotate: 360deg; } }
-        @keyframes portalGlitchFlicker { 0%, 25%, 28%, 64%, 67%, 100% { opacity: 0; } 26%, 65% { opacity: 0.8; } 27%, 66% { opacity: 0.35; } }
+        @keyframes portalGlitchFlicker { 0%, 25%, 28%, 64%, 67%, 100% { opacity: 0; } 26%, 65% { opacity: 1; } 27%, 66% { opacity: 0.55; } }
+
+        .finn-exit-flash { position: fixed; z-index: 1500; inset: 0; background: radial-gradient(circle, rgba(255, 255, 255, 0.96), rgba(221, 193, 255, 0.72) 28%, rgba(157, 111, 255, 0.18) 68%, transparent 100%); opacity: 0; pointer-events: none; }
+        .finn-exit-flash.active { animation: finnExitFlash 520ms ease-out forwards; }
+        @keyframes finnExitFlash { 0% { opacity: 0; } 12% { opacity: 0.94; } 35% { opacity: 0.55; } 100% { opacity: 0; } }
 
         .portal-base {
             position: relative;
@@ -6306,11 +6316,11 @@
                                         <span class="portal-orb" aria-hidden="true"></span>
                                         <span class="portal-core" aria-hidden="true"></span>
                                     </div>
-                                    <section class="finn-companion" aria-label="Talk to Finn">
-                                        <div class="finn-orb" data-finn-gaze aria-hidden="true">
-                                            <span class="finn-orb-eyes"><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i></span>
+                                    <section class="finn-companion" aria-label="Talk to Lord Finn">
+                                        <div class="finn-orb" data-finn-orb aria-hidden="true">
+                                            <span class="finn-energy" data-finn-energy></span>
                                         </div>
-                                        <button class="finn-talk-bubble" id="finn-open" type="button" aria-haspopup="dialog" aria-controls="finn-dialog-overlay">Talk</button>
+                                        <button class="finn-talk-bubble" id="finn-open" type="button" aria-label="Talk to Lord Finn" aria-haspopup="dialog" aria-controls="finn-dialog-overlay">Talk</button>
                                     </section>
                                     <div class="portal-info">
                                         <p id="portal-status">Portal Locked</p>
@@ -6326,6 +6336,7 @@
         </div>
     </div>
 
+    <div class="finn-exit-flash" id="finn-exit-flash" aria-hidden="true"></div>
     <div class="finn-dialog-overlay hidden" id="finn-dialog-overlay" role="presentation">
         <section class="finn-dialog-panel" id="finn-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="finn-dialog-title" tabindex="-1">
             <header class="finn-dialog-header">
@@ -6333,14 +6344,14 @@
                 <button class="finn-dialog-close" id="finn-close" type="button" aria-label="Close conversation">×</button>
             </header>
             <div class="finn-dialog-orbit" aria-hidden="true">
-                <div class="finn-orb finn-orb-large" data-finn-gaze>
-                    <span class="finn-orb-eyes"><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i><i class="finn-orb-eye"><i class="finn-orb-pupil"></i></i></span>
+                <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
+                    <span class="finn-energy" data-finn-energy></span>
                 </div>
             </div>
             <div class="finn-dialogue">
-                <div class="finn-name">Finn <small>GATEWAY WATCH</small></div>
-                <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Finn" aria-live="polite" aria-relevant="additions"></div>
-                <div class="finn-choices" id="finn-choices" role="group" aria-label="Ask Finn about the strange signal">
+                <div class="finn-name">Lord Finn <small>GATEWAY WATCH</small></div>
+                <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Lord Finn" aria-live="polite" aria-relevant="additions"></div>
+                <div class="finn-choices" id="finn-choices" role="group" aria-label="Ask Lord Finn about the strange signal">
                     <button class="finn-choice finn-reset" id="finn-reset" type="button">Start over</button>
                 </div>
             </div>
