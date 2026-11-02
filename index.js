@@ -1436,7 +1436,7 @@ app.post('/api/redeem-code', async (req, res) => {
     'THETHREEQUEL': { title: 'veteran' },
     'UPD3ISHERE!!': { coins: 20000, item: { key: 'ancient_ore', amount: 5 }, rewardMessage: '5 Ancient Ore and 20,000 coins' },
     'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' },
-    'MRFERNANSKIHALLOW2026': { coins: 1000000, item: { key: 'event_controller', amount: 3 }, rewardMessage: '1,000,000 coins and 3 Event Controllers', maxUses: 2 }
+    'LORDFINNHASRETURNED': { coins: 100000, potion: { key: 'coin', amount: 3 }, rewardMessage: '100,000 coins and 3 Coin Potions' }
   };
 
   const reward = codeRewards[normalizedCode];
@@ -1465,6 +1465,11 @@ app.post('/api/redeem-code', async (req, res) => {
       const items = normalizeRecord(user.items);
       items[reward.item.key] = (Number(items[reward.item.key]) || 0) + reward.item.amount;
       updates.items = JSON.stringify(items);
+    }
+    if (reward.potion) {
+      const potions = normalizeRecord(user.potions);
+      potions[reward.potion.key] = (Number(potions[reward.potion.key]) || 0) + reward.potion.amount;
+      updates.potions = JSON.stringify(potions);
     }
     if (reward.maxUses) {
       const claim = await claimLimitedCode(normalizedCode, req.session.username, reward.maxUses, updates);
