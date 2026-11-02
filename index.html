@@ -4409,9 +4409,24 @@
 
         .finn-energy {
             position: absolute;
-            inset: 12%;
-            transform: translate(var(--energy-x, 0), var(--energy-y, 0));
+            inset: -22%;
+            pointer-events: none;
+        }
+
+        .finn-eye {
+            position: absolute;
+            z-index: 1;
+            top: 50%;
+            left: 50%;
+            width: 30%;
+            aspect-ratio: 1;
+            transform: translate(calc(-50% + var(--eye-x, 0px)), calc(-50% + var(--eye-y, 0px)));
             transition: transform 100ms ease-out;
+            border: 1.5px solid transparent;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 32%, #fff 0 8%, #dafaff 16%, #6563b7 42%, #17152f 70%) padding-box,
+                conic-gradient(from 25deg, #ff5577, #ffce62, #77f2ae, #60dfff, #9c79ff, #ff70d0, #ff5577) border-box;
+            box-shadow: 0 0 8px rgba(125, 232, 255, 0.9), 0 0 14px rgba(176, 115, 255, 0.55);
             pointer-events: none;
         }
 
@@ -4589,6 +4604,14 @@
 
         .portal-glitch-spiral-a { animation: portalGlitchOrbit 5.5s linear infinite, portalGlitchFlicker 4.6s steps(1, end) infinite; }
         .portal-glitch-spiral-b { width: 124px; height: 166px; border-width: 2px; opacity: 0.8; animation: portalGlitchOrbit 4.2s linear infinite reverse, portalGlitchFlicker 4.1s steps(1, end) infinite 0.6s; }
+        .portal-orb { isolation: isolate; }
+        .portal-orb .portal-glitch-spiral {
+            z-index: 1;
+            inset: 14% 4%;
+            width: auto;
+            height: auto;
+        }
+        .portal-orb .portal-glitch-spiral-b { inset: 3% 22%; }
         @keyframes portalGlitchOrbit {
             0% { rotate: 0deg; transform: translate(0, 0); }
             27% { rotate: 96deg; transform: translate(0, 0); }
@@ -6383,15 +6406,17 @@
                                         <span class="portal-ring portal-ring-inner" aria-hidden="true"></span>
                                         <span class="portal-spiral portal-spiral-a" aria-hidden="true"></span>
                                         <span class="portal-spiral portal-spiral-b" aria-hidden="true"></span>
-                                        <span class="portal-glitch-spiral portal-glitch-spiral-a" aria-hidden="true"></span>
-                                        <span class="portal-glitch-spiral portal-glitch-spiral-b" aria-hidden="true"></span>
                                         <button class="portal-lock" id="portal-lock" type="button" aria-label="Unlock the portal">🔒</button>
-                                        <span class="portal-orb" aria-hidden="true"></span>
+                                        <span class="portal-orb" aria-hidden="true">
+                                            <span class="portal-glitch-spiral portal-glitch-spiral-a"></span>
+                                            <span class="portal-glitch-spiral portal-glitch-spiral-b"></span>
+                                        </span>
                                         <span class="portal-core" aria-hidden="true"></span>
                                     </div>
                                     <section class="finn-companion" aria-label="Talk to Lord Finn">
                                         <div class="finn-orb" data-finn-orb aria-hidden="true">
                                             <span class="finn-energy" data-finn-energy></span>
+                                            <span class="finn-eye" data-finn-eye></span>
                                         </div>
                                         <button class="finn-talk-bubble" id="finn-open" type="button" aria-label="Talk to Lord Finn" aria-haspopup="dialog" aria-controls="finn-dialog-overlay">Talk</button>
                                     </section>
@@ -6423,6 +6448,7 @@
                 <div class="finn-dialog-orbit" aria-hidden="true">
                     <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
                         <span class="finn-energy" data-finn-energy></span>
+                        <span class="finn-eye" data-finn-eye></span>
                     </div>
                 </div>
                 <div class="finn-dialogue">
