@@ -4356,7 +4356,10 @@
         .system-control-row strong { color: #86efac; }
         .system-control-row span { color: #bfdbfe; font-size: 0.86rem; }
         .admin-search-label { display: block; margin: 8px 0 6px; color: #bfdbfe; font-size: 0.82rem; }
-        .admin-user-search { width: min(420px, 100%); margin-bottom: 12px; }
+        .admin-player-selector { display: grid; width: min(420px, 100%); gap: 7px; margin-bottom: 14px; color: #bfdbfe; font-size: 0.78rem; }
+        .admin-player-selector select { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid rgba(125, 211, 252, 0.3); border-radius: 3px; background: #071225; color: #eff6ff; font: inherit; }
+        .user-list .admin-user-row[hidden] { display: none; }
+        .user-list .admin-user-row.owner-player-focus { padding: 22px; border: 1px solid rgba(125, 211, 252, 0.32); border-radius: 6px; background: radial-gradient(ellipse at 90% 0, rgba(56, 189, 248, 0.1), transparent 50%), rgba(7, 18, 37, 0.86); box-shadow: 0 16px 38px rgba(2, 6, 23, 0.34); }
 
         @media (max-width: 640px) {
             .admin-announcement-banner { grid-template-columns: 1fr auto; gap: 8px 10px; padding: 12px 14px; }
@@ -5067,7 +5070,12 @@
                 linear-gradient(145deg, #472016, #1c1420);
         }
 
-        body.meteor-shower-live .event-visual-layer { background: radial-gradient(ellipse at 50% -10%, rgba(249, 115, 22, 0.17), transparent 62%); }
+        .event-item.event-prismfall { border-color: rgba(196, 181, 253, 0.48); background: radial-gradient(circle at 90% 8%, rgba(216, 180, 254, 0.2), transparent 38%), linear-gradient(145deg, #30204e, #11142e); }
+        .event-item.event-gravity-well { border-color: rgba(129, 140, 248, 0.46); background: radial-gradient(circle at 50% 0, rgba(99, 102, 241, 0.24), transparent 45%), linear-gradient(145deg, #1b2045, #0b1128); }
+        .owner-only-event .event-kicker { color: #d8b4fe; }
+        body.meteor-shower-live .event-visual-layer { background: radial-gradient(ellipse at 50% 8%, rgba(251, 146, 60, 0.18), transparent 58%), linear-gradient(180deg, rgba(24, 10, 4, 0.08), transparent 65%); }
+        body.prismfall-live .event-visual-layer { background: radial-gradient(ellipse at 50% -12%, rgba(196, 181, 253, 0.17), transparent 62%); }
+        body.gravity-well-live .event-visual-layer { background: radial-gradient(ellipse at 50% 48%, rgba(99, 102, 241, 0.2), transparent 43%); }
 
         .event-kicker {
             margin-bottom: 9px;
@@ -5925,16 +5933,25 @@
             left: var(--meteor-left);
             width: var(--meteor-size);
             height: calc(var(--meteor-size) * 5.5);
-            transform: rotate(34deg);
+            transform: rotate(var(--meteor-angle, 34deg));
             transform-origin: center;
             border-radius: 50%;
-            background: linear-gradient(180deg, transparent 0%, rgba(251, 146, 60, 0.04) 20%, rgba(249, 115, 22, 0.44) 68%, #fff7ed 96%);
-            filter: drop-shadow(0 0 7px #f97316) drop-shadow(0 0 15px rgba(239, 68, 68, 0.72));
+            background: linear-gradient(180deg, transparent 0%, rgba(251, 146, 60, 0.02) 14%, rgba(249, 115, 22, 0.58) 64%, #fff7ed 96%);
+            filter: drop-shadow(0 0 8px #f97316) drop-shadow(0 0 20px rgba(239, 68, 68, 0.76));
             opacity: 0;
             animation: meteorFall var(--meteor-duration) var(--meteor-delay) linear infinite;
         }
-        .event-meteor-streak::after { position: absolute; right: -20%; bottom: -2px; left: -20%; height: 30%; border-radius: 50%; background: #fff7ed; box-shadow: 0 0 9px 5px #fb923c, 0 0 22px 10px rgba(239, 68, 68, 0.54); content: ''; }
-        @keyframes meteorFall { 0% { opacity: 0; transform: translate3d(0, -12vh, 0) rotate(34deg) scale(0.8); } 12% { opacity: 1; } 86% { opacity: 0.92; } 100% { opacity: 0; transform: translate3d(-26vw, 125vh, 0) rotate(34deg) scale(1.15); } }
+        .event-meteor-streak::after { position: absolute; right: -38%; bottom: -2px; left: -38%; height: 28%; border-radius: 50%; background: #fff7ed; box-shadow: 0 0 10px 6px #fb923c, 0 0 26px 12px rgba(239, 68, 68, 0.62); content: ''; }
+        .event-meteor-wave-1 { --wave-offset: 1.2s; animation-delay: calc(var(--meteor-delay) + var(--wave-offset)); filter: hue-rotate(-12deg) drop-shadow(0 0 8px #fb923c) drop-shadow(0 0 20px rgba(239, 68, 68, 0.76)); }
+        .event-meteor-wave-2 { --wave-offset: 2.4s; animation-delay: calc(var(--meteor-delay) + var(--wave-offset)); filter: hue-rotate(16deg) drop-shadow(0 0 8px #fbbf24) drop-shadow(0 0 20px rgba(249, 115, 22, 0.76)); }
+        @keyframes meteorFall { 0% { opacity: 0; transform: translate3d(0, -10vh, 0) rotate(var(--meteor-angle, 34deg)) scale(0.72); } 12% { opacity: 1; } 82% { opacity: 0.96; } 100% { opacity: 0; transform: translate3d(-30vw, 125vh, 0) rotate(var(--meteor-angle, 34deg)) scale(1.2); } }
+
+        .event-prism-shard { position: absolute; top: -12vh; left: var(--shard-left); width: 3px; height: 30px; transform: rotate(18deg); background: linear-gradient(180deg, transparent, hsl(var(--shard-hue, 250deg) 90% 78%), #fff); filter: drop-shadow(0 0 7px hsl(var(--shard-hue, 250deg) 100% 72%)); opacity: 0; animation: prismShardFall var(--shard-duration) var(--shard-delay) linear infinite; }
+        @keyframes prismShardFall { 0% { opacity: 0; transform: translate3d(0, -10vh, 0) rotate(18deg); } 12%, 78% { opacity: 0.84; } 100% { opacity: 0; transform: translate3d(-12vw, 115vh, 0) rotate(54deg); } }
+        .event-gravity-ring { position: absolute; top: 50%; left: 50%; width: 60vmin; aspect-ratio: 1; transform: translate(-50%, -50%) scale(var(--ring-scale, 1)); border: 1px solid rgba(165, 180, 252, 0.42); border-radius: 50%; box-shadow: 0 0 35px rgba(99, 102, 241, 0.22), inset 0 0 30px rgba(129, 140, 248, 0.12); animation: gravityRing 6s var(--ring-delay) ease-in-out infinite; }
+        @keyframes gravityRing { 0%, 100% { opacity: 0.16; } 45% { opacity: 0.66; } }
+        .event-gravity-mote { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: #c4b5fd; box-shadow: 0 0 10px 3px rgba(167, 139, 250, 0.8); opacity: 0; animation: gravityMote 6s var(--mote-delay) ease-in infinite; }
+        @keyframes gravityMote { 0% { opacity: 0; transform: rotate(var(--mote-angle)) translateX(34vw) scale(0.4); } 26% { opacity: 0.9; } 100% { opacity: 0; transform: rotate(var(--mote-angle)) translateX(0) scale(1.3); } }
         @keyframes eventStarFall {
             0% { opacity: 0; transform: translate3d(0, -5vh, 0) rotate(0); }
             9% { opacity: 0.9; }
@@ -6679,7 +6696,7 @@
                     <div class="event-item event-meteor">
                         <div class="event-kicker">MANUAL EVENT / METEOR FIELD</div>
                         <h3>Meteor Shower</h3>
-                        <p>Fiery meteors streak across the sky. Rolls grant 2× coins plus 300 bonus coins.</p>
+                        <p>Three streaking waves. Rolls grant 2× coins plus 180 bonus coins while the shower lasts.</p>
                         <div class="event-buttons"><button class="btn" id="activate-meteor-shower">Call Meteor Shower</button><button class="btn stop-btn" id="deactivate-meteor-shower" hidden>End Shower</button></div>
                         <div class="event-status" id="meteor-shower-status">Ready · manual event</div>
                     </div>
@@ -6691,6 +6708,22 @@
                         <div class="event-buttons"><button class="btn" id="activate-abyssal-resonance">Call the Resonance</button><button class="btn stop-btn" id="deactivate-abyssal-resonance" hidden>Silence the Deep</button></div>
                         <div class="event-status" id="abyssal-resonance-status">Ready · manual event</div>
                     </div>
+
+                    <div class="event-item event-prismfall owner-only-event">
+                        <div class="event-kicker">OWNER SIGNAL / PRISM FIELD</div>
+                        <h3>Prismfall</h3>
+                        <p>Prismatic shards sweep the field and multiply luck by 4× for four minutes.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-prismfall">Start Prismfall</button><button class="btn stop-btn" id="deactivate-prismfall" hidden>End Prismfall</button></div>
+                        <div class="event-status" id="prismfall-status">Owner only · ready</div>
+                    </div>
+
+                    <div class="event-item event-gravity-well owner-only-event">
+                        <div class="event-kicker">OWNER SIGNAL / GRAVITY FIELD</div>
+                        <h3>Gravity Well</h3>
+                        <p>A singularity bends the screen; rolls grant 3× coins for four minutes.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-gravity-well">Open Gravity Well</button><button class="btn stop-btn" id="deactivate-gravity-well" hidden>Close Gravity Well</button></div>
+                        <div class="event-status" id="gravity-well-status">Owner only · ready</div>
+                    </div>
                 </div>
             </div>
 
@@ -6699,6 +6732,7 @@
                 <p class="admin-abuse-warning" role="note">Do not abuse, your activity is being monitored.</p>
                 <div class="mini-ops-events">
                     <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
+                    <button class="btn" data-mini-event="meteor-shower" type="button">Call Meteor Shower</button>
                     <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
                     <button class="btn stop-btn" data-mini-stop type="button">End My Event</button>
                 </div>
@@ -6749,9 +6783,10 @@
             </div>
 
             <div class="admin-section">
-                <h2>👥 User Management</h2>
-                <label class="admin-search-label" for="admin-user-search">Find player</label>
-                <input class="admin-user-search" id="admin-user-search" type="search" placeholder="Search usernames..." autocomplete="off">
+                <h2>Player Details</h2>
+                <label class="admin-player-selector" for="admin-player-select">Select a player
+                    <select id="admin-player-select"><option value="">Loading players...</option></select>
+                </label>
                 <div class="user-list" id="user-list"></div>
             </div>
 
