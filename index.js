@@ -718,8 +718,9 @@ const GAME_EVENTS = {
   'meteor-shower': {
     title: 'Meteor Shower',
     coinMultiplier: 2,
-    bonusCoins: 300,
-    description: '2x coins and +300 bonus coins per roll'
+    bonusCoins: 180,
+    durationSeconds: 240,
+    description: '2x coins and +180 bonus coins per roll during three meteor waves'
   },
   'abyssal-resonance': {
     title: 'Abyssal Resonance',
@@ -727,6 +728,23 @@ const GAME_EVENTS = {
     bonusCoins: 250,
     luckMultiplier: 3,
     description: '3x luck and +250 bonus coins, amplified in the Sea Realm'
+  },
+  'prismfall': {
+    title: 'Prismfall',
+    coinMultiplier: 1,
+    bonusCoins: 0,
+    luckMultiplier: 4,
+    durationSeconds: 240,
+    ownerOnly: true,
+    description: '4x luck as prismatic shards cross the signal field'
+  },
+  'gravity-well': {
+    title: 'Gravity Well',
+    coinMultiplier: 3,
+    bonusCoins: 0,
+    durationSeconds: 240,
+    ownerOnly: true,
+    description: '3x coins as the event field bends the star map'
   }
 };
 
@@ -1812,6 +1830,9 @@ app.post('/api/forge/use-event-controller', async (req, res) => {
     if (!Object.prototype.hasOwnProperty.call(GAME_EVENTS, eventName)) {
       return res.status(400).json({ success: false, error: 'Choose a valid event.' });
     }
+    if (GAME_EVENTS[eventName].ownerOnly) {
+      return res.status(403).json({ success: false, error: 'This event can only be started from the Owner Panel.' });
+    }
     if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
     const items = normalizeRecord(user.items);
     if ((Number(items.event_controller) || 0) < 1) return res.status(400).json({ success: false, error: 'You need an Event Controller.' });
@@ -2284,7 +2305,7 @@ app.post('/api/mini-admin/event', async (req, res) => {
     }
     const eventName = String(req.body?.eventName || '');
     const action = req.body?.action === 'stop' ? 'stop' : 'start';
-    if (!['starlight-surge', 'abyssal-resonance'].includes(eventName)) {
+    if (!['starlight-surge', 'meteor-shower', 'abyssal-resonance'].includes(eventName)) {
       return res.status(400).json({ success: false, error: 'This event is not available in the Admin Panel.' });
     }
     if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
