@@ -70,7 +70,8 @@ if (USE_POSTGRES) {
 const inMemoryStore = {
   users: {},
   chatMessages: [],
-  inboxMessages: []
+  inboxMessages: [],
+  adminAudit: []
 };
 const inboxClaimsInFlight = new Set();
 const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
@@ -225,6 +226,33 @@ const TITLE_CATALOG = {
 function isAdministratorUser(user) {
   const username = String(user?.username || '').trim().toLowerCase();
   return Boolean(user?.is_admin || username === 'mr_fernanski' || username === 'testadmin');
+}
+
+function hasAdminPanelAccess(user) {
+  return isAdministratorUser(user) || getUnlockedTitles(user).includes('admin');
+}
+
+async function recordAdminAudit(actor, action, target = '', details = '') {
+  const record = {
+    actor: String(actor || 'Unknown').slice(0, 32),
+    action: String(action || 'Admin action').slice(0, 80),
+    target: String(target || '').slice(0, 32),
+    details: String(details || '').slice(0, 250),
+    createdAt: new Date().toISOString()
+  };
+  try {
+    if (pool) {
+      await executeQuery(
+        'INSERT INTO admin_audit_log (actor, action, target, details) VALUES ($1, $2, $3, $4)',
+        [record.actor, record.action, record.target, record.details]
+      );
+      return;
+    }
+    inMemoryStore.adminAudit.unshift(record);
+    inMemoryStore.adminAudit.length = Math.min(inMemoryStore.adminAudit.length, 200);
+  } catch (error) {
+    console.error('Admin audit write error:', error.message || error);
+  }
 }
 
 function getUnlockedTitles(user) {
@@ -635,6 +663,17 @@ async function ensureDatabase() {
     )
   `);
   await executeQuery(`
+    CREATE TABLE IF NOT EXISTS admin_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target TEXT NOT NULL DEFAULT '',
+      details TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await executeQuery('CREATE INDEX IF NOT EXISTS admin_audit_log_created_at_idx ON admin_audit_log (created_at DESC)');
+  await executeQuery(`
     ALTER TABLE users
       ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS spins INTEGER NOT NULL DEFAULT 0,
@@ -693,11 +732,16 @@ const GAME_EVENTS = {
 
 let activeGameEvent = null;
 let activeGameEventTimeout = null;
-let adminHeadline = { active: false, text: '' };
+let adminHeadline = { active: false, text: '', label: 'NOTICE', detail: '', color: '#eff6ff', speed: 18 };
 
 function normalizeAdminHeadline(value) {
   const text = String(value?.text || '').trim().slice(0, 220);
-  return { active: Boolean(value?.active && text), text };
+  const label = String(value?.label || 'NOTICE').trim().slice(0, 36) || 'NOTICE';
+  const detail = String(value?.detail || '').trim().slice(0, 120);
+  const requestedColor = String(value?.color || '').trim();
+  const color = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor : '#eff6ff';
+  const speed = Math.min(36, Math.max(10, Math.round(Number(value?.speed) || 18)));
+  return { active: Boolean(value?.active && text), text, label, detail, color, speed };
 }
 
 async function loadAdminHeadline() {
@@ -1898,6 +1942,101 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+app.get('/api/admin/audit', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const owner = await findUser(req.session.username);
+  if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+  try {
+    if (pool) {
+      const result = await executeQuery(
+        'SELECT actor, action, target, details, created_at AS "createdAt" FROM admin_audit_log ORDER BY created_at DESC LIMIT 100'
+      );
+      return res.json({ success: true, records: result.rows });
+    }
+    res.json({ success: true, records: inMemoryStore.adminAudit.slice(0, 100) });
+  } catch (error) {
+    console.error('Admin audit load error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to load admin activity.' });
+  }
+});
+
+async function renamePlayerAccount(oldUsername, newUsername) {
+  if (pool) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const inserted = await client.query(
+        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login)
+         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login
+         FROM users WHERE username = $2 RETURNING username`,
+        [newUsername, oldUsername]
+      );
+      if (!inserted.rowCount) throw new Error('Player account changed before the rename completed.');
+      await client.query('UPDATE inbox_messages SET sender = $1 WHERE sender = $2', [newUsername, oldUsername]);
+      await client.query('UPDATE inbox_messages SET recipient = $1 WHERE recipient = $2', [newUsername, oldUsername]);
+      await client.query('UPDATE limited_code_redemptions SET username = $1 WHERE username = $2', [newUsername, oldUsername]);
+      await client.query('UPDATE chat_messages SET username = $1 WHERE username = $2', [newUsername, oldUsername]);
+      await client.query('UPDATE chat_messages SET reply_to_username = $1 WHERE reply_to_username = $2', [newUsername, oldUsername]);
+      await client.query('DELETE FROM users WHERE username = $1', [oldUsername]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } else {
+    const account = inMemoryStore.users[oldUsername];
+    if (!account) throw new Error('Player account not found.');
+    delete inMemoryStore.users[oldUsername];
+    inMemoryStore.users[newUsername] = { ...account, username: newUsername };
+    inMemoryStore.chatMessages.forEach(message => {
+      if (message.username === oldUsername) message.username = newUsername;
+      if (message.replyTo?.username === oldUsername) message.replyTo.username = newUsername;
+    });
+    inMemoryStore.inboxMessages.forEach(message => {
+      if (message.sender === oldUsername) message.sender = newUsername;
+      if (message.recipient === oldUsername) message.recipient = newUsername;
+    });
+  }
+
+  const oldKey = normalizeUsername(oldUsername);
+  const newKey = normalizeUsername(newUsername);
+  if (activeEffectsStore[oldKey]) {
+    activeEffectsStore[newKey] = activeEffectsStore[oldKey];
+    delete activeEffectsStore[oldKey];
+  }
+  if (activeDiveSessions.has(oldKey)) {
+    activeDiveSessions.set(newKey, activeDiveSessions.get(oldKey));
+    activeDiveSessions.delete(oldKey);
+  }
+  if (pendingGlobalReveals.has(oldKey)) {
+    pendingGlobalReveals.set(newKey, pendingGlobalReveals.get(oldKey));
+    pendingGlobalReveals.delete(oldKey);
+  }
+  limitedCodeClaims.forEach(claimants => {
+    if (claimants.delete(oldUsername)) claimants.add(newUsername);
+  });
+
+  const sessions = await new Promise(resolve => sessionStore.all((error, records) => resolve(error ? {} : records || {})));
+  await Promise.all(Object.entries(sessions).filter(([, storedSession]) => normalizeUsername(storedSession.username) === oldKey).map(([sessionId, storedSession]) => new Promise(resolve => {
+    storedSession.username = newUsername;
+    sessionStore.set(sessionId, storedSession, () => resolve());
+  })));
+
+  const oldRoom = `user:${oldKey}`;
+  const newRoom = `user:${newKey}`;
+  const sockets = await io.in(oldRoom).fetchSockets();
+  await Promise.all(sockets.map(async socket => {
+    if (socket.request?.session && normalizeUsername(socket.request.session.username) === oldKey) {
+      socket.request.session.username = newUsername;
+      await new Promise(resolve => socket.request.session.save(() => resolve()));
+    }
+    await socket.leave(oldRoom);
+    await socket.join(newRoom);
+  }));
+}
+
 app.post('/api/admin/users/:username', async (req, res) => {
   if (!req.session?.username) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
@@ -1915,6 +2054,40 @@ app.post('/api/admin/users/:username', async (req, res) => {
     }
 
     const { type, amount, potion, item, banned, reason, grant } = req.body || {};
+    if (type === 'username') {
+      const targetIsAdmin = target.is_admin || getUnlockedTitles(target).includes('admin');
+      const isRenamingSelf = normalizeUsername(target.username) === normalizeUsername(admin.username);
+      if (targetIsAdmin && !isRenamingSelf) {
+        return res.status(403).json({ success: false, error: 'Admin account usernames cannot be changed here.' });
+      }
+      const newUsername = String(req.body?.newUsername || '').trim();
+      if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$/.test(newUsername)) {
+        return res.status(400).json({ success: false, error: 'Use 3–32 letters, numbers, underscores, or hyphens; start with a letter or number.' });
+      }
+      if (normalizeUsername(newUsername) === normalizeUsername(target.username)) {
+        return res.status(400).json({ success: false, error: 'Choose a different username.' });
+      }
+      const usernameTaken = pool
+        ? (await executeQuery('SELECT 1 FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1', [newUsername])).rows.length > 0
+        : Object.keys(inMemoryStore.users).some(username => normalizeUsername(username) === normalizeUsername(newUsername));
+      if (usernameTaken) return res.status(409).json({ success: false, error: 'That username is already taken.' });
+      const previousUsername = target.username;
+      try {
+        await renamePlayerAccount(previousUsername, newUsername);
+      } catch (error) {
+        console.error('Player username change error:', error.message || error);
+        return res.status(503).json({ success: false, error: 'Unable to rename this player and preserve their account history.' });
+      }
+      if (isRenamingSelf) {
+        req.session.username = newUsername;
+        await new Promise(resolve => req.session.save(error => {
+          if (error) console.error('Owner session rename save error:', error.message || error);
+          resolve();
+        }));
+      }
+      await recordAdminAudit(admin.username, 'Changed player username', newUsername, `Previous username: ${previousUsername}`);
+      return res.json({ success: true, username: newUsername, user: isRenamingSelf ? sanitizeUser(await findUser(newUsername)) : null });
+    }
     let updates;
     if (type === 'ban') {
       if (target.is_admin || normalizeUsername(target.username) === normalizeUsername(admin.username)) {
@@ -1965,6 +2138,7 @@ app.post('/api/admin/users/:username', async (req, res) => {
     }
 
     await updateUser(target.username, updates);
+    await recordAdminAudit(admin.username, `Updated player ${type}`, target.username, type === 'ban' ? (banned ? updates.ban_reason : 'Ban removed') : 'Account settings changed');
     const updatedTarget = { ...target, ...updates };
     if (typeof updatedTarget.potions === 'string') updatedTarget.potions = normalizeRecord(updatedTarget.potions);
     if (typeof updatedTarget.items === 'string') updatedTarget.items = normalizeRecord(updatedTarget.items);
@@ -2028,6 +2202,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     }));
     const announcement = `${admin.username} sent ${amount} × ${name} to every inbox. Claim it there.${ownerMessage ? ` ${ownerMessage}` : ''}`;
     const chatRecord = await saveChatMessage(admin.username, announcement, 'OWNER PANEL DROP', '#fbbf24', false, true);
+    await recordAdminAudit(admin.username, 'Sent global drop', '', `${amount} × ${name} to ${recipients.length} players`);
     io.emit('global-chat-message', chatRecord);
     io.emit('global-drop', { type, key, amount, name, pendingClaim: true });
     return res.json({ success: true, count: recipients.length, name, amount, pendingClaim: true });
@@ -2041,7 +2216,7 @@ app.get('/api/mini-admin/overview', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   try {
     const viewer = await findUser(req.session.username);
-    if (!viewer || (!viewer.is_admin && !getUnlockedTitles(viewer).includes('admin'))) {
+    if (!viewer || !hasAdminPanelAccess(viewer)) {
       return res.status(403).json({ success: false, error: 'The Admin title is required.' });
     }
     const users = pool
@@ -2061,7 +2236,10 @@ app.get('/api/mini-admin/overview', async (req, res) => {
         activity: online.get(normalizeUsername(safe.username)) || 'Offline',
         coins: safe.coins,
         spins: safe.spins,
-        inventoryTotal: safe.inventoryTotal
+        inventoryTotal: safe.inventoryTotal,
+        isAdmin: Boolean(safe.is_admin || (safe.titles || []).includes('admin')),
+        isBanned: Boolean(safe.is_banned),
+        banReason: safe.ban_reason || ''
       };
     });
     res.json({ success: true, users: roster, onlineCount: online.size, activeEvent: getActiveGameEvent() });
@@ -2071,11 +2249,37 @@ app.get('/api/mini-admin/overview', async (req, res) => {
   }
 });
 
+app.post('/api/mini-admin/users/:username/ban', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const moderator = await findUser(req.session.username);
+    if (!hasAdminPanelAccess(moderator)) return res.status(403).json({ success: false, error: 'The Admin title is required.' });
+    const target = await findUser(req.params.username);
+    if (!target) return res.status(404).json({ success: false, error: 'Player not found.' });
+    if (normalizeUsername(target.username) === normalizeUsername(moderator.username)
+      || target.is_admin || getUnlockedTitles(target).includes('admin')) {
+      return res.status(403).json({ success: false, error: 'Admins cannot change access for themselves or another admin.' });
+    }
+    const { banned, reason } = req.body || {};
+    if (typeof banned !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether to ban or unban this player.' });
+    const banReason = banned ? String(reason || '').trim().slice(0, 250) : '';
+    await updateUser(target.username, { is_banned: banned, ban_reason: banReason });
+    const room = `user:${normalizeUsername(target.username)}`;
+    io.to(room).emit(banned ? 'player-banned' : 'player-unbanned', { reason: banReason });
+    if (banned) setTimeout(() => io.in(room).disconnectSockets(true), 500).unref?.();
+    await recordAdminAudit(moderator.username, banned ? 'Banned player' : 'Unbanned player', target.username, banReason);
+    res.json({ success: true, username: target.username, isBanned: banned, banReason });
+  } catch (error) {
+    console.error('Mini admin ban error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to update player access.' });
+  }
+});
+
 app.post('/api/mini-admin/event', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   try {
     const user = await findUser(req.session.username);
-    if (!user || (!user.is_admin && !getUnlockedTitles(user).includes('admin'))) {
+    if (!user || !hasAdminPanelAccess(user)) {
       return res.status(403).json({ success: false, error: 'The Admin title is required.' });
     }
     const eventName = String(req.body?.eventName || '');
@@ -2089,9 +2293,11 @@ app.post('/api/mini-admin/event', async (req, res) => {
         return res.status(403).json({ success: false, error: 'You can only end your own active event.' });
       }
       stopGameEvent(eventName);
+      await recordAdminAudit(user.username, 'Ended game event', eventName);
       return res.json({ success: true, stopped: true });
     }
     const event = startGameEvent(eventName, user.username);
+    await recordAdminAudit(user.username, 'Started game event', eventName);
     res.json({ success: true, event: { title: event.title } });
   } catch (error) {
     console.error('Mini admin event error:', error.message || error);
@@ -2103,13 +2309,14 @@ app.post('/api/mini-admin/announcement', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   try {
     const user = await findUser(req.session.username);
-    if (!user || (!user.is_admin && !getUnlockedTitles(user).includes('admin'))) {
+    if (!user || !hasAdminPanelAccess(user)) {
       return res.status(403).json({ success: false, error: 'The Admin title is required.' });
     }
     const title = String(req.body?.title || '').trim().slice(0, 80);
     const content = String(req.body?.content || '').trim().slice(0, 500);
     if (!title || !content) return res.status(400).json({ success: false, error: 'Enter an announcement title and message.' });
     const record = await saveChatMessage(user.username, `${title}: ${content}`, 'Admin Panel', '#fb7185', false, false, true);
+    await recordAdminAudit(user.username, 'Sent admin announcement', '', title);
     io.emit('chat-message', record);
     io.emit('admin-announcement', { title, content });
     res.json({ success: true });
@@ -2188,6 +2395,7 @@ app.post('/api/admin/announcement', async (req, res) => {
   const persisted = await saveChatMessage(chatMsg.username, chatMsg.message, chatMsg.title, chatMsg.titleColor, false, false, true);
   io.emit('admin-announcement', announcement);
   io.emit('chat-message', persisted);
+  await recordAdminAudit(user.username, 'Sent announcement', '', announcement.title);
 
   res.json({ success: true, announcement });
 });
@@ -2215,7 +2423,7 @@ app.post('/api/admin/headline', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Enter headline text before enabling it.' });
   }
   const previousHeadline = adminHeadline;
-  adminHeadline = { active: req.body.active, text };
+  adminHeadline = normalizeAdminHeadline({ ...req.body, active: req.body.active, text });
   try {
     await persistAdminHeadline();
   } catch (error) {
@@ -2224,6 +2432,7 @@ app.post('/api/admin/headline', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Headline could not be saved. Please try again.' });
   }
   io.emit('admin-headline', adminHeadline);
+  await recordAdminAudit(user.username, 'Updated moving headline', '', adminHeadline.active ? adminHeadline.label : 'Headline turned off');
   res.json({ success: true, headline: adminHeadline });
 });
 
@@ -2234,6 +2443,7 @@ app.post('/api/admin/shutdown', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Shutdown state must be true or false.' });
   }
   gameShutdown = req.body.active;
+  await recordAdminAudit(user.username, gameShutdown ? 'Enabled maintenance mode' : 'Resumed game services');
   io.emit('shutdown-state', { active: gameShutdown, message: 'Update or Fix in progress please wait' });
   res.json({ success: true, active: gameShutdown });
 });
@@ -2248,12 +2458,14 @@ app.post('/api/admin/owner-command', async (req, res) => {
       await clearChatHistory();
       io.emit('chat-history', []);
       io.emit('global-chat-history', []);
+      await recordAdminAudit(owner.username, 'Cleared chat history');
       return res.json({ success: true, message: 'Player and global chats cleared.' });
     }
     if (command === 'end-active-event') {
       const event = getActiveGameEvent();
       if (!event) return res.status(409).json({ success: false, error: 'No event is currently active.' });
       stopGameEvent(event.eventName);
+      await recordAdminAudit(owner.username, 'Ended game event', event.eventName);
       return res.json({ success: true, message: `${event.title} ended.` });
     }
     return res.status(400).json({ success: false, error: 'Unknown Owner Panel command.' });
