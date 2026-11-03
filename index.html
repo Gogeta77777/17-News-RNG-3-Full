@@ -515,6 +515,24 @@
             font-size: 1.05rem;
         }
 
+        .username.title-shine {
+            color: #e7eaf0;
+            background: linear-gradient(108deg, #8b929e 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
+            background-size: 230% 100%;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: titleNameShine 3.4s ease-in-out infinite;
+        }
+
+        @keyframes titleNameShine {
+            0%, 12% { background-position: 100% 50%; }
+            75%, 100% { background-position: 0 50%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .username.title-shine { animation: none; background-position: center; }
+        }
+
         .coins {
             font-size: 0.95rem;
             color: #7dd3fc;
@@ -4391,6 +4409,7 @@
             place-items: center;
             border: 2px solid transparent;
             border-radius: 50%;
+            translate: var(--finn-drift-x, 0) var(--finn-drift-y, 0);
             background: linear-gradient(145deg, rgba(247, 255, 255, 0.96), rgba(137, 211, 235, 0.72) 48%, rgba(116, 117, 200, 0.8)) padding-box,
                 conic-gradient(from 25deg, #ff5577, #ffce62, #77f2ae, #60dfff, #9c79ff, #ff70d0, #ff5577) border-box;
             box-shadow: 0 0 14px rgba(140, 120, 255, 0.5), inset 0 0 14px rgba(255, 255, 255, 0.72);
@@ -4412,26 +4431,6 @@
             inset: -22%;
             pointer-events: none;
         }
-
-        .finn-eye {
-            position: absolute;
-            z-index: 1;
-            top: 50%;
-            left: 50%;
-            width: 30%;
-            aspect-ratio: 1;
-            transform: translate(calc(-50% + var(--eye-x, 0px)), calc(-50% + var(--eye-y, 0px)));
-            transition: transform 100ms ease-out;
-            border: 1.5px solid transparent;
-            border-radius: 50%;
-            background: radial-gradient(circle at 34% 30%, #fff 0 5%, rgba(255, 255, 255, 0.55) 10%, transparent 20%),
-                conic-gradient(#ff1744, #ff9100, #ffee00, #00e676, #00e5ff, #2979ff, #d500f9, #ff1744);
-            animation: finnEyeChroma 2.4s linear infinite;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 20px rgba(213, 0, 249, 0.8), 0 0 28px rgba(0, 229, 255, 0.65);
-            pointer-events: none;
-        }
-
-        @keyframes finnEyeChroma { to { filter: hue-rotate(360deg); } }
 
         .finn-energy::before,
         .finn-energy::after {
@@ -4989,6 +4988,11 @@
             gap: 8px;
         }
 
+        .admin-username-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; padding: 10px; border: 1px solid rgba(167, 139, 250, 0.2); border-radius: 3px; background: rgba(46, 26, 94, 0.16); }
+        .admin-username-form label { display: grid; gap: 5px; color: #ddd6fe; font-size: 0.74rem; }
+        .admin-username-form input { width: 100%; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 2px; background: #071225; color: #eff6ff; }
+        .admin-username-form button { min-height: 36px; white-space: nowrap; }
+
         .admin-adjust-form {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
@@ -5455,15 +5459,15 @@
             box-shadow: inset 0 0 18px rgba(56, 189, 248, 0.08);
         }
         .admin-headline.hidden { display: none; }
-        .admin-headline-label { color: #7dd3fc; font-size: 0.64rem; font-weight: 900; white-space: nowrap; }
+        .admin-headline-label { color: var(--headline-color, #7dd3fc); font-size: 0.64rem; font-weight: 900; white-space: nowrap; }
         .admin-headline-window { min-width: 0; overflow: hidden; white-space: nowrap; }
         .admin-headline-window span {
             display: inline-block;
             min-width: max-content;
-            color: #eff6ff;
+            color: var(--headline-color, #eff6ff);
             font-size: 0.9rem;
             font-weight: 700;
-            animation: headlineTravel 18s linear infinite;
+            animation: headlineTravel var(--headline-speed, 18s) linear infinite;
         }
         .admin-headline:hover .admin-headline-window span { animation-play-state: paused; }
         @keyframes headlineTravel {
@@ -5484,6 +5488,11 @@
             background: #071225;
             color: #eff6ff;
         }
+        .headline-style-controls { display: grid; grid-template-columns: minmax(100px, 0.45fr) minmax(0, 1fr); align-items: end; gap: 12px; }
+        .headline-style-controls label { display: grid; gap: 6px; color: #bfdbfe; font-size: 0.82rem; }
+        .headline-style-controls input[type="color"] { width: 100%; min-height: 42px; padding: 4px; border: 1px solid rgba(96, 165, 250, 0.34); border-radius: 2px; background: #071225; }
+        .headline-style-controls input[type="range"] { width: 100%; accent-color: #a78bfa; }
+        .headline-style-controls label span { color: #93c5fd; font-size: 0.72rem; }
         .headline-admin-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .headline-admin-footer span { color: #93c5fd; font-size: 0.8rem; }
 
@@ -5854,6 +5863,7 @@
         .owner-command-card span { color: #a9bfd2; font-size: 0.75rem; }
         .mini-ops-events { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
         .mini-ops-events button { min-width: 185px; }
+        .admin-abuse-warning { margin: 0 0 12px; padding: 9px 11px; border-left: 3px solid #f59e0b; background: rgba(120, 53, 15, 0.22); color: #fde68a; font-size: 0.76rem; text-align: center; }
         .mini-ops-status { margin: 14px 0 8px; color: #93c5fd; font-size: 0.82rem; text-align: center; }
         .mini-user-roster { display: grid; gap: 5px; }
         .mini-user-row { display: grid; grid-template-columns: 12px minmax(90px, 1fr) minmax(150px, 1.2fr) auto; align-items: center; gap: 10px; min-width: 0; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.13); color: #dbeafe; font-size: 0.78rem; }
@@ -5861,6 +5871,17 @@
         .mini-user-row small { color: #8fa7bb; text-align: right; }
         .mini-user-presence { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
         .mini-user-presence.online { background: #4ade80; box-shadow: 0 0 9px rgba(74, 222, 128, 0.65); }
+        .mini-ban-form { display: flex; grid-column: 2 / -1; align-items: center; justify-content: flex-end; gap: 7px; }
+        .mini-ban-form input { width: min(250px, 100%); min-height: 32px; padding: 5px 8px; border: 1px solid rgba(248, 113, 113, 0.24); background: #0b1424; color: #fff1f2; font: inherit; font-size: 0.7rem; }
+        .mini-ban-form .btn { min-height: 32px; padding: 5px 9px; font-size: 0.68rem; }
+        .mini-ban-form .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .owner-audit-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .owner-audit-heading h2 { margin: 0; }
+        .owner-audit-heading p { margin: 5px 0 0; color: #9fb7ca; font-size: 0.76rem; }
+        .owner-audit-list { display: grid; max-height: 340px; gap: 5px; margin-top: 12px; overflow-y: auto; }
+        .owner-audit-row { display: grid; grid-template-columns: minmax(100px, 0.7fr) minmax(120px, 0.8fr) minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.13); color: #dbeafe; font-size: 0.74rem; }
+        .owner-audit-row strong { color: #c4b5fd; }
+        .owner-audit-row small { color: #8196ad; white-space: nowrap; }
         .admin-title-form { display: flex; align-items: end; gap: 8px; color: #bfdbfe; font-size: 0.76rem; }
         .admin-title-form .btn { white-space: nowrap; }
         .admin-forge-form { display: flex; align-items: end; gap: 8px; color: #fed7aa; font-size: 0.76rem; }
@@ -5873,6 +5894,10 @@
             .mini-user-row { grid-template-columns: 12px minmax(0, 1fr) auto; gap: 7px; }
             .mini-user-row > span:nth-of-type(2) { grid-column: 2; }
             .mini-user-row small { grid-column: 3; grid-row: 1 / span 2; }
+            .mini-ban-form { grid-column: 2 / -1; justify-content: stretch; }
+            .mini-ban-form input { flex: 1 1 auto; min-width: 0; }
+            .owner-audit-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
+            .owner-audit-row > span:nth-child(3) { grid-column: 1 / -1; }
         }
         .event-visual-layer {
             position: fixed;
@@ -6218,7 +6243,7 @@
                     </div>
                 </div>
                 <div class="admin-headline hidden" id="admin-headline" aria-label="Admin headline">
-                    <span class="admin-headline-label">NOTICE</span>
+                    <span class="admin-headline-label" id="admin-headline-label-display">NOTICE</span>
                     <div class="admin-headline-window"><span id="admin-headline-text-display"></span></div>
                 </div>
                 <div class="header-right">
@@ -6419,7 +6444,6 @@
                                     <section class="finn-companion" aria-label="Talk to Lord Finn">
                                         <div class="finn-orb" data-finn-orb aria-hidden="true">
                                             <span class="finn-energy" data-finn-energy></span>
-                                            <span class="finn-eye" data-finn-eye></span>
                                         </div>
                                         <button class="finn-talk-bubble" id="finn-open" type="button" aria-label="Talk to Lord Finn" aria-haspopup="dialog" aria-controls="finn-dialog-overlay">Talk</button>
                                     </section>
@@ -6441,7 +6465,7 @@
     <div class="finn-dialog-overlay hidden" id="finn-dialog-overlay" role="presentation">
         <section class="finn-dialog-panel" id="finn-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="finn-dialog-title" tabindex="-1">
             <header class="finn-dialog-header">
-                <h2 class="finn-dialog-title" id="finn-dialog-title">A quiet signal</h2>
+                <h2 class="finn-dialog-title" id="finn-dialog-title">Gateway Signals</h2>
                 <div class="finn-dialog-actions">
                     <button class="finn-watch-button" id="finn-watch-button" type="button" aria-pressed="false">Gateway Watch</button>
                     <button class="finn-dialog-close" id="finn-close" type="button" aria-label="Close conversation">×</button>
@@ -6451,13 +6475,14 @@
                 <div class="finn-dialog-orbit" aria-hidden="true">
                     <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
                         <span class="finn-energy" data-finn-energy></span>
-                        <span class="finn-eye" data-finn-eye></span>
                     </div>
                 </div>
                 <div class="finn-dialogue">
                     <div class="finn-name">Lord Finn <small>GATEWAY WATCH</small></div>
                     <div class="finn-chat" id="finn-chat" role="log" aria-label="Conversation with Lord Finn" aria-live="polite" aria-relevant="additions"></div>
                     <div class="finn-choices" id="finn-choices" role="group" aria-label="Ask Lord Finn about the strange signal">
+                        <span class="finn-page-label" id="finn-page-label">Questions · 1 of 2</span>
+                        <button class="finn-choice hidden" id="finn-next-page" type="button">Next page</button>
                         <button class="finn-choice finn-reset" id="finn-reset" type="button">Start over</button>
                     </div>
                 </div>
@@ -6472,7 +6497,7 @@
                     <div class="finn-watch-readout">
                         <span class="finn-watch-live">SIGNAL TRACE · LIVE</span>
                         <strong id="finn-watch-status">Portal locked</strong>
-                        <p>A second route appears between pulses. Its endpoint remains unclear.</p>
+                        <p>Two pulses overlap, then the surface folds inward. The signal comes from a route missing from every realm chart.</p>
                         <label class="finn-watch-meter">SIGNAL COHERENCE<i></i></label>
                     </div>
                 </div>
@@ -6500,6 +6525,7 @@
                         <svg class="realm-fracture" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true">
                             <defs><linearGradient id="realm-fracture-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d2ff"/><stop offset=".45" stop-color="#b969ff"/><stop offset="1" stop-color="#7045c4"/></linearGradient></defs>
                             <path d="M283 2 274 18 281 29 260 42 268 53 247 66 255 78 235 91 243 104 221 116 229 128 206 140 212 151 191 166 M260 42 279 47 286 60 M247 66 229 59 222 47 M243 104 264 110 271 121 M221 116 203 107 195 94"/>
+                            <path d="M102 0 111 15 101 27 119 39 112 52 128 64 122 76"/>
                         </svg>
                         <span class="realm-question-logo">?</span>
                     </div>
@@ -6625,8 +6651,16 @@
                 <h2>Moving Headline</h2>
                 <form class="headline-admin-form" id="admin-headline-form">
                     <label class="headline-enabled-control"><input type="checkbox" id="admin-headline-enabled"> Show headline to players</label>
+                    <label for="admin-headline-label-input">Ticker label</label>
+                    <input id="admin-headline-label-input" type="text" maxlength="36" placeholder="NOTICE">
                     <label for="admin-headline-text">Headline text</label>
                     <input id="admin-headline-text" type="text" maxlength="220" placeholder="Enter the message players will see...">
+                    <label for="admin-headline-detail">Supporting line</label>
+                    <input id="admin-headline-detail" type="text" maxlength="120" placeholder="Optional extra detail">
+                    <div class="headline-style-controls">
+                        <label for="admin-headline-color">Text color<input id="admin-headline-color" type="color" value="#eff6ff"></label>
+                        <label for="admin-headline-speed">Scroll speed<input id="admin-headline-speed" type="range" min="10" max="36" value="18"><span id="admin-headline-speed-value">18 seconds</span></label>
+                    </div>
                     <div class="headline-admin-footer"><span id="admin-headline-status" role="status">Headline is off</span><button class="btn" type="submit">Save headline</button></div>
                 </form>
             </div>
@@ -6662,6 +6696,7 @@
 
             <div class="admin-section" id="mini-ops-section">
                 <h2>Admin Panel</h2>
+                <p class="admin-abuse-warning" role="note">Do not abuse, your activity is being monitored.</p>
                 <div class="mini-ops-events">
                     <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
                     <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
@@ -6674,6 +6709,11 @@
                 </form>
                 <p class="mini-ops-status" id="mini-ops-status" role="status">Loading player activity…</p>
                 <div class="mini-user-roster" id="mini-user-roster"></div>
+            </div>
+
+            <div class="admin-section" id="owner-audit-section">
+                <div class="owner-audit-heading"><div><h2>Admin Activity</h2><p>Recent moderation and operations actions.</p></div><button class="btn" id="refresh-admin-audit" type="button">Refresh log</button></div>
+                <div class="owner-audit-list" id="admin-audit-list" aria-live="polite"></div>
             </div>
 
             <div class="admin-section" id="global-drop-section">
