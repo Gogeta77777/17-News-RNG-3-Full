@@ -1874,17 +1874,31 @@ async function loadAdminUsers() {
     });
     userList.appendChild(row);
   });
-  const search = document.getElementById('admin-user-search');
-  if (search && !search.dataset.bound) {
-    search.addEventListener('input', () => {
-      const query = search.value.trim().toLowerCase();
+  const playerSelect = document.getElementById('admin-player-select');
+  if (playerSelect) {
+    const previousSelection = playerSelect.value;
+    playerSelect.replaceChildren(...response.users.map(user => {
+      const option = document.createElement('option');
+      option.value = user.username;
+      option.textContent = `${user.username}${user.is_banned ? ' · BANNED' : ''}`;
+      return option;
+    }));
+    playerSelect.value = response.users.some(user => user.username === previousSelection)
+      ? previousSelection
+      : response.users[0]?.username || '';
+    const selectPlayer = () => {
       userList.querySelectorAll('.admin-user-row').forEach(row => {
-        row.hidden = !row.dataset.username.includes(query);
+        const selected = row.dataset.username === playerSelect.value.toLowerCase();
+        row.hidden = !selected;
+        row.classList.toggle('owner-player-focus', selected);
       });
-    });
-    search.dataset.bound = 'true';
+    };
+    if (!playerSelect.dataset.bound) {
+      playerSelect.addEventListener('change', selectPlayer);
+      playerSelect.dataset.bound = 'true';
+    }
+    selectPlayer();
   }
-  search?.dispatchEvent(new Event('input'));
   if (!response.users.length) {
     userList.innerHTML = '<p class="admin-empty-state">No player records yet.</p>';
   }
@@ -2126,7 +2140,9 @@ async function loadAdminHeadline() {
 const LIVE_EVENT_PRESENTATION = {
   'starlight-surge': { className: 'starlight-surge', startId: 'activate-starlight-surge', stopId: 'deactivate-starlight-surge' },
   'meteor-shower': { className: 'meteor-shower-live', startId: 'activate-meteor-shower', stopId: 'deactivate-meteor-shower' },
-  'abyssal-resonance': { className: 'abyssal-resonance-live', startId: 'activate-abyssal-resonance', stopId: 'deactivate-abyssal-resonance', shakeEveryMs: 26000 }
+  'abyssal-resonance': { className: 'abyssal-resonance-live', startId: 'activate-abyssal-resonance', stopId: 'deactivate-abyssal-resonance', shakeEveryMs: 26000 },
+  'prismfall': { className: 'prismfall-live', startId: 'activate-prismfall', stopId: 'deactivate-prismfall' },
+  'gravity-well': { className: 'gravity-well-live', startId: 'activate-gravity-well', stopId: 'deactivate-gravity-well' }
 };
 
 function triggerCameraShake() {
@@ -2157,14 +2173,40 @@ function createAdminEventVisual(eventName) {
   layer.className = `event-visual-layer event-visual-${eventName}`;
   layer.setAttribute('aria-hidden', 'true');
   if (eventName === 'meteor-shower') {
-    for (let index = 0; index < 18; index += 1) {
+    for (let index = 0; index < 30; index += 1) {
       const meteor = document.createElement('span');
-      meteor.className = 'event-meteor-streak';
+      meteor.className = `event-meteor-streak event-meteor-wave-${index % 3}`;
       meteor.style.setProperty('--meteor-left', `${Math.random() * 120 - 10}%`);
-      meteor.style.setProperty('--meteor-delay', `${Math.random() * -9}s`);
-      meteor.style.setProperty('--meteor-duration', `${2.5 + Math.random() * 2.5}s`);
-      meteor.style.setProperty('--meteor-size', `${10 + Math.random() * 12}px`);
+      meteor.style.setProperty('--meteor-delay', `${Math.random() * -7}s`);
+      meteor.style.setProperty('--meteor-duration', `${1.2 + Math.random() * 1.2}s`);
+      meteor.style.setProperty('--meteor-size', `${16 + Math.random() * 24}px`);
+      meteor.style.setProperty('--meteor-angle', `${-30 + Math.random() * 16}deg`);
       layer.appendChild(meteor);
+    }
+  } else if (eventName === 'prismfall') {
+    for (let index = 0; index < 34; index += 1) {
+      const shard = document.createElement('span');
+      shard.className = 'event-prism-shard';
+      shard.style.setProperty('--shard-left', `${Math.random() * 100}%`);
+      shard.style.setProperty('--shard-delay', `${Math.random() * -9}s`);
+      shard.style.setProperty('--shard-duration', `${4 + Math.random() * 7}s`);
+      shard.style.setProperty('--shard-hue', `${Math.random() * 360}deg`);
+      layer.appendChild(shard);
+    }
+  } else if (eventName === 'gravity-well') {
+    for (let index = 0; index < 4; index += 1) {
+      const ring = document.createElement('span');
+      ring.className = 'event-gravity-ring';
+      ring.style.setProperty('--ring-delay', `${index * -1.4}s`);
+      ring.style.setProperty('--ring-scale', `${0.62 + index * 0.18}`);
+      layer.appendChild(ring);
+    }
+    for (let index = 0; index < 22; index += 1) {
+      const mote = document.createElement('span');
+      mote.className = 'event-gravity-mote';
+      mote.style.setProperty('--mote-angle', `${Math.random() * 360}deg`);
+      mote.style.setProperty('--mote-delay', `${Math.random() * -7}s`);
+      layer.appendChild(mote);
     }
   } else if (eventName === 'starlight-surge') {
     for (let index = 0; index < 24; index += 1) {
