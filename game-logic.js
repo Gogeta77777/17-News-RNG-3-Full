@@ -1481,7 +1481,9 @@ function updateUI(user) {
   gameState.seaRealmUnlocked = user.sea_realm_unlocked || false;
   gameState.forgeRealmUnlocked = user.forge_realm_unlocked || false;
   
-  document.getElementById('game-username').textContent = user.username;
+  const usernameDisplay = document.getElementById('game-username');
+  usernameDisplay.textContent = user.username;
+  usernameDisplay.classList.toggle('title-shine', ['owner', 'admin'].includes(user.active_title));
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
@@ -1605,6 +1607,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     }
     const titleRequirement = titleDefinition?.description || '';
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year'].includes(titleDefinition.id);
+    const titleShine = ['owner', 'admin'].includes(titleDefinition?.id) ? ' title-shine' : '';
     const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
@@ -1616,7 +1619,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       ${replyContext}
       ${isAnnouncement ? '<span class="global-drop-kicker">ADMIN EVENT</span>' : ''}
       ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
-      <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
+      <span class="username${titleShine}" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
       ${replyButton}
       <br><small style="opacity: 0.7;">${time}</small>
@@ -1779,6 +1782,10 @@ async function loadAdminUsers() {
         ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
         <form class="admin-forge-form"><span>Forge Realm</span><button class="btn" type="submit">${user.forge_realm_unlocked ? 'Revoke access' : 'Grant access'}</button></form>
       </div>
+      ${(!(user.is_admin || (user.titles || []).includes('admin')) || String(user.username).toLowerCase() === String(currentUser?.username || '').toLowerCase()) ? `<form class="admin-username-form">
+        <label>Change username<input name="username" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" value="${escapeHtml(user.username)}" required></label>
+        <button class="btn" type="submit">Rename player</button>
+      </form>` : ''}
       <form class="admin-ban-form">
         <label>Ban reason<input class="ban-reason" type="text" maxlength="250" placeholder="Optional reason" ${user.is_admin ? 'disabled' : ''}></label>
         <button class="btn ${user.is_banned ? '' : 'danger-btn'}" type="submit" ${user.is_admin ? 'disabled' : ''}>${user.is_banned ? 'Unban player' : 'Ban player'}</button>
@@ -1786,6 +1793,25 @@ async function loadAdminUsers() {
     `;
     row.classList.toggle('admin-user-banned', Boolean(user.is_banned));
     row.querySelector('.ban-reason').value = user.ban_reason || '';
+    row.querySelector('.admin-username-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const newUsername = event.currentTarget.elements.username.value.trim();
+      if (!confirm(`Rename ${user.username} to ${newUsername}?`)) return;
+      const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST', body: { type: 'username', newUsername }
+      });
+      if (!result.success) {
+        showPopup(result.error || 'Unable to change username.', 'error');
+        return;
+      }
+      if (result.user && String(user.username).toLowerCase() === String(currentUser?.username || '').toLowerCase()) {
+        currentUser = result.user;
+        updateUI(currentUser);
+      }
+      showPopup(`${user.username} is now ${newUsername}.`);
+      loadAdminUsers();
+      loadAdminAudit();
+    });
     row.querySelector('.admin-ban-form')?.addEventListener('submit', async event => {
       event.preventDefault();
       const banned = !user.is_banned;
@@ -1883,11 +1909,64 @@ async function loadMiniAdminOverview() {
       <span class="mini-user-presence ${user.online ? 'online' : ''}" aria-hidden="true"></span>
       <strong>${escapeHtml(user.username)}</strong>
       <span>${escapeHtml(user.activity)}</span>
-      <small>${formatCoins(user.coins)} coins · ${user.spins} rolls</small>
+      <small>${user.isBanned ? 'BANNED · ' : ''}${formatCoins(user.coins)} coins · ${user.spins} rolls</small>
+      <form class="mini-ban-form" data-username="${escapeHtml(user.username)}" data-banned="${String(!user.isBanned)}">
+        <input name="reason" type="text" maxlength="250" value="${escapeHtml(user.banReason)}" placeholder="Reason for ban" aria-label="Ban reason for ${escapeHtml(user.username)}" ${user.isAdmin || user.username.toLowerCase() === currentUser.username.toLowerCase() ? 'disabled' : ''}>
+        <button class="btn ${user.isBanned ? '' : 'danger-btn'}" type="submit" ${user.isAdmin || user.username.toLowerCase() === currentUser.username.toLowerCase() ? 'disabled' : ''}>${user.isBanned ? 'Unban' : 'Ban'}</button>
+      </form>
     </div>
   `).join('') || '<p class="admin-empty-state">No player records yet.</p>';
+  if (!roster.dataset.banBound) {
+    roster.addEventListener('submit', async event => {
+      const form = event.target.closest('.mini-ban-form');
+      if (!form) return;
+      event.preventDefault();
+      const username = form.dataset.username;
+      const banned = form.dataset.banned === 'true';
+      if (banned && !confirm(`Ban ${username}?`)) return;
+      const response = await handleAPI(`/api/mini-admin/users/${encodeURIComponent(username)}/ban`, {
+        method: 'POST',
+        body: { banned, reason: form.elements.reason.value }
+      });
+      if (!response.success) {
+        showPopup(response.error || 'Unable to update player access.', 'error');
+        return;
+      }
+      showPopup(banned ? `${username} has been banned.` : `${username} has been unbanned.`);
+      loadMiniAdminOverview();
+    });
+    roster.dataset.banBound = 'true';
+  }
   const stop = document.querySelector('[data-mini-stop]');
   if (stop) stop.disabled = !response.activeEvent || response.activeEvent.initiatedBy !== currentUser.username;
+}
+
+async function loadAdminAudit() {
+  const list = document.getElementById('admin-audit-list');
+  if (!list || !currentUser?.is_admin) return;
+  const response = await handleAPI('/api/admin/audit');
+  if (!response.success) {
+    list.textContent = response.error || 'Unable to load admin activity.';
+    return;
+  }
+  if (!response.records.length) {
+    list.textContent = 'No recent admin actions.';
+    return;
+  }
+  list.replaceChildren(...response.records.map(record => {
+    const row = document.createElement('div');
+    row.className = 'owner-audit-row';
+    const actor = document.createElement('strong');
+    actor.textContent = record.actor;
+    const action = document.createElement('span');
+    action.textContent = record.action;
+    const details = document.createElement('span');
+    details.textContent = [record.target ? `Target: ${record.target}` : '', record.details || ''].filter(Boolean).join(' · ') || 'No details';
+    const timestamp = document.createElement('small');
+    timestamp.textContent = formatChatTimestamp(record.createdAt);
+    row.append(actor, action, details, timestamp);
+    return row;
+  }));
 }
 
 function updateGlobalDropPreview() {
@@ -1930,6 +2009,7 @@ function renderGlobalDropOptions() {
 }
 
 function setupAdminTools() {
+  document.getElementById('refresh-admin-audit')?.addEventListener('click', loadAdminAudit);
   const typeSelect = document.getElementById('global-drop-type');
   typeSelect?.addEventListener('change', renderGlobalDropOptions);
   document.getElementById('global-drop-key')?.addEventListener('change', updateGlobalDropPreview);
@@ -1958,6 +2038,7 @@ function setupAdminTools() {
       const response = await handleAPI('/api/admin/owner-command', {
         method: 'POST', body: { command: button.dataset.ownerCommand }
       });
+      if (response.success) loadAdminAudit();
       showPopup(response.success ? response.message : response.error || 'Owner command failed.', response.success ? 'success' : 'error');
     });
   });
@@ -2008,14 +2089,30 @@ function applyAdminHeadline(headline = {}) {
   const active = Boolean(headline.active && String(headline.text || '').trim());
   const ticker = document.getElementById('admin-headline');
   const display = document.getElementById('admin-headline-text-display');
+  const tickerLabel = document.getElementById('admin-headline-label-display');
   const enabled = document.getElementById('admin-headline-enabled');
   const input = document.getElementById('admin-headline-text');
+  const labelInput = document.getElementById('admin-headline-label-input');
+  const detailInput = document.getElementById('admin-headline-detail');
+  const colorInput = document.getElementById('admin-headline-color');
+  const speedInput = document.getElementById('admin-headline-speed');
+  const speedValue = document.getElementById('admin-headline-speed-value');
   const status = document.getElementById('admin-headline-status');
-  if (display) display.textContent = active ? headline.text : '';
+  const color = /^#[0-9a-f]{6}$/i.test(headline.color || '') ? headline.color : '#eff6ff';
+  const speed = Math.min(36, Math.max(10, Number(headline.speed) || 18));
+  if (display) display.textContent = active ? `${headline.text}${headline.detail ? ` · ${headline.detail}` : ''}` : '';
+  if (tickerLabel) tickerLabel.textContent = headline.label || 'NOTICE';
+  ticker?.style.setProperty('--headline-color', color);
+  ticker?.style.setProperty('--headline-speed', `${speed}s`);
   ticker?.classList.toggle('hidden', !active);
   if (currentUser?.is_admin) {
     if (enabled) enabled.checked = active;
     if (input) input.value = headline.text || '';
+    if (labelInput) labelInput.value = headline.label || '';
+    if (detailInput) detailInput.value = headline.detail || '';
+    if (colorInput) colorInput.value = color;
+    if (speedInput) speedInput.value = String(speed);
+    if (speedValue) speedValue.textContent = `${speed} seconds`;
     if (status) status.textContent = active ? 'Headline is live for all players' : 'Headline is off';
   }
 }
@@ -2509,13 +2606,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finnReplies = {
-    flicker: 'The gateway signal is unstable. Each pulse briefly shows a different star chart.',
-    beyond: 'A new route branches past the known realms. I cannot map its endpoint yet.',
-    signal: 'Three pulses, a pause, then three more. The pattern repeats after I answer.'
+    flicker: 'The gateway signal is unstable. Each pulse briefly reveals a different star chart.',
+    beyond: 'A new route branches past the known realms. Its endpoint will not stay in one place.',
+    signal: 'Three pulses, a pause, then three more. The pattern repeats after I answer.',
+    origin: 'Every chart points to the same blank space. That space moves whenever the gateway opens.',
+    response: 'Yes. The return pulse matches our rhythm, but it arrives before I send mine.',
+    warning: 'Watch the edge of the gateway. If the spiral turns inward, step back and wait for the pulse to pass.'
   };
   const finnChat = document.getElementById('finn-chat');
   const finnChoices = document.getElementById('finn-choices');
   const finnReset = document.getElementById('finn-reset');
+  const finnNextPage = document.getElementById('finn-next-page');
+  const finnPageLabel = document.getElementById('finn-page-label');
   const portalContainer = document.getElementById('portal-container');
   const finnOverlay = document.getElementById('finn-dialog-overlay');
   const finnDialog = document.getElementById('finn-dialog-panel');
@@ -2526,9 +2628,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const finnWatchView = document.getElementById('finn-watch-view');
   const finnWatchPortal = document.getElementById('finn-watch-portal');
   const finnWatchStatus = document.getElementById('finn-watch-status');
-  const finnEyes = [...document.querySelectorAll('[data-finn-eye]')];
+  const finnOrbs = [...document.querySelectorAll('[data-finn-orb]')];
   const finnFlash = document.getElementById('finn-exit-flash');
   let finnConversationStarted = false;
+  let finnDialoguePage = 0;
   const livePortalVisual = portalContainer?.querySelector('.portal-base');
   if (finnWatchPortal && livePortalVisual) {
     const portalClone = livePortalVisual.cloneNode(true);
@@ -2559,9 +2662,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   const finnQuestionOptions = [
-    { key: 'flicker', prompt: 'Why does it stutter?' },
-    { key: 'beyond', prompt: 'Where does that path lead?' },
-    { key: 'signal', prompt: 'What is that repeating signal?' }
+    { key: 'flicker', prompt: 'Why does it stutter?', page: 0 },
+    { key: 'beyond', prompt: 'Where does that path lead?', page: 0 },
+    { key: 'signal', prompt: 'What is that repeating signal?', page: 0 },
+    { key: 'origin', prompt: 'What did the charts show?', page: 1 },
+    { key: 'response', prompt: 'Did anything answer back?', page: 1 },
+    { key: 'warning', prompt: 'What should I watch for?', page: 1 }
   ];
   const appendFinnLine = (speaker, text, isPlayer = false) => {
     const line = document.createElement('p');
@@ -2594,11 +2700,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     typeNext();
   });
-  const resetFinnConversation = () => {
-    if (!finnChat || !finnChoices || !finnReset) return;
-    finnChat.replaceChildren();
-    appendFinnLine('Lord Finn', 'The gateway is showing a second signal. Ask me what I know.');
-    const questionButtons = finnQuestionOptions.map(({ key, prompt }) => {
+  const renderFinnQuestionPage = () => {
+    if (!finnChoices || !finnReset || !finnNextPage || !finnPageLabel) return [];
+    const questionButtons = finnQuestionOptions.filter(option => option.page === finnDialoguePage).map(({ key, prompt }) => {
       const button = document.createElement('button');
       button.className = 'finn-choice';
       button.type = 'button';
@@ -2606,8 +2710,19 @@ document.addEventListener('DOMContentLoaded', () => {
       button.textContent = prompt;
       return button;
     });
+    finnPageLabel.textContent = `Questions · ${finnDialoguePage + 1} of 2`;
+    finnNextPage.classList.add('hidden');
     finnReset.classList.remove('visible');
-    finnChoices.replaceChildren(...questionButtons, finnReset);
+    finnChoices.replaceChildren(finnPageLabel, ...questionButtons, finnNextPage, finnReset);
+    return questionButtons;
+  };
+
+  const resetFinnConversation = () => {
+    if (!finnChat) return;
+    finnDialoguePage = 0;
+    finnChat.replaceChildren();
+    appendFinnLine('Lord Finn', 'The gateway is showing a second signal. Ask me what I know.');
+    const questionButtons = renderFinnQuestionPage();
     questionButtons[0]?.focus();
   };
 
@@ -2664,17 +2779,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finnPointerFrame) return;
     finnPointerFrame = requestAnimationFrame(() => {
       finnPointerFrame = 0;
-      finnEyes.forEach(eye => {
-        const orb = eye.parentElement;
-        if (!orb) return;
+      finnOrbs.forEach(orb => {
         const bounds = orb.getBoundingClientRect();
         const deltaX = finnPointerX - (bounds.left + bounds.width / 2);
         const deltaY = finnPointerY - (bounds.top + bounds.height / 2);
         const distance = Math.hypot(deltaX, deltaY) || 1;
-        const maxTravel = orb.classList.contains('finn-orb-large') ? 10 : 4;
+        const maxTravel = orb.classList.contains('finn-orb-large') ? 12 : 5;
         const scale = Math.min(1, maxTravel / distance);
-        eye.style.setProperty('--eye-x', `${deltaX * scale}px`);
-        eye.style.setProperty('--eye-y', `${deltaY * scale}px`);
+        orb.style.setProperty('--finn-drift-x', `${deltaX * scale}px`);
+        orb.style.setProperty('--finn-drift-y', `${deltaY * scale}px`);
       });
     });
   }, { passive: true });
@@ -2687,6 +2800,13 @@ document.addEventListener('DOMContentLoaded', () => {
       sendFinnOut();
       return;
     }
+    if (button === finnNextPage) {
+      if (finnDialoguePage !== 0 || finnChoices.querySelector('[data-finn-question]')) return;
+      finnDialoguePage = 1;
+      const questionButtons = renderFinnQuestionPage();
+      questionButtons[0]?.focus();
+      return;
+    }
     const key = button.dataset.finnQuestion;
     const reply = finnReplies[key];
     if (!reply || !finnChat || !portalContainer) return;
@@ -2695,6 +2815,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const remainingQuestions = [...finnChoices.querySelectorAll('[data-finn-question]')];
     remainingQuestions.forEach(question => { question.disabled = true; });
     finnReset.disabled = true;
+    finnNextPage.disabled = true;
     const { line: replyLine, content: replyContent } = appendFinnLine('Lord Finn', 'Checking the portal signal · 3.0s');
     finnChat.scrollTop = finnChat.scrollHeight;
     const cooldownEndsAt = Date.now() + 3000;
@@ -2708,9 +2829,17 @@ document.addEventListener('DOMContentLoaded', () => {
         remainingQuestions.forEach(question => { question.disabled = false; });
         finnReset.disabled = false;
         if (!remainingQuestions.length) {
-          appendFinnLine('Lord Finn', 'That is all I know for now. Keep watching the signal.');
-          finnReset.classList.add('visible');
+          const ending = finnDialoguePage === 0
+            ? 'There is more. Turn the page; the next readings are clearer.'
+            : 'That is all I know. The signal is real, but its destination remains hidden.';
+          const { line: endingLine } = appendFinnLine('Lord Finn', '');
+          typeFinnReply(endingLine, ending).then(() => {
+            if (finnDialoguePage === 0) finnNextPage.classList.remove('hidden');
+            else finnReset.classList.add('visible');
+            finnChat.scrollTop = finnChat.scrollHeight;
+          });
         }
+        finnNextPage.disabled = false;
         finnChat.scrollTop = finnChat.scrollHeight;
         portalContainer.classList.remove('finn-speaking');
         void portalContainer.offsetWidth;
@@ -2819,6 +2948,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showPage('admin-panel');
       if (currentUser.is_admin) {
         loadAdminUsers();
+        loadAdminAudit();
         loadShutdownState();
         loadAdminHeadline();
       }
@@ -2834,7 +2964,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (miniAdminRefreshTimer) clearInterval(miniAdminRefreshTimer);
     showPage('game');
   });
-  document.getElementById('refresh-admin-users')?.addEventListener('click', loadAdminUsers);
+  document.getElementById('refresh-admin-users')?.addEventListener('click', () => {
+    loadAdminUsers();
+    loadAdminAudit();
+  });
   setupAdminTools();
   document.getElementById('shutdown-toggle')?.addEventListener('click', async () => {
     const active = document.getElementById('shutdown-toggle').textContent === 'Begin shutdown';
@@ -2855,13 +2988,28 @@ document.addEventListener('DOMContentLoaded', () => {
       showPopup('Enter headline text before enabling it.', 'error');
       return;
     }
-    const response = await handleAPI('/api/admin/headline', { method: 'POST', body: { active, text } });
+    const response = await handleAPI('/api/admin/headline', {
+      method: 'POST',
+      body: {
+        active,
+        text,
+        label: document.getElementById('admin-headline-label-input').value,
+        detail: document.getElementById('admin-headline-detail').value,
+        color: document.getElementById('admin-headline-color').value,
+        speed: Number(document.getElementById('admin-headline-speed').value)
+      }
+    });
     if (!response.success) {
       showPopup(response.error || 'Unable to save headline.', 'error');
       return;
     }
     applyAdminHeadline(response.headline);
+      loadAdminAudit();
     showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
+  });
+  document.getElementById('admin-headline-speed')?.addEventListener('input', event => {
+    const label = document.getElementById('admin-headline-speed-value');
+    if (label) label.textContent = `${event.target.value} seconds`;
   });
 
   Object.entries(LIVE_EVENT_PRESENTATION).forEach(([eventName, presentation]) => {
