@@ -5076,6 +5076,12 @@
         body.meteor-shower-live .event-visual-layer { background: radial-gradient(ellipse at 50% 8%, rgba(251, 146, 60, 0.18), transparent 58%), linear-gradient(180deg, rgba(24, 10, 4, 0.08), transparent 65%); }
         body.prismfall-live .event-visual-layer { background: radial-gradient(ellipse at 50% -12%, rgba(196, 181, 253, 0.17), transparent 62%); }
         body.gravity-well-live .event-visual-layer { background: radial-gradient(ellipse at 50% 48%, rgba(99, 102, 241, 0.2), transparent 43%); }
+        .event-visual-meteor-shower::before { position: absolute; inset: -18% -10% auto; height: 45vh; background: radial-gradient(ellipse at 50% 0, rgba(255, 213, 158, 0.28), rgba(251, 146, 60, 0.08) 35%, transparent 72%); content: ''; animation: meteorSkyPulse 4s ease-in-out infinite alternate; }
+        @keyframes meteorSkyPulse { to { opacity: 0.42; transform: scale(1.12); } }
+        .event-visual-prismfall::before { position: absolute; inset: 0; background: conic-gradient(from 220deg at 50% -20%, transparent 0 20%, rgba(255, 92, 178, 0.08) 24%, transparent 31%, rgba(90, 225, 255, 0.11) 38%, transparent 46%, rgba(211, 172, 255, 0.11) 55%, transparent 65%); content: ''; animation: prismFieldSweep 9s linear infinite; }
+        @keyframes prismFieldSweep { to { rotate: 360deg; } }
+        .event-visual-gravity-well::before { position: absolute; inset: -25%; border-radius: 50%; background: repeating-radial-gradient(ellipse at 50% 50%, transparent 0 64px, rgba(154, 145, 255, 0.08) 66px 68px, transparent 70px 116px); content: ''; animation: gravityFieldBend 12s ease-in-out infinite alternate; }
+        @keyframes gravityFieldBend { to { transform: scaleX(0.78) rotate(-8deg); opacity: 0.55; } }
 
         .event-kicker {
             margin-bottom: 9px;
@@ -5932,7 +5938,7 @@
             top: -18vh;
             left: var(--meteor-left);
             width: var(--meteor-size);
-            height: calc(var(--meteor-size) * 5.5);
+            height: calc(var(--meteor-size) * 9);
             transform: rotate(var(--meteor-angle, 34deg));
             transform-origin: center;
             border-radius: 50%;
@@ -5944,7 +5950,7 @@
         .event-meteor-streak::after { position: absolute; right: -38%; bottom: -2px; left: -38%; height: 28%; border-radius: 50%; background: #fff7ed; box-shadow: 0 0 10px 6px #fb923c, 0 0 26px 12px rgba(239, 68, 68, 0.62); content: ''; }
         .event-meteor-wave-1 { --wave-offset: 1.2s; animation-delay: calc(var(--meteor-delay) + var(--wave-offset)); filter: hue-rotate(-12deg) drop-shadow(0 0 8px #fb923c) drop-shadow(0 0 20px rgba(239, 68, 68, 0.76)); }
         .event-meteor-wave-2 { --wave-offset: 2.4s; animation-delay: calc(var(--meteor-delay) + var(--wave-offset)); filter: hue-rotate(16deg) drop-shadow(0 0 8px #fbbf24) drop-shadow(0 0 20px rgba(249, 115, 22, 0.76)); }
-        @keyframes meteorFall { 0% { opacity: 0; transform: translate3d(0, -10vh, 0) rotate(var(--meteor-angle, 34deg)) scale(0.72); } 12% { opacity: 1; } 82% { opacity: 0.96; } 100% { opacity: 0; transform: translate3d(-30vw, 125vh, 0) rotate(var(--meteor-angle, 34deg)) scale(1.2); } }
+        @keyframes meteorFall { 0% { opacity: 0; transform: translate3d(0, -8vh, 0) rotate(var(--meteor-angle, 0deg)) scale(0.72); } 12% { opacity: 1; } 82% { opacity: 0.96; } 100% { opacity: 0; transform: translate3d(-4vw, 125vh, 0) rotate(var(--meteor-angle, 0deg)) scale(1.2); } }
 
         .event-prism-shard { position: absolute; top: -12vh; left: var(--shard-left); width: 3px; height: 30px; transform: rotate(18deg); background: linear-gradient(180deg, transparent, hsl(var(--shard-hue, 250deg) 90% 78%), #fff); filter: drop-shadow(0 0 7px hsl(var(--shard-hue, 250deg) 100% 72%)); opacity: 0; animation: prismShardFall var(--shard-duration) var(--shard-delay) linear infinite; }
         @keyframes prismShardFall { 0% { opacity: 0; transform: translate3d(0, -10vh, 0) rotate(18deg); } 12%, 78% { opacity: 0.84; } 100% { opacity: 0; transform: translate3d(-12vw, 115vh, 0) rotate(54deg); } }
@@ -6696,7 +6702,7 @@
                     <div class="event-item event-meteor">
                         <div class="event-kicker">MANUAL EVENT / METEOR FIELD</div>
                         <h3>Meteor Shower</h3>
-                        <p>Three streaking waves. Rolls grant 2× coins plus 180 bonus coins while the shower lasts.</p>
+                        <p>Three vertical meteor waves. Rolls grant 3× coins plus 250 bonus coins while the shower lasts.</p>
                         <div class="event-buttons"><button class="btn" id="activate-meteor-shower">Call Meteor Shower</button><button class="btn stop-btn" id="deactivate-meteor-shower" hidden>End Shower</button></div>
                         <div class="event-status" id="meteor-shower-status">Ready · manual event</div>
                     </div>
@@ -6712,7 +6718,7 @@
                     <div class="event-item event-prismfall owner-only-event">
                         <div class="event-kicker">OWNER SIGNAL / PRISM FIELD</div>
                         <h3>Prismfall</h3>
-                        <p>Prismatic shards sweep the field and multiply luck by 4× for four minutes.</p>
+                        <p>Prismatic shards sweep the field. Luck is 4× and rolls earn 1.5× coins plus 200 bonus for four minutes.</p>
                         <div class="event-buttons"><button class="btn" id="activate-prismfall">Start Prismfall</button><button class="btn stop-btn" id="deactivate-prismfall" hidden>End Prismfall</button></div>
                         <div class="event-status" id="prismfall-status">Owner only · ready</div>
                     </div>
@@ -6720,7 +6726,7 @@
                     <div class="event-item event-gravity-well owner-only-event">
                         <div class="event-kicker">OWNER SIGNAL / GRAVITY FIELD</div>
                         <h3>Gravity Well</h3>
-                        <p>A singularity bends the screen; rolls grant 3× coins for four minutes.</p>
+                        <p>A singularity bends the field. Rolls grant 4× coins plus 250 bonus for four minutes.</p>
                         <div class="event-buttons"><button class="btn" id="activate-gravity-well">Open Gravity Well</button><button class="btn stop-btn" id="deactivate-gravity-well" hidden>Close Gravity Well</button></div>
                         <div class="event-status" id="gravity-well-status">Owner only · ready</div>
                     </div>
@@ -6810,6 +6816,11 @@
     <div class="operational-screen shutdown-screen hidden" id="shutdown-screen" role="alertdialog" aria-modal="true" aria-labelledby="shutdown-screen-title">
         <span class="operational-kicker">17 NEWS / MAINTENANCE</span>
         <h1 id="shutdown-screen-title">Update or Fix in progress please wait</h1>
+    </div>
+    <div class="operational-screen game-updated-screen hidden" id="game-updated-screen" role="alertdialog" aria-modal="true" aria-labelledby="game-updated-title">
+        <span class="operational-kicker">17 NEWS / UPDATE</span>
+        <h1 id="game-updated-title">Game has been updated. Please refresh your page.</h1>
+        <button class="btn" id="refresh-game-btn" type="button">Refresh game</button>
     </div>
     <div class="operational-screen ban-screen hidden" id="ban-screen" role="alertdialog" aria-modal="true" aria-labelledby="ban-screen-title">
         <span class="operational-kicker">17 NEWS / ACCOUNT ACCESS</span>
