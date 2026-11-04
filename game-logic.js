@@ -1709,6 +1709,27 @@ function setShutdownScreen(active, message = 'Update or Fix in progress please w
   screen?.classList.toggle('hidden', !active || Boolean(currentUser?.is_admin));
 }
 
+let knownGameVersion = null;
+let gameUpdateNoticeShown = false;
+
+async function checkGameVersion() {
+  if (gameUpdateNoticeShown) return;
+  try {
+    const response = await fetch('/api/version', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.version) return;
+    if (knownGameVersion === null) {
+      knownGameVersion = data.version;
+      return;
+    }
+    if (data.version !== knownGameVersion) {
+      gameUpdateNoticeShown = true;
+      document.getElementById('game-updated-screen')?.classList.remove('hidden');
+    }
+  } catch {}
+}
+
 function showGlobalDropBanner(username, rarityName, message, rarityColor) {
   document.querySelector('.global-drop-banner')?.remove();
   const banner = document.createElement('aside');
@@ -2180,11 +2201,11 @@ function createAdminEventVisual(eventName) {
       meteor.style.setProperty('--meteor-delay', `${Math.random() * -7}s`);
       meteor.style.setProperty('--meteor-duration', `${1.2 + Math.random() * 1.2}s`);
       meteor.style.setProperty('--meteor-size', `${16 + Math.random() * 24}px`);
-      meteor.style.setProperty('--meteor-angle', `${-30 + Math.random() * 16}deg`);
+      meteor.style.setProperty('--meteor-angle', `${-3 + Math.random() * 6}deg`);
       layer.appendChild(meteor);
     }
   } else if (eventName === 'prismfall') {
-    for (let index = 0; index < 34; index += 1) {
+    for (let index = 0; index < 48; index += 1) {
       const shard = document.createElement('span');
       shard.className = 'event-prism-shard';
       shard.style.setProperty('--shard-left', `${Math.random() * 100}%`);
@@ -2609,6 +2630,13 @@ function setupRollButton() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+  checkGameVersion();
+  setInterval(checkGameVersion, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkGameVersion();
+  });
+  document.getElementById('refresh-game-btn')?.addEventListener('click', () => window.location.reload());
+
   // Show landing page and start tagline
   showPage('landing');
   
