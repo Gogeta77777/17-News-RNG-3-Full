@@ -22,6 +22,10 @@ const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
+const SERVER_VERSION = process.env.RENDER_GIT_COMMIT
+  || process.env.VERCEL_GIT_COMMIT_SHA
+  || process.env.BUILD_ID
+  || crypto.randomUUID();
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' ? false : '*',
@@ -85,6 +89,8 @@ const ROTATING_SHOP_ITEMS = [
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_STACKED_EFFECT_MULTIPLIER = 5;
+const MAX_LUCK_EFFECT_MULTIPLIER = 25;
+const MAX_TOTAL_LUCK_MULTIPLIER = 100;
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
@@ -328,7 +334,7 @@ function setUserActiveEffect(username, effectType, data) {
   existing[effectType] = {
     ...data,
     multiplier: effectType === 'luck' || effectType === 'deep-luck'
-      ? stackedMultiplier
+      ? Math.min(MAX_LUCK_EFFECT_MULTIPLIER, stackedMultiplier)
       : Math.min(MAX_STACKED_EFFECT_MULTIPLIER, stackedMultiplier),
     endTime: now + remainingMs + Math.max(0, Number(data.endTime) - now)
   };
@@ -343,10 +349,10 @@ function getActiveEffectMultiplier(username, effectType) {
 
 function getLuckMultiplier(username, dimension = null) {
   const eventLuckMultiplier = getActiveGameEvent()?.luckMultiplier || 1;
-  return getActiveEffectMultiplier(username, 'luck')
+  return Math.min(MAX_TOTAL_LUCK_MULTIPLIER, getActiveEffectMultiplier(username, 'luck')
     * getActiveEffectMultiplier(username, 'deep-luck')
     * (dimension === 'deep-sea' ? 4 : 1)
-    * eventLuckMultiplier;
+    * eventLuckMultiplier);
 }
 
 function computeSpinMultiplier() {
@@ -355,7 +361,7 @@ function computeSpinMultiplier() {
 
 function selectWeightedOption(options, luckMultiplier = 1) {
   const normalizedLuckMultiplier = Math.max(1, Number(luckMultiplier) || 1);
-  const weightFor = option => option.chance < 20
+  const weightFor = option => option.chance <= 20
     ? option.chance
     : option.chance / normalizedLuckMultiplier;
   const totalWeight = options.reduce((total, option) => total + weightFor(option), 0);
@@ -717,10 +723,10 @@ const GAME_EVENTS = {
   },
   'meteor-shower': {
     title: 'Meteor Shower',
-    coinMultiplier: 2,
-    bonusCoins: 180,
+    coinMultiplier: 3,
+    bonusCoins: 250,
     durationSeconds: 240,
-    description: '2x coins and +180 bonus coins per roll during three meteor waves'
+    description: '3x coins and +250 bonus coins per roll during three meteor waves'
   },
   'abyssal-resonance': {
     title: 'Abyssal Resonance',
@@ -731,20 +737,20 @@ const GAME_EVENTS = {
   },
   'prismfall': {
     title: 'Prismfall',
-    coinMultiplier: 1,
-    bonusCoins: 0,
+    coinMultiplier: 1.5,
+    bonusCoins: 200,
     luckMultiplier: 4,
     durationSeconds: 240,
     ownerOnly: true,
-    description: '4x luck as prismatic shards cross the signal field'
+    description: '4x luck and 1.5x coins +200 per roll as prism shards cross the signal field'
   },
   'gravity-well': {
     title: 'Gravity Well',
-    coinMultiplier: 3,
-    bonusCoins: 0,
+    coinMultiplier: 4,
+    bonusCoins: 250,
     durationSeconds: 240,
     ownerOnly: true,
-    description: '3x coins as the event field bends the star map'
+    description: '4x coins +250 per roll as the gravity field bends the star map'
   }
 };
 
@@ -1286,6 +1292,11 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy(() => {
     res.json({ success: true });
   });
+});
+
+app.get('/api/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.json({ version: SERVER_VERSION });
 });
 
 app.get('/api/session', async (req, res) => {
