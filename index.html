@@ -1,3 +1,4 @@
+                    <div class="potion-effects hidden" id="potion-effects" aria-label="Active potion effects"></div>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6049,7 +6050,12 @@
             .finn-watch-meter i::after { width: var(--signal-coherence, 74%); animation: none; transition: width 400ms ease; }
             .shop-item-chance { display: block; margin: -4px 0 8px; color: #a7f3d0; font-size: 0.72rem; }
             .potion-effects { display: flex; flex-wrap: wrap; gap: 6px; }
+                .potion-effects { align-items: stretch; justify-content: center; min-height: 0; margin-top: 10px; padding: 0; border: 0; background: transparent; box-shadow: none; animation: none; }
             .potion-effects > div { position: relative; overflow: hidden; border: 1px solid rgba(74, 222, 128, 0.28); background: linear-gradient(110deg, rgba(20, 83, 45, 0.56), rgba(15, 23, 42, 0.82)); color: #dcfce7; font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+                .potion-effects > .potion-effect-chip { display: inline-flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; padding: 7px 10px; border-radius: 4px; }
+                .potion-effect-chip strong { color: #dcfce7; font-size: 0.69rem; text-transform: uppercase; }
+                .potion-effect-chip > span { color: #a7f3d0; font-size: 0.86rem; font-weight: 900; }
+                .potion-effect-chip small { color: #bfdbfe; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
             .mini-headline-form { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 9px; margin: 14px 0; padding: 14px; border-left: 2px solid #67e8f9; background: rgba(15, 23, 42, 0.56); }
             .mini-headline-form h3, .mini-headline-form span { grid-column: 1 / -1; margin: 0; }
             .mini-headline-form label { display: grid; gap: 6px; color: #cbd5e1; font-size: 0.82rem; }
@@ -6088,6 +6094,14 @@
         .event-blackhole-core { position: absolute; top: 50%; left: 50%; width: min(30vmin, 240px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #02030a 0 44%, #25094a 49%, #a855f7 52%, rgba(168, 85, 247, 0.16) 58%, transparent 72%); box-shadow: 0 0 50px rgba(168, 85, 247, 0.58), 0 0 120px rgba(91, 33, 182, 0.36); transform: translate(-50%, -50%); animation: blackholePulse 2.2s ease-in-out infinite alternate; }
         @keyframes blackholePulse { to { scale: 1.13; filter: brightness(1.4); } }
         .event-blackhole-mote { position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #e9d5ff; box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); animation: blackholeSuck var(--mote-duration) var(--mote-delay) ease-in infinite; }
+            .blackhole-finale-overlay { position: fixed; z-index: 30000; inset: 0; display: grid; place-items: center; overflow: hidden; pointer-events: none; }
+            .blackhole-finale-core { width: 8vmin; min-width: 42px; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #02030a 0 43%, #22053c 52%, #8b5cf6 57%, #fff 61%, #a855f7 65%, transparent 76%); box-shadow: 0 0 55px rgba(168, 85, 247, 0.9), 0 0 130px rgba(147, 51, 234, 0.55); animation: blackholeFinalExpand 1.25s cubic-bezier(0.35, 0, 0.1, 1) forwards; }
+            .blackhole-finale-flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+            .blackhole-finale-overlay.is-flashing .blackhole-finale-flash { animation: blackholeWhiteFlash 5s linear forwards; }
+            @keyframes blackholeFinalExpand { to { width: 220vmax; box-shadow: 0 0 0 40vmax #05020a; } }
+            @keyframes blackholeWhiteFlash { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
+            body.blackhole-finale #landing-page:not(.hidden), body.blackhole-finale #game-page:not(.hidden), body.blackhole-finale #admin-panel:not(.hidden), body.blackhole-finale .dimension-container:not(.hidden), body.blackhole-finale .forge-dimension:not(.hidden) { transform-origin: center; animation: blackholeUiPull 1.2s cubic-bezier(0.5, 0, 0.12, 1) forwards; }
+            @keyframes blackholeUiPull { to { opacity: 0; filter: blur(7px); transform: scale(0.025) rotate(-6deg); } }
         @keyframes blackholeSuck { from { opacity: 0; transform: rotate(var(--mote-angle)) translateX(46vw) scale(0.4); } 25% { opacity: 1; } to { opacity: 0; transform: rotate(calc(var(--mote-angle) + 300deg)) translateX(3vmin) scale(1.1); } }
         .event-item.event-confetti { border-color: rgba(34, 211, 238, 0.42); background: radial-gradient(circle at 88% 5%, rgba(34, 211, 238, 0.16), transparent 40%), linear-gradient(145deg, #16363a, #111827); }
         .event-item.event-blackhole { border-color: rgba(192, 132, 252, 0.5); background: radial-gradient(circle at 50% -10%, rgba(147, 51, 234, 0.26), transparent 55%), linear-gradient(145deg, #21152f, #0d111d); }
@@ -6102,6 +6116,54 @@
         .system-control-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .owner-password-form label { display: grid; gap: 5px; margin-top: 8px; color: #cbd5e1; font-size: 0.8rem; }
         .owner-password-form input { width: 100%; }
+                .owner-inbox-log .inbox-audit-row { grid-template-columns: minmax(120px, 0.8fr) minmax(140px, 1fr) minmax(150px, 1fr) auto; }
+                .inbox-audit-row > span { min-width: 0; overflow-wrap: anywhere; }
+                .inbox-audit-row .inbox-audit-note { color: #b9c9d8; }
+                .admin-panel.is-minimized { position: fixed; inset: auto 16px 16px auto; z-index: 30000; display: block; width: min(440px, calc(100vw - 32px)); max-height: 84px; overflow: hidden; padding: 0; border: 1px solid rgba(103, 232, 249, 0.36); border-radius: 8px; background: #0c1624; box-shadow: 0 20px 70px rgba(0, 0, 0, 0.58); }
+                .admin-panel.is-minimized .admin-content { display: none !important; }
+                .admin-panel.is-minimized .admin-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 14px; border-bottom: 0; }
+                .admin-panel.is-minimized .admin-eyebrow { display: none; }
+                .admin-panel.is-minimized .admin-header h1 { margin: 0; font-size: 1rem; }
+                .admin-panel.is-minimized .admin-header-actions { display: flex; flex-wrap: nowrap; gap: 6px; }
+                .admin-panel.is-minimized .admin-header-actions #refresh-admin-users { display: none; }
+                .admin-panel.is-minimized .admin-header-actions .btn { min-height: 34px; padding: 6px 9px; font-size: 0.72rem; }
+            .shop-container { width: min(940px, 100%); margin: 0 auto; align-items: center; gap: 18px; }
+            .shop-view-switch { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 4px; border: 1px solid rgba(125, 211, 252, 0.18); border-radius: 999px; background: rgba(3, 10, 20, 0.7); }
+            .shop-view-button { min-height: 38px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; color: #aebdca; font: inherit; font-size: 0.82rem; cursor: pointer; transition: background 180ms ease, color 180ms ease, transform 180ms ease; }
+            .shop-view-button:hover { color: #f0f9ff; transform: translateY(-1px); }
+            .shop-view-button.active { background: #164e63; color: #ecfeff; box-shadow: inset 0 0 0 1px rgba(103, 232, 249, 0.34); }
+            .shop-panel { width: 100%; max-width: 860px; animation: shopPanelEnter 280ms ease both; }
+            @keyframes shopPanelEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            .rotating-shop, .potion-shop { margin-inline: auto; border-radius: 8px; }
+            .rotating-items, .potions-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+            .shop-item, .potion-card { display: grid; align-content: start; gap: 7px; border-radius: 8px; }
+            .shop-item { position: relative; overflow: hidden; min-height: 190px; }
+            .shop-item::before { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.08) 48%, transparent 75%); content: ''; transform: translateX(-120%); transition: transform 450ms ease; pointer-events: none; }
+            .shop-item:hover::before { transform: translateX(120%); }
+            .shop-item.is-affordable { border-color: rgba(94, 231, 209, 0.4); }
+            .shop-item-owned { color: #99adbc; font-size: 0.72rem; }
+            .shop-item-buy:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.35); }
+            .potion-card { min-height: 245px; }
+            .potion-card .potion-purchase-controls { margin-top: auto; }
+            .player-list-dialog, .shop-guide-dialog { position: fixed; inset: 50% auto auto 50%; margin: 0; transform: translate(-50%, -50%); }
+            .leaderboard-dialog { width: min(940px, calc(100vw - 28px)); }
+            .leaderboard-list table { min-width: 560px; }
+            .leaderboard-list tbody tr { transition: background 140ms ease; }
+            .leaderboard-list tbody tr:hover { background: rgba(103, 232, 249, 0.075); }
+            .inventory-grid { width: min(980px, 100%); margin-inline: auto; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+            .inventory-item { border-radius: 8px; transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+            .inventory-item:hover { transform: translateY(-2px); border-color: rgba(103, 232, 249, 0.38); box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2); }
+            .titles-container { width: min(980px, 100%); margin-inline: auto; }
+            .title-card { min-height: 130px; border-radius: 8px; transition: transform 160ms ease, box-shadow 160ms ease; }
+            .title-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22); }
+            .admin-password-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.12); }
+            .admin-password-form label { display: grid; gap: 5px; color: #b8c5d3; font-size: 0.74rem; }
+            .admin-password-form input { width: 100%; }
+            @media (max-width: 560px) {
+                .shop-view-button { padding-inline: 12px; font-size: 0.76rem; }
+                .admin-password-form { grid-template-columns: 1fr; }
+                .leaderboard-dialog { width: calc(100vw - 20px); }
+            }
             .settings-roll-count { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 16px; }
             .settings-roll-count h3 { grid-column: 1; grid-row: 1; }
             .settings-roll-count > #settings-total-rolls { grid-column: 2; grid-row: 1; }
@@ -6111,6 +6173,9 @@
             .settings-roll-count .settings-total-playtime strong { color: #86efac; font-size: 0.95rem; }
             .settings-roll-count #leaderboard-btn { grid-column: 1 / -1; justify-self: start; }
         @media (max-width: 560px) {
+            .admin-panel.is-minimized { inset: auto 10px 10px 10px; width: auto; }
+            .owner-inbox-log .inbox-audit-row { grid-template-columns: minmax(0, 1fr) auto; }
+            .owner-inbox-log .inbox-audit-row > span:nth-child(2), .owner-inbox-log .inbox-audit-row > span:nth-child(3) { grid-column: 1 / -1; }
             .player-list-dialog > section { padding: 14px; }
             .leaderboard-list th, .leaderboard-list td { padding: 8px 6px; font-size: 0.72rem; }
             .chat-status { gap: 6px; }
@@ -6199,25 +6264,24 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">Expansion Update</span></h3>
+                <h3>Latest Updates <span class="update-version">Update 5</span></h3>
                 <div class="log-entry">
-                    <div class="date">9 Nov 2026 / Expansion Update</div>
+                    <div class="date">9 Nov 2026 / Update 5 · Expansion Update</div>
                     <p><strong>New faces, quests, events, and tools for the next realm.</strong></p>
                     <p>✦ Mr Vaughan, Mrs Bradley, and Mrs Croft join the global pool; Pod 1, Pod 2, William marks, and Miharu Sato join normal rolls.</p>
                     <p>✦ Collect the four teacher rarities for Teachers pet, and complete Lord Finn’s three quests for Helping hand.</p>
                     <p>✦ Forge Coin Potion II, follow live player status, use mentions across realms, and meet the Confetti Party and Blackhole events.</p>
                 </div>
-                <div class="log-entry">
-                    <div class="date">1 Nov 2026 / Update 4</div>
-                    <p><strong>New discoveries, better tools, and a fresh home for your messages.</strong></p>
-                    <p>✦ Meet The Daily Ellerslilian (2.5%), Lord Crinkle (0.03%), and Mr Butler (0.01%), whose name glitches into The Principal.</p>
-                    <p>✦ Earn Multi-millionaire, Willpower, and This is my year! titles. Requirements stay visible, including in chat.</p>
-                    <p>✦ The Exclusive Index gathers realm and Halloween rarities. Halloween collectibles, titles, and codes remain; the seasonal theme has ended.</p>
-                    <p>✦ Chat now has replies, moderation, separate global drops, and an inbox for notes and gifts. Owner Panel commands and global-drop previews have also been improved.</p>
-                    <p><strong>To all the Year 8s: have a great camp experience and an amazing time at camp!</strong></p>
-                </div>
                 <details class="update-archive">
-                    <summary>Previous updates <span>3 releases</span></summary>
+                    <summary>Previous updates <span>4 releases</span></summary>
+                    <div class="log-entry">
+                        <div class="date">1 Nov 2026 / Update 4</div>
+                        <p><strong>New discoveries, better tools, and a fresh home for your messages.</strong></p>
+                        <p>✦ Meet The Daily Ellerslilian (2.5%), Lord Crinkle (0.03%), and Mr Butler (0.01%), whose name glitches into The Principal.</p>
+                        <p>✦ Earn Multi-millionaire, Willpower, and This is my year! titles. Requirements stay visible, including in chat.</p>
+                        <p>✦ The Exclusive Index gathers realm and Halloween rarities. Halloween collectibles, titles, and codes remain; the seasonal theme has ended.</p>
+                        <p>✦ Chat now has replies, moderation, separate global drops, and an inbox for notes and gifts. Owner Panel commands and global-drop previews have also been improved.</p>
+                    </div>
                     <div class="log-entry">
                         <div class="date">27 Oct 2026 / Update 3 Part 2</div>
                         <p><strong>Halloween rarities and a seasonal game theme.</strong></p>
@@ -6409,7 +6473,11 @@
                     <!-- Shop Tab -->
                     <div class="tab-pane hidden" id="shop-tab">
                         <div class="shop-container">
-                            <div class="rotating-shop">
+                            <div class="shop-view-switch" role="group" aria-label="Shop sections">
+                                <button class="shop-view-button active" type="button" data-shop-view="rotation" aria-pressed="true">Rotating stock</button>
+                                <button class="shop-view-button" type="button" data-shop-view="potions" aria-pressed="false">Potions</button>
+                            </div>
+                            <div class="rotating-shop shop-panel" id="rotating-shop-section" data-shop-panel="rotation">
                                 <div class="rotating-shop-heading">
                                     <h3>Rotating Shop <span class="shop-restock-copy">Restocks in <span id="shop-timer">10:00</span></span></h3>
                                     <button class="shop-info-button" id="shop-info-button" type="button" aria-label="Show all rotating shop items" title="Show all rotating shop items">?</button>
@@ -6424,7 +6492,7 @@
                                     <div class="shop-guide-items" id="rotating-shop-guide-items"></div>
                                 </section>
                             </dialog>
-                            <div class="potion-shop">
+                            <div class="potion-shop shop-panel hidden" id="potion-shop-section" data-shop-panel="potions">
                                 <h3>🧪 Potions</h3>
                                 <div class="potions-list" id="potions-list"></div>
                             </div>
@@ -6761,6 +6829,7 @@
             </div>
             <div class="admin-header-actions">
                 <button class="btn" id="refresh-admin-users">Refresh Players</button>
+                <button class="btn" id="minimize-admin-panel" type="button" aria-expanded="true">Minimize Panel</button>
                 <button class="btn" id="back-to-game">Back to Game</button>
             </div>
         </header>
@@ -6880,6 +6949,11 @@
             <div class="admin-section" id="owner-audit-section">
                 <div class="owner-audit-heading"><div><h2>Admin Activity</h2><p>Recent moderation and operations actions.</p></div><button class="btn" id="refresh-admin-audit" type="button">Refresh log</button></div>
                 <div class="owner-audit-list" id="admin-audit-list" aria-live="polite"></div>
+            </div>
+
+            <div class="admin-section" id="owner-inbox-log-section">
+                <div class="owner-audit-heading"><div><h2>Inbox Activity</h2><p>Recent player messages and gifts, newest first.</p></div><button class="btn" id="refresh-inbox-log" type="button">Refresh log</button></div>
+                <div class="owner-audit-list owner-inbox-log" id="owner-inbox-log" aria-live="polite"></div>
             </div>
 
             <div class="admin-section" id="global-drop-section">
