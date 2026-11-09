@@ -8,6 +8,7 @@ let chatTypingTimers = new Map();
 let localChatTypingState = false;
 let localChatTypingHeartbeat = null;
 let currentChatReply = null;
+let onlinePlayerRoster = [];
 
 function getCurrentChatView() {
   const activeButton = document.querySelector('[data-chat-view].active');
@@ -155,8 +156,10 @@ async function refreshGlobalRarityCounts() {
 
 function setChatView(view) {
   const showGlobals = view === 'globals';
-  document.getElementById('player-chat-view')?.classList.toggle('hidden', showGlobals);
+  const showAdmin = view === 'admin';
+  document.getElementById('player-chat-view')?.classList.toggle('hidden', showGlobals || showAdmin);
   document.getElementById('global-chat-view')?.classList.toggle('hidden', !showGlobals);
+  document.getElementById('admin-chat-view')?.classList.toggle('hidden', !showAdmin);
   document.querySelectorAll('[data-chat-view]').forEach(button => {
     const active = button.dataset.chatView === view;
     button.classList.toggle('active', active);
@@ -164,6 +167,76 @@ function setChatView(view) {
   });
   resetChatUnread(view);
   if (showGlobals) loadGlobalChatFallback();
+  if (showAdmin && socket?.connected) socket.emit('admin-chat-history-request');
+}
+
+function renderOnlinePlayers() {
+  const list = document.getElementById('online-player-list');
+  if (!list) return;
+  list.replaceChildren();
+  if (!onlinePlayerRoster.length) {
+    list.textContent = 'No players are online right now.';
+    return;
+  }
+  onlinePlayerRoster.forEach(player => {
+    const row = document.createElement('div');
+    row.className = 'player-list-row';
+    const copy = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = player.username;
+    const status = document.createElement('span');
+    status.textContent = player.status || 'At the RNG console';
+    copy.append(name, status);
+    const mention = document.createElement('button');
+    mention.className = 'btn btn-small';
+    mention.type = 'button';
+    mention.textContent = '@';
+    mention.setAttribute('aria-label', `Mention ${player.username}`);
+    mention.addEventListener('click', () => {
+      const input = document.getElementById('chat-input');
+      if (input) {
+        input.value = `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}@${player.username} `;
+        input.focus();
+      }
+      document.getElementById('online-players-dialog')?.close();
+    });
+    row.append(copy, mention);
+    list.appendChild(row);
+  });
+}
+
+async function loadLeaderboard() {
+  const dialog = document.getElementById('leaderboard-dialog');
+  const list = document.getElementById('leaderboard-list');
+  if (!dialog || !list) return;
+  list.textContent = 'Loading players…';
+  dialog.showModal();
+  const response = await handleAPI('/api/players/leaderboard');
+  if (!response.success) {
+    list.textContent = response.error || 'Unable to load players.';
+    return;
+  }
+  const table = document.createElement('table');
+  table.innerHTML = '<thead><tr><th>Player</th><th>Status</th><th>Coins</th><th>Rolls</th></tr></thead>';
+  const body = document.createElement('tbody');
+  response.players.forEach(player => {
+    const row = document.createElement('tr');
+    [player.username, player.status, Number(player.coins).toLocaleString(), Number(player.rolls).toLocaleString()].forEach(value => {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+    body.appendChild(row);
+  });
+  table.appendChild(body);
+  list.replaceChildren(table);
+}
+
+function updateAdminChatVisibility() {
+  const user = window.getCurrentGameUser?.();
+  const allowed = Boolean(user?.is_admin || user?.titles?.includes('admin'));
+  document.querySelector('[data-chat-view="admin"]')?.classList.toggle('hidden', !allowed);
+  if (!allowed && getCurrentChatView() === 'admin') setChatView('players');
 }
 
 function initMultiplayer() {
@@ -200,7 +273,6 @@ function initMultiplayer() {
   });
 
   socket.on('chat-message', (message) => {
-    showReplyNotification(message);
     if (message.isGlobalDrop) {
       if (!isChatViewOpen('globals')) bumpChatUnread('globals');
       addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id);
@@ -233,9 +305,41 @@ function initMultiplayer() {
 
   socket.on('online-count', (count) => {
     const onlineCount = document.getElementById('online-count');
-    if (onlineCount) {
-      onlineCount.textContent = `${count} users online`;
-    }
+    if (onlineCount) onlineCount.textContent = String(Number(count) || 0);
+  });
+
+  socket.on('online-roster', players => {
+    onlinePlayerRoster = Array.isArray(players) ? players : [];
+    renderOnlinePlayers();
+  });
+
+  socket.on('playtime-update', data => {
+    window.updatePlaytimeDisplay?.(data?.seconds);
+  });
+
+  socket.on('admin-chat-history', messages => {
+    const container = document.getElementById('admin-chat-messages');
+    if (!container) return;
+    container.replaceChildren();
+    (Array.isArray(messages) ? messages : []).forEach(message => appendAdminChatMessage(message));
+  });
+
+  socket.on('admin-chat-message', message => appendAdminChatMessage(message));
+
+  socket.on('mention-notification', message => {
+    showPopup(`${message.username} mentioned you in chat: ${message.message}`);
+  });
+
+  socket.on('reply-notification', message => {
+    showPopup(`${message.username} replied to your message.`);
+  });
+
+  socket.on('blackhole-reward', reward => {
+    showPopup(`Blackhole reward: ${reward.amount} ${reward.item}`);
+  });
+
+  socket.on('game-updated', data => {
+    window.setGameUpdatedScreen?.(true, data?.message);
   });
 
   socket.on('theme-event', (data) => {
@@ -304,9 +408,9 @@ function initMultiplayer() {
     chatTypingUsers.clear();
     updateTypingIndicator();
     const onlineCount = document.getElementById('online-count');
-    if (onlineCount) {
-      onlineCount.textContent = `0 users online`;
-    }
+    if (onlineCount) onlineCount.textContent = '0';
+    onlinePlayerRoster = [];
+    renderOnlinePlayers();
   });
 
   clearInterval(activityHeartbeat);
@@ -332,6 +436,26 @@ function initMultiplayer() {
   const sendButton = document.getElementById('send-chat');
   sendButton?.addEventListener('click', () => setLocalChatTyping(false));
   document.getElementById('cancel-chat-reply')?.addEventListener('click', clearChatReplyTarget);
+  document.getElementById('view-online-btn')?.addEventListener('click', () => {
+    renderOnlinePlayers();
+    document.getElementById('online-players-dialog')?.showModal();
+  });
+  document.getElementById('leaderboard-btn')?.addEventListener('click', loadLeaderboard);
+  document.getElementById('insert-mention-btn')?.addEventListener('click', () => {
+    renderOnlinePlayers();
+    document.getElementById('online-players-dialog')?.showModal();
+  });
+  document.querySelectorAll('[data-close-dialog]').forEach(button => {
+    button.addEventListener('click', () => document.getElementById(button.dataset.closeDialog)?.close());
+  });
+  document.getElementById('send-admin-chat')?.addEventListener('click', sendAdminChatMessage);
+  document.getElementById('admin-chat-input')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendAdminChatMessage();
+    }
+  });
+  updateAdminChatVisibility();
   document.querySelector('[data-tab="chat"]')?.addEventListener('click', () => {
     setTimeout(() => resetChatUnread(getCurrentChatView()), 0);
   });
@@ -340,6 +464,27 @@ function initMultiplayer() {
 function updatePlayerActivity(activity) {
   playerActivity = String(activity || 'At the RNG console').slice(0, 64);
   if (socket?.connected) socket.emit('player-activity', playerActivity);
+}
+
+function appendAdminChatMessage(message) {
+  const container = document.getElementById('admin-chat-messages');
+  if (!container || !message) return;
+  const row = document.createElement('p');
+  row.className = 'admin-chat-message';
+  const name = document.createElement('strong');
+  name.textContent = `${message.username}: `;
+  const text = document.createTextNode(String(message.message || ''));
+  row.append(name, text);
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendAdminChatMessage() {
+  const input = document.getElementById('admin-chat-input');
+  const message = String(input?.value || '').trim();
+  if (!message || !socket?.connected) return;
+  socket.emit('admin-chat-message', { message });
+  input.value = '';
 }
 
 function sendChatToServer(message) {
@@ -402,6 +547,7 @@ window.setChatReplyTarget = setChatReplyTarget;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
 window.updatePlayerActivity = updatePlayerActivity;
+window.updateAdminChatVisibility = updateAdminChatVisibility;
 
 document.addEventListener('DOMContentLoaded', () => {
   initMultiplayer();
