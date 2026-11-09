@@ -335,6 +335,7 @@ function initMultiplayer() {
   });
 
   socket.on('blackhole-reward', reward => {
+    window.updateGameUser?.(reward?.user);
     showPopup(`Blackhole reward: ${reward.amount} ${reward.item}`);
   });
 
