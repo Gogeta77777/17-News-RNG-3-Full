@@ -2903,7 +2903,23 @@ function setupRollButton() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('login-form')?.addEventListener('submit', handleLogin);
+  document.getElementById('register-form')?.addEventListener('submit', handleRegister);
+  document.getElementById('login-btn')?.addEventListener('click', () => showPage('login'));
+  document.getElementById('register-btn')?.addEventListener('click', () => showPage('register'));
+  document.getElementById('show-login')?.addEventListener('click', event => {
+    event.preventDefault();
+    showPage('login');
+  });
+  document.getElementById('show-register')?.addEventListener('click', event => {
+    event.preventDefault();
+    showPage('register');
+  });
+  try {
     setupShopViewSwitch();
+  } catch (error) {
+    console.error('Shop initialization error:', error);
+  }
   checkGameVersion();
   setInterval(checkGameVersion, 20000);
   document.addEventListener('visibilitychange', () => {
@@ -2913,24 +2929,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Show landing page and start tagline
   showPage('landing');
-  
-  // Auth form listeners
-  document.getElementById('login-form')?.addEventListener('submit', handleLogin);
-  document.getElementById('register-form')?.addEventListener('submit', handleRegister);
-  
-  // Landing page buttons
-  document.getElementById('login-btn')?.addEventListener('click', () => showPage('login'));
-  document.getElementById('register-btn')?.addEventListener('click', () => showPage('register'));
-  
-  // Auth page links
-  document.getElementById('show-login')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage('login');
-  });
-  document.getElementById('show-register')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage('register');
-  });
   
   // Chat send button
   document.getElementById('send-chat')?.addEventListener('click', () => {
