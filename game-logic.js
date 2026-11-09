@@ -1,4 +1,3 @@
-  const emoji = key.startsWith('luck') ? '🍀' : key.startsWith('coin') ? '🪙' : '⚡';
 // ==================== GAME CONSTANTS ====================
 const taglines = [
   'The third installment',
