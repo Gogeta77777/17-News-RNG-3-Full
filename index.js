@@ -191,7 +191,7 @@ const POTION_CATALOG = {
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effectKey: 'luck', effect: 'luck' },
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effectKey: 'luck', effect: 'luck', craftOnly: true },
   coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effectKey: 'coin', effect: 'coins' },
-  'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, duration: 120, effectKey: 'coin', effect: 'coins', craftOnly: true },
+  'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, maxMultiplier: 9, duration: 120, effectKey: 'coin', effect: 'coins', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effectKey: 'speed', effect: 'speed' },
 };
 const activeDiveSessions = new Map();
@@ -346,11 +346,13 @@ function setUserActiveEffect(username, effectType, data) {
   const current = existing[effectType]?.endTime > now ? existing[effectType] : null;
   const remainingMs = current ? current.endTime - now : 0;
   const stackedMultiplier = Math.max(1, Number(current?.multiplier) || 1) * Math.max(1, Number(data.multiplier) || 1);
+  const multiplierCap = effectType === 'luck' || effectType === 'deep-luck'
+    ? MAX_LUCK_EFFECT_MULTIPLIER
+    : Math.max(MAX_STACKED_EFFECT_MULTIPLIER, Number(current?.maxMultiplier) || 0, Number(data.maxMultiplier) || 0);
   existing[effectType] = {
     ...data,
-    multiplier: effectType === 'luck' || effectType === 'deep-luck'
-      ? Math.min(MAX_LUCK_EFFECT_MULTIPLIER, stackedMultiplier)
-      : Math.min(MAX_STACKED_EFFECT_MULTIPLIER, stackedMultiplier),
+    multiplier: Math.min(multiplierCap, stackedMultiplier),
+    maxMultiplier: multiplierCap,
     endTime: now + remainingMs + Math.max(0, Number(data.endTime) - now)
   };
   activeEffectsStore[key] = existing;
@@ -889,7 +891,8 @@ async function grantBlackholeRewards() {
     const items = normalizeRecord(user.items);
     items.light_essence = (Number(items.light_essence) || 0) + 1;
     await updateUser(username, { items: JSON.stringify(items) });
-    io.to(`user:${normalizeUsername(username)}`).emit('blackhole-reward', { item: 'Light Essence', amount: 1 });
+    const updatedUser = await findUser(username);
+    io.to(`user:${normalizeUsername(username)}`).emit('blackhole-reward', { item: 'Light Essence', amount: 1, user: sanitizeUser(updatedUser) });
   }
 }
 
@@ -1810,6 +1813,7 @@ app.post('/api/use-potion', async (req, res) => {
     potions[potionType] -= 1;
     setUserActiveEffect(req.session.username, potion.effectKey, {
       multiplier: potion.multiplier,
+      maxMultiplier: potion.maxMultiplier,
       endTime: Date.now() + potion.duration * 1000
     });
 
@@ -1967,7 +1971,7 @@ app.post('/api/forge/craft', async (req, res) => {
 });
 
 const FINN_QUESTS = [
-  { title: 'First signal', description: 'Complete 25 rolls.', kind: 'spins', target: 25, reward: { coins: 10000, fragments: 3 } },
+  { title: 'First signal', description: 'Complete 100 rolls.', kind: 'spins', target: 100, reward: { coins: 10000, fragments: 3 } },
   { title: 'Steady hands', description: 'Collect 5 Clover Leaves.', kind: 'clovers', target: 5, reward: { coins: 30000, vials: 1 } },
   { title: 'Through the fracture', description: 'Collect 10 Portal Fragments.', kind: 'fragments', target: 10, reward: { coins: 100000, fragments: 5 } }
 ];
@@ -2171,6 +2175,39 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+app.get('/api/admin/inbox-log', async (req, res) => {
+    if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+    const owner = await findUser(req.session.username);
+    if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+    try {
+      if (pool) {
+        const result = await executeQuery(
+          `SELECT id, sender, recipient, message, gift_type AS "giftType", gift_key AS "giftKey",
+                  gift_amount AS "giftAmount", created_at AS "createdAt"
+           FROM inbox_messages ORDER BY created_at DESC, id DESC LIMIT 200`
+        );
+        return res.json({ success: true, messages: result.rows });
+      }
+      const messages = [...inMemoryStore.inboxMessages]
+        .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+        .slice(0, 200)
+        .map(message => ({
+          id: message.id,
+          sender: message.sender,
+          recipient: message.recipient,
+          message: message.message,
+          giftType: message.giftType,
+          giftKey: message.giftKey,
+          giftAmount: message.giftAmount,
+          createdAt: message.createdAt
+        }));
+      res.json({ success: true, messages });
+    } catch (error) {
+      console.error('Admin inbox log error:', error.message || error);
+      res.status(503).json({ success: false, error: 'Unable to load inbox activity.' });
+    }
+  });
+
 app.get('/api/admin/audit', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   const owner = await findUser(req.session.username);
@@ -2287,6 +2324,15 @@ app.post('/api/admin/users/:username', async (req, res) => {
     }
 
     const { type, amount, potion, item, banned, reason, grant } = req.body || {};
+    if (type === 'password') {
+      const newPassword = String(req.body?.newPassword || '');
+      if (newPassword.length < 8 || newPassword.length > 128) {
+        return res.status(400).json({ success: false, error: 'New password must be 8–128 characters.' });
+      }
+      await updateUser(target.username, { password: hashPassword(newPassword) });
+      await recordAdminAudit(admin.username, 'Changed player password', target.username);
+      return res.json({ success: true, username: target.username });
+    }
     if (type === 'username') {
       const targetIsAdmin = target.is_admin || getUnlockedTitles(target).includes('admin');
       const isRenamingSelf = normalizeUsername(target.username) === normalizeUsername(admin.username);
@@ -2449,7 +2495,7 @@ app.get('/api/players/leaderboard', async (req, res) => {
     if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required.' });
     try {
       const users = pool
-        ? (await executeQuery('SELECT * FROM users ORDER BY coins DESC, username ASC')).rows
+        ? (await executeQuery('SELECT * FROM users ORDER BY spins DESC, username ASC')).rows
         : Object.values(inMemoryStore.users);
       const sockets = await io.fetchSockets();
       const online = new Map();
@@ -2467,7 +2513,7 @@ app.get('/api/players/leaderboard', async (req, res) => {
           coins: safe.coins,
           rolls: safe.spins
         };
-      }).sort((left, right) => (Number(right.coins) || 0) - (Number(left.coins) || 0) || left.username.localeCompare(right.username));
+      }).sort((left, right) => (Number(right.rolls) || 0) - (Number(left.rolls) || 0) || left.username.localeCompare(right.username));
       res.json({ success: true, onlineCount: online.size, players });
     } catch (error) {
       console.error('Leaderboard load error:', error.message || error);
