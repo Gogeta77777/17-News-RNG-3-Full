@@ -12,38 +12,45 @@ let taglineTimer = null;
 let taglineRun = 0;
 
 const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 63.59, color: '#0f172a' },
+  { key: '17-news', name: '17 News', reward: 150, chance: 32.85, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
-  { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', reward: 800, chance: 2.5, color: '#a16207' },
-  { key: 'daniel-poole', name: 'Daniel Poole', reward: 450, chance: 4, color: '#166534' },
-  { key: 'dominik-procter', name: 'Dominik Procter', reward: 450, chance: 3, color: '#0d9488' },
-  { key: 'gabe-muir', name: 'Gabe Muir', reward: 450, chance: 2, color: '#115e59' },
-  { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', reward: 550, chance: 1.5, color: '#7c3aed' },
-  { key: 'leo-thacker', name: 'Leo Thacker', reward: 700, chance: 0.8, color: '#2dd4bf' },
-  { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 700, chance: 0.7, color: '#ea580c' },
-  { key: 'john-tan', name: 'John Tan', reward: 1050, chance: 0.6, color: '#f87171' },
-  { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 1250, chance: 0.4, color: '#c084fc' },
-  { key: 'atticus-lok', name: 'Atticus Lok', reward: 1750, chance: 0.3, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', reward: 2250, chance: 0.2, color: '#facc15' }
+  { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', reward: 2000, chance: 2.5, color: '#a16207' },
+  { key: 'daniel-poole', name: 'Daniel Poole', reward: 1600, chance: 4, color: '#166534' },
+  { key: 'dominik-procter', name: 'Dominik Procter', reward: 1800, chance: 3, color: '#0d9488' },
+  { key: 'gabe-muir', name: 'Gabe Muir', reward: 2200, chance: 2, color: '#115e59' },
+  { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', reward: 2500, chance: 1.5, color: '#7c3aed' },
+  { key: 'leo-thacker', name: 'Leo Thacker', reward: 3000, chance: 0.8, color: '#2dd4bf' },
+  { key: 'sam-whitworth', name: 'Sam Whitworth', reward: 3300, chance: 0.7, color: '#ea580c' },
+  { key: 'john-tan', name: 'John Tan', reward: 3600, chance: 0.6, color: '#f87171' },
+  { key: 'rison-pandigama', name: 'Rison Pandigama', reward: 4200, chance: 0.4, color: '#c084fc' },
+  { key: 'atticus-lok', name: 'Atticus Lok', reward: 5000, chance: 0.3, color: '#ddd6fe' },
+  { key: 'baxter-walter', name: 'Baxter Walter', reward: 6000, chance: 0.2, color: '#facc15' },
+  { key: 'pod-1', name: 'Pod 1', reward: 800, chance: 10, color: '#38bdf8' },
+  { key: 'pod-2', name: 'Pod 2', reward: 800, chance: 10, color: '#22c55e' },
+  { key: 'william-marks', name: 'William marks', reward: 1400, chance: 5, color: '#f97316' },
+  { key: 'miharu-sato', name: 'Miharu Sato', reward: 1200, chance: 5.5, color: '#e879f9' }
 ];
 
 const halloweenRarities = [
-  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', reward: 12000, chance: 0.1, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
-  { key: 'grim-reaper', name: 'Grim Reaper', reward: 50000, chance: 0.01, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
+  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', reward: 8500, chance: 0.1, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
+  { key: 'grim-reaper', name: 'Grim Reaper', reward: 20000, chance: 0.01, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
 ];
 
 const globalOptions = [
-  { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 3333, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444', isGlobal: true },
-  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 5000, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8', isGlobal: true },
-  { key: 'the-ceo', name: 'The CEO', reward: 7000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true },
-  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 9500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true },
-  { key: 'lord-crinkle', name: 'Lord Crinkle', reward: 25000, chance: 0.03, color: '#e11d48', glowColor: '#fda4af', isGlobal: true },
-  { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', reward: 50000, chance: 0.01, color: '#d946ef', glowColor: '#f0abfc', isGlobal: true }
+  { key: 'mr-fermanski', name: 'Mr Fernanski', reward: 7000, chance: 0.15, color: '#f59e0b', glowColor: '#ef4444', isGlobal: true },
+  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', reward: 8500, chance: 0.1, color: '#1e3a8a', glowColor: '#38bdf8', isGlobal: true },
+  { key: 'the-ceo', name: 'The CEO', reward: 12000, chance: 0.05, color: '#000000', glowColor: '#f8fafc', isGlobal: true },
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', reward: 10500, chance: 0.07, color: '#16a34a', glowColor: '#4ade80', isGlobal: true },
+  { key: 'lord-crinkle', name: 'Lord Crinkle', reward: 15000, chance: 0.03, color: '#e11d48', glowColor: '#fda4af', isGlobal: true },
+  { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', reward: 20000, chance: 0.01, color: '#d946ef', glowColor: '#f0abfc', isGlobal: true },
+  { key: 'mr-vaughan', name: 'Mr Vaughan', reward: 9500, chance: 0.08, color: '#0ea5e9', glowColor: '#bae6fd', isGlobal: true },
+  { key: 'mrs-bradley', name: 'Mrs Bradley', reward: 9500, chance: 0.08, color: '#db2777', glowColor: '#fbcfe8', isGlobal: true },
+  { key: 'mrs-croft', name: 'Mrs Croft', reward: 9500, chance: 0.08, color: '#16a34a', glowColor: '#bbf7d0', isGlobal: true }
 ];
 
 const diveGlobalOptions = [
   { key: 'fisher-baxter', name: 'Fisher Baxter', reward: 12000, chance: 0.05, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true, isGlobal: true },
-  { key: 'sharky', name: 'Sharky', reward: 4500, chance: 0.5, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
+  { key: 'sharky', name: 'Sharky', reward: 4000, chance: 0.5, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
 ];
 
 const POTIONS = {
@@ -51,6 +58,7 @@ const POTIONS = {
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effect: 'luck', effectKey: 'luck' },
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effect: 'luck', effectKey: 'luck', craftOnly: true },
   coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effect: 'coins', effectKey: 'coin' },
+  'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, duration: 120, effect: 'coins', effectKey: 'coin', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
 };
 
@@ -77,8 +85,10 @@ const TITLES = [
   { id: 'blacksmith', name: 'Blacksmith', color: '#b45309', requirement: 'forge-realm', description: 'Permanently unlock Forge Realm' },
   { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' },
   { id: 'multi-millionaire', name: 'Multi-millionaire', color: '#eab308', requirement: 'coins:10000000', description: 'Have more than 10,000,000 coins' },
-  { id: 'willpower', name: 'Willpower', color: '#818cf8', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
-  { id: 'this-is-my-year', name: 'This is my year!', color: '#fda4af', requirement: 'spins:26000', description: 'Complete 26,000 rolls' }
+  { id: 'willpower', name: 'Willpower', color: '#22c55e', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
+  { id: 'this-is-my-year', name: 'This is my year!', color: '#fda4af', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
+  { id: 'teachers-pet', name: 'Teachers pet', color: '#facc15', requirement: 'teacher-rarities', description: 'Obtain Mrs Joseph Mcglashan, Mr Vaughan, Mrs Bradley, and Mrs Croft' },
+  { id: 'helping-hand', name: 'Helping hand', color: '#38bdf8', requirement: 'finn-quests', description: 'Complete all three of Lord Finn’s quests' }
 ];
 
 const CODE_REWARDS = {
@@ -87,15 +97,18 @@ const CODE_REWARDS = {
 
 // ==================== GAME STATE ====================
 let currentUser = null;
+let currentHeadlineConfig = { active: false, text: '', label: 'NOTICE', detail: '', color: '#eff6ff', speed: 18 };
 let isEnteringDimension = false;
 let eventVisualLayer = null;
 let cameraShakeTimer = null;
 let cameraShakeEndTimer = null;
 let diveCooldownTimer = null;
+let diveRetryTimer = null;
 let diveCollectPending = false;
 let autoRollTimer = null;
 let gameState = {
   activeEffects: {},
+  diveServerOffset: 0,
   currentDimension: null,
   rotatingShopIndex: 0,
   shopNextRestockAt: 0,
@@ -113,7 +126,7 @@ let gameState = {
   autoRollEnabled: false,
   userTitles: [],
   activeTitle: null,
-  potionInventory: { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 },
+  potionInventory: { luck: 0, 'luck-ii': 0, coin: 0, 'coin-ii': 0, speed: 0 },
   itemInventory: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
 };
 
@@ -161,6 +174,21 @@ function initTagline() {
 function formatCoins(amount) {
   return Number(amount).toLocaleString();
 }
+
+function formatPlaytime(seconds) {
+  const totalMinutes = Math.floor(Math.max(0, Number(seconds) || 0) / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
+function updatePlaytimeDisplay(seconds) {
+  const totalSeconds = Math.max(0, Number(seconds) || 0);
+  if (currentUser) currentUser.playtime_seconds = totalSeconds;
+  const display = document.getElementById('settings-total-playtime');
+  if (display) display.textContent = formatPlaytime(totalSeconds);
+}
+window.updatePlaytimeDisplay = updatePlaytimeDisplay;
 
 function showPopup(message, type = 'success') {
   const popup = document.createElement('div');
@@ -210,6 +238,7 @@ async function handleAPI(url, options = {}) {
     if (!response.ok) {
       if (data.banned) showBanScreen(data.banReason);
       if (data.shutdown) setShutdownScreen(true, data.error);
+      if (data.updated) setGameUpdatedScreen(true, data.error);
       return {
         ...data,
         success: false,
@@ -339,6 +368,7 @@ function renderRotatingShopItems() {
     card.innerHTML = `
       <h4 class="shop-item-name">${emoji} ${item.name}</h4>
       <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
+      <small class="shop-item-chance">20% chance per restock</small>
       <button class="potion-buy-btn shop-item-buy">Buy</button>
     `;
     card.querySelector('.shop-item-buy')?.addEventListener('click', () => {
@@ -358,7 +388,7 @@ function renderShopGuide() {
     const name = document.createElement('strong');
     name.textContent = item.name;
     const price = document.createElement('span');
-    price.textContent = `${formatCoins(item.cost)} coins`;
+    price.textContent = `${formatCoins(item.cost)} coins · 20% per restock`;
     row.append(name, price);
     guide.appendChild(row);
   });
@@ -701,6 +731,7 @@ window.loadInbox = loadInbox;
 window.refreshInboxBadge = refreshInboxBadge;
 window.handleIncomingInboxMessage = handleIncomingInboxMessage;
 window.getCurrentGameUsername = () => currentUser?.username || '';
+window.getCurrentGameUser = () => currentUser;
 
 async function setActiveTitle(titleId) {
   const title = TITLES.find(t => t.id === titleId);
@@ -740,7 +771,8 @@ function checkTitleUnlocks(user) {
   if ((Number(user.spins) || 0) > 10000) existing.add('willpower');
   if ((Number(user.spins) || 0) >= 26000) existing.add('this-is-my-year');
   if (rarityTotal >= 10) existing.add('collector');
-  if (['mr-fermanski', 'ellerslie-schoolcast', 'the-ceo', 'mrs-joseph-mcglashan', 'fisher-baxter', 'pumpkin-baxter', 'grim-reaper', 'lord-crinkle', 'mr-butler'].some(key => Number(rarities[key]) > 0)) existing.add('global-headliner');
+  if ([...globalOptions, ...diveGlobalOptions, ...halloweenRarities].some(rarity => Number(rarities[rarity.key]) > 0)) existing.add('global-headliner');
+  if (['mrs-joseph-mcglashan', 'mr-vaughan', 'mrs-bradley', 'mrs-croft'].every(key => Number(rarities[key]) > 0)) existing.add('teachers-pet');
   if ((Number(user.items?.old_potato_sticker) || 0) >= 1) existing.add('potato');
   if (user.sea_realm_unlocked) existing.add('tidekeeper');
   gameState.userTitles = Array.from(existing);
@@ -978,6 +1010,8 @@ function updateForgeCraftStatus() {
   const luckNeedPotion = Math.max(0, 3 - (Number(potions.luck) || 0));
   const controllerNeedClovers = Math.max(0, 10 - (Number(items.clovers) || 0));
   const controllerNeedStickers = Math.max(0, 3 - (Number(items.old_potato_sticker) || 0));
+  const coinNeedFragments = Math.max(0, 5 - (Number(items.fragments) || 0));
+  const coinNeedVials = Math.max(0, 2 - (Number(items.empty_vial) || 0));
 
   const luckNote = document.getElementById('forge-luck-note');
   if (luckNote) {
@@ -1007,6 +1041,20 @@ function updateForgeCraftStatus() {
     }
   }
 
+  const coinNote = document.getElementById('forge-coin-ii-note');
+  if (coinNote) {
+    if (coinNeedFragments > 0 || coinNeedVials > 0) {
+      const parts = [];
+      if (coinNeedFragments > 0) parts.push(`${coinNeedFragments} more Portal Fragment${coinNeedFragments > 1 ? 's' : ''}`);
+      if (coinNeedVials > 0) parts.push(`${coinNeedVials} more Empty Vial${coinNeedVials > 1 ? 's' : ''}`);
+      coinNote.textContent = `Need ${parts.join(' and ')} to craft this.`;
+      coinNote.classList.add('needs-more');
+    } else {
+      coinNote.textContent = 'Ready to forge. This recipe is craftable now.';
+      coinNote.classList.remove('needs-more');
+    }
+  }
+
   const useButton = document.getElementById('use-event-controller');
   if (useButton) {
     useButton.disabled = (Number(items.event_controller) || 0) < 1;
@@ -1014,12 +1062,15 @@ function updateForgeCraftStatus() {
       ? 'Craft an Event Controller first before activating events.'
       : 'Activate the chosen event for 2 minutes.';
   }
+  const coinButton = document.getElementById('craft-coin-ii');
+  if (coinButton) coinButton.disabled = coinNeedFragments > 0 || coinNeedVials > 0;
 }
 
 function renderForgeState() {
   const items = gameState.itemInventory;
   const potions = currentUser?.potions || {};
   const refs = {
+    'forge-fragments': items.fragments,
     'forge-clovers': items.clovers,
     'forge-stickers': items.old_potato_sticker,
     'forge-vials': items.empty_vial,
@@ -1032,10 +1083,12 @@ function renderForgeState() {
   });
   const luckButton = document.getElementById('craft-luck-v');
   const controllerButton = document.getElementById('craft-event-controller');
+  const coinButton = document.getElementById('craft-coin-ii');
   const luckMissing = (Number(items.empty_vial) || 0) < 1 || (Number(potions.luck) || 0) < 3;
   const controllerMissing = (Number(items.clovers) || 0) < 10 || (Number(items.old_potato_sticker) || 0) < 3;
   if (luckButton) luckButton.disabled = luckMissing;
   if (controllerButton) controllerButton.disabled = controllerMissing;
+  if (coinButton) coinButton.disabled = (Number(items.fragments) || 0) < 5 || (Number(items.empty_vial) || 0) < 2;
   updateForgeCraftStatus();
 }
 
@@ -1099,7 +1152,7 @@ async function craftForgeRecipeNow(recipe) {
   }
   currentUser = response.user;
   updateUI(currentUser);
-  showPopup(recipe === 'luck-v' ? 'Crafted Luck Potion V.' : 'Crafted an Event Controller.');
+  showPopup(recipe === 'luck-v' ? 'Crafted Luck Potion V.' : recipe === 'coin-ii' ? 'Crafted Coin Potion II.' : 'Crafted an Event Controller.');
   activeForgeMiniGame = null;
 }
 
@@ -1150,13 +1203,22 @@ function bindDiveControls() {
 async function startDive() {
   const response = await handleAPI('/api/sea/dive/start', { method: 'POST' });
   if (!response.success && response.status === 429 && response.dive) {
+    gameState.diveServerOffset = Number(response.serverTime) - Date.now() || 0;
     renderDiveMap(response.dive);
+    clearTimeout(diveRetryTimer);
+    const retryDelay = Math.max(100, Number(response.retryAfterMs) || Number(response.cooldownUntil) - Number(response.serverTime) + 100);
+    diveRetryTimer = setTimeout(() => {
+      if (gameState.currentDimension === 'deep-sea') startDive();
+    }, retryDelay);
     return;
   }
   if (!response.success || !response.dive) {
     showPopup(response.error || 'Unable to start the dive.', 'error');
     return;
   }
+  clearTimeout(diveRetryTimer);
+  diveRetryTimer = null;
+  gameState.diveServerOffset = Number(response.serverTime) - Date.now() || 0;
   gameState.dive = null;
   renderDiveMap(response.dive);
 }
@@ -1205,7 +1267,8 @@ function updateDiveCooldown(dive = gameState.dive) {
   const rescan = document.getElementById('dive-rescan');
   const status = document.getElementById('dive-status');
   if (!dive) return;
-  const remainingMs = Math.max(0, Number(dive.cooldownUntil) - Date.now());
+  const serverNow = Date.now() + (Number(gameState.diveServerOffset) || 0);
+  const remainingMs = Math.max(0, Number(dive.cooldownUntil) - serverNow);
   const timeText = formatDiveTime(remainingMs);
   if (rescan) {
     rescan.disabled = dive.remaining > 0 || remainingMs > 0;
@@ -1243,6 +1306,7 @@ async function collectDiveSignal(nodeId, marker) {
       showPopup(response.error || 'Unable to collect that signal.', 'error');
       return;
     }
+    if (Number.isFinite(Number(response.serverTime))) gameState.diveServerOffset = Number(response.serverTime) - Date.now();
     renderDiveMap(response.dive);
     const result = response.result;
     currentUser = result.user;
@@ -1265,6 +1329,8 @@ async function collectDiveSignal(nodeId, marker) {
 function exitDeepSea() {
   clearInterval(diveCooldownTimer);
   diveCooldownTimer = null;
+  clearTimeout(diveRetryTimer);
+  diveRetryTimer = null;
   showRealmTransition('Sea Realm', 'leave', 'sea');
   document.getElementById('deep-sea-dimension').classList.add('hidden');
   document.getElementById('game-page').classList.remove('hidden');
@@ -1386,6 +1452,7 @@ function renderInventory(user) {
       { name: 'Portal Fragments', count: gameState.itemInventory.fragments || 0, emoji: '🔮' },
       { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0, emoji: '🍀' },
       { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' },
+        { name: 'Light Essence', count: gameState.itemInventory.light_essence || 0, emoji: '✨' },
       { name: 'Molten Rock', count: gameState.itemInventory.molten_rock || 0, emoji: '🌋' },
       { name: 'Ancient Ore', count: gameState.itemInventory.ancient_ore || 0, emoji: '⛏️' },
       { name: 'Event Controller', count: gameState.itemInventory.event_controller || 0, emoji: '🎛️' },
@@ -1468,6 +1535,7 @@ function renderRarityCatalog() {
 // ==================== UI UPDATES ====================
 function updateUI(user) {
   currentUser = user;
+  window.updateAdminChatVisibility?.();
   gameState.totalRolls = Number(user.spins) || 0;
   if (user.is_admin) setShutdownScreen(false);
   
@@ -1480,6 +1548,7 @@ function updateUI(user) {
   gameState.portalUnlocked = user.portal_unlocked || false;
   gameState.seaRealmUnlocked = user.sea_realm_unlocked || false;
   gameState.forgeRealmUnlocked = user.forge_realm_unlocked || false;
+    window.updateGatewayWatch?.();
   
   const usernameDisplay = document.getElementById('game-username');
   usernameDisplay.textContent = user.username;
@@ -1487,6 +1556,7 @@ function updateUI(user) {
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
+  updatePlaytimeDisplay(user.playtime_seconds);
 
   // Show admin button if user is admin
   const adminBtn = document.getElementById('admin-btn');
@@ -1708,6 +1778,14 @@ function setShutdownScreen(active, message = 'Update or Fix in progress please w
   if (title && message) title.textContent = message;
   screen?.classList.toggle('hidden', !active || Boolean(currentUser?.is_admin));
 }
+
+function setGameUpdatedScreen(active, message = 'Game has been updated. Please refresh your page.') {
+  const screen = document.getElementById('game-updated-screen');
+  const title = document.getElementById('game-updated-title');
+  if (title && message) title.textContent = message;
+  screen?.classList.toggle('hidden', !active);
+}
+window.setGameUpdatedScreen = setGameUpdatedScreen;
 
 let knownGameVersion = null;
 let gameUpdateNoticeShown = false;
@@ -2121,6 +2199,7 @@ async function loadShutdownState() {
 }
 
 function applyAdminHeadline(headline = {}) {
+    currentHeadlineConfig = { ...currentHeadlineConfig, ...headline };
   const active = Boolean(headline.active && String(headline.text || '').trim());
   const ticker = document.getElementById('admin-headline');
   const display = document.getElementById('admin-headline-text-display');
@@ -2140,7 +2219,7 @@ function applyAdminHeadline(headline = {}) {
   ticker?.style.setProperty('--headline-color', color);
   ticker?.style.setProperty('--headline-speed', `${speed}s`);
   ticker?.classList.toggle('hidden', !active);
-  if (currentUser?.is_admin) {
+  if (currentUser?.is_admin || (currentUser?.titles || []).includes('admin')) {
     if (enabled) enabled.checked = active;
     if (input) input.value = headline.text || '';
     if (labelInput) labelInput.value = headline.label || '';
@@ -2149,11 +2228,17 @@ function applyAdminHeadline(headline = {}) {
     if (speedInput) speedInput.value = String(speed);
     if (speedValue) speedValue.textContent = `${speed} seconds`;
     if (status) status.textContent = active ? 'Headline is live for all players' : 'Headline is off';
+    const miniForm = document.getElementById('mini-headline-form');
+    if (miniForm) {
+      miniForm.elements.active.checked = active;
+      miniForm.elements.text.value = headline.text || '';
+      document.getElementById('mini-headline-status').textContent = active ? 'Headline is live' : 'Headline is off';
+    }
   }
 }
 
 async function loadAdminHeadline() {
-  if (!currentUser?.is_admin) return;
+  if (!currentUser?.is_admin && !(currentUser?.titles || []).includes('admin')) return;
   const response = await handleAPI('/api/admin/headline');
   if (response.success) applyAdminHeadline(response.headline);
 }
@@ -2163,8 +2248,12 @@ const LIVE_EVENT_PRESENTATION = {
   'meteor-shower': { className: 'meteor-shower-live', startId: 'activate-meteor-shower', stopId: 'deactivate-meteor-shower' },
   'abyssal-resonance': { className: 'abyssal-resonance-live', startId: 'activate-abyssal-resonance', stopId: 'deactivate-abyssal-resonance', shakeEveryMs: 26000 },
   'prismfall': { className: 'prismfall-live', startId: 'activate-prismfall', stopId: 'deactivate-prismfall' },
-  'gravity-well': { className: 'gravity-well-live', startId: 'activate-gravity-well', stopId: 'deactivate-gravity-well' }
+  'gravity-well': { className: 'gravity-well-live', startId: 'activate-gravity-well', stopId: 'deactivate-gravity-well' },
+  'confetti-party': { className: 'confetti-party-live', startId: 'activate-confetti-party', stopId: 'deactivate-confetti-party' },
+  blackhole: { className: 'blackhole-live', startId: 'activate-blackhole', stopId: null }
 };
+
+let blackholeCountdownTimer = null;
 
 function triggerCameraShake() {
   document.body.classList.remove('event-camera-shake');
@@ -2229,6 +2318,28 @@ function createAdminEventVisual(eventName) {
       mote.style.setProperty('--mote-delay', `${Math.random() * -7}s`);
       layer.appendChild(mote);
     }
+  } else if (eventName === 'confetti-party') {
+    for (let index = 0; index < 90; index += 1) {
+      const piece = document.createElement('span');
+      piece.className = 'event-confetti-piece';
+      piece.style.setProperty('--confetti-left', `${Math.random() * 100}%`);
+      piece.style.setProperty('--confetti-delay', `${Math.random() * -8}s`);
+      piece.style.setProperty('--confetti-duration', `${4 + Math.random() * 5}s`);
+      piece.style.setProperty('--confetti-hue', `${Math.random() * 360}deg`);
+      layer.appendChild(piece);
+    }
+  } else if (eventName === 'blackhole') {
+    const hole = document.createElement('span');
+    hole.className = 'event-blackhole-core';
+    layer.appendChild(hole);
+    for (let index = 0; index < 42; index += 1) {
+      const mote = document.createElement('span');
+      mote.className = 'event-blackhole-mote';
+      mote.style.setProperty('--mote-angle', `${Math.random() * 360}deg`);
+      mote.style.setProperty('--mote-delay', `${Math.random() * -2}s`);
+      mote.style.setProperty('--mote-duration', `${1.2 + Math.random() * 1.8}s`);
+      layer.appendChild(mote);
+    }
   } else if (eventName === 'starlight-surge') {
     for (let index = 0; index < 24; index += 1) {
       const star = document.createElement('span');
@@ -2288,6 +2399,21 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const eventDetails = document.getElementById('active-event-details');
   if (eventTitle) eventTitle.textContent = title;
   if (eventDetails) eventDetails.textContent = active ? description : '';
+  clearInterval(blackholeCountdownTimer);
+  blackholeCountdownTimer = null;
+  if (active && eventName === 'blackhole') {
+    const expiresAt = Number(event.expiresAt) || Date.now() + 10000;
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      if (eventDetails) eventDetails.textContent = `Collapsing in ${remaining}s`;
+      if (remaining <= 0) {
+        clearInterval(blackholeCountdownTimer);
+        blackholeCountdownTimer = null;
+      }
+    };
+    updateCountdown();
+    blackholeCountdownTimer = setInterval(updateCountdown, 250);
+  }
   eventBar?.classList.toggle('hidden', !active);
   const initiatedBy = event.initiatedBy || 'Admin';
   showPopup(active ? `${title} activated by ${initiatedBy}!` : `${title} ended.`, active ? '#38bdf8' : '#64748b');
@@ -2480,6 +2606,7 @@ document.getElementById('exit-dimension')?.addEventListener('click', exitDeepSea
 document.getElementById('exit-forge-dimension')?.addEventListener('click', exitForgeRealm);
 document.getElementById('craft-luck-v')?.addEventListener('click', () => craftForgeRecipe('luck-v'));
 document.getElementById('craft-event-controller')?.addEventListener('click', () => craftForgeRecipe('event-controller'));
+document.getElementById('craft-coin-ii')?.addEventListener('click', () => craftForgeRecipe('coin-ii'));
 document.getElementById('use-event-controller')?.addEventListener('click', useForgeEventController);
 
 function getRarityDisplayColor(rarity) {
@@ -2720,13 +2847,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncWatchPortalState = () => {
       const portalIsOpen = portalContainer.classList.contains('portal-open');
       finnWatchPortal.classList.toggle('portal-open', portalIsOpen);
-      if (finnWatchStatus) finnWatchStatus.textContent = portalIsOpen ? 'Gateway online' : 'Portal locked';
+      const fragments = Number(gameState.itemInventory.fragments) || 0;
+      const coherence = portalIsOpen ? 100 : Math.min(99, Math.round(fragments / 10 * 100));
+      if (finnWatchStatus) finnWatchStatus.textContent = portalIsOpen
+        ? `Gateway open · Sea ${gameState.seaRealmUnlocked ? 'online' : 'locked'} · Forge ${gameState.forgeRealmUnlocked ? 'online' : 'locked'}`
+        : `${fragments}/10 fragments · gateway locked`;
+      const meter = finnWatchView?.querySelector('.finn-watch-meter');
+      if (meter) {
+        meter.style.setProperty('--signal-coherence', `${coherence}%`);
+        meter.firstChild.textContent = `SIGNAL COHERENCE · ${coherence}%`;
+      }
       if (sourcePortalLock && watchPortalLock) {
         watchPortalLock.style.display = sourcePortalLock.style.display;
         watchPortalLock.textContent = sourcePortalLock.textContent;
       }
     };
     syncWatchPortalState();
+    window.updateGatewayWatch = syncWatchPortalState;
     if (window.MutationObserver) {
       new MutationObserver(syncWatchPortalState).observe(portalContainer, { attributes: true, attributeFilter: ['class', 'style'], subtree: true });
     }
@@ -2772,28 +2909,58 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const renderFinnQuestionPage = () => {
     if (!finnChoices || !finnReset || !finnNextPage || !finnPageLabel) return [];
-    const questionButtons = finnQuestionOptions.filter(option => option.page === finnDialoguePage).map(({ key, prompt }) => {
-      const button = document.createElement('button');
-      button.className = 'finn-choice';
-      button.type = 'button';
-      button.dataset.finnQuestion = key;
-      button.textContent = prompt;
-      return button;
-    });
-    finnPageLabel.textContent = `Questions · ${finnDialoguePage + 1} of 2`;
+    finnReset.textContent = 'Close';
+      finnReset.classList.add('visible');
+    finnPageLabel.textContent = 'LORD FINN · QUEST BOARD';
     finnNextPage.classList.add('hidden');
-    finnReset.classList.remove('visible');
-    finnChoices.replaceChildren(finnPageLabel, ...questionButtons, finnNextPage, finnReset);
-    return questionButtons;
+    finnChoices.replaceChildren(finnPageLabel, finnNextPage, finnReset);
+    return [];
   };
 
   const resetFinnConversation = () => {
     if (!finnChat) return;
-    finnDialoguePage = 0;
     finnChat.replaceChildren();
-    appendFinnLine('Lord Finn', 'The gateway is showing a second signal. Ask me what I know.');
-    const questionButtons = renderFinnQuestionPage();
-    questionButtons[0]?.focus();
+    appendFinnLine('Lord Finn', 'Three tasks stand between us and the next realm. Complete each one to earn a reward.');
+    renderFinnQuestionPage();
+    loadFinnQuestState();
+  };
+
+  const loadFinnQuestState = async () => {
+    const response = await handleAPI('/api/finn/quests');
+    if (!response.success || !finnChoices) {
+      appendFinnLine('Lord Finn', response.error || 'I cannot read the gateway signal right now.');
+      return;
+    }
+    finnChoices.querySelector('[data-finn-quest]')?.remove();
+    if (!response.quest) {
+      appendFinnLine('Lord Finn', 'Thank you for helping me hold the gateway steady. The third realm is beginning to appear beyond the fractures. I will tell you more when it opens.');
+      return;
+    }
+    const quest = response.quest;
+    const detail = document.createElement('p');
+    detail.className = 'finn-quest-detail';
+    detail.dataset.finnQuest = 'true';
+    detail.textContent = `${quest.title} · ${quest.description} · ${quest.progress}/${quest.target}`;
+    const claim = document.createElement('button');
+    claim.type = 'button';
+    claim.className = 'finn-choice finn-quest-claim';
+    claim.dataset.finnClaim = 'true';
+    claim.textContent = quest.ready ? 'Claim quest reward' : 'Quest in progress';
+    claim.disabled = !quest.ready;
+    finnChoices.insertBefore(detail, finnReset);
+    finnChoices.insertBefore(claim, finnReset);
+  };
+
+  const claimFinnQuest = async () => {
+    const response = await handleAPI('/api/finn/quests/claim', { method: 'POST' });
+    if (!response.success) {
+      showPopup(response.error || 'Unable to claim this quest.', 'error');
+      return;
+    }
+    currentUser = response.user;
+    updateUI(currentUser);
+    appendFinnLine('Lord Finn', `Task complete. Your reward has been delivered: ${formatCoins(response.reward.coins)} coins${response.reward.fragments ? ` and ${response.reward.fragments} Portal Fragments` : ''}${response.reward.vials ? ` and ${response.reward.vials} Empty Vial` : ''}.`);
+    await loadFinnQuestState();
   };
 
   const closeFinnDialog = () => {
@@ -2820,10 +2987,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   finnOpen?.addEventListener('click', () => {
-    if (!finnConversationStarted) {
-      resetFinnConversation();
-      finnConversationStarted = true;
-    }
+    resetFinnConversation();
+    finnConversationStarted = true;
     showFinnWatch(false);
     finnOverlay?.classList.remove('hidden');
     document.body.classList.add('finn-dialog-open');
@@ -2865,9 +3030,12 @@ document.addEventListener('DOMContentLoaded', () => {
   finnChoices?.addEventListener('click', event => {
     const button = event.target.closest('button');
     if (!button) return;
+    if (button.dataset.finnClaim) {
+      claimFinnQuest();
+      return;
+    }
     if (button === finnReset) {
-      resetFinnConversation();
-      sendFinnOut();
+      closeFinnDialog();
       return;
     }
     if (button === finnNextPage) {
@@ -3020,8 +3188,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAdminUsers();
         loadAdminAudit();
         loadShutdownState();
-        loadAdminHeadline();
       }
+      loadAdminHeadline();
       loadMiniAdminOverview();
       clearInterval(miniAdminRefreshTimer);
       miniAdminRefreshTimer = setInterval(loadMiniAdminOverview, 10000);
@@ -3049,6 +3217,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     loadShutdownState();
     showPopup(active ? 'Maintenance mode enabled.' : 'Game services resumed.');
+  });
+  document.getElementById('owner-password-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const response = await handleAPI('/api/admin/change-password', {
+      method: 'POST',
+      body: { currentPassword: fields.get('currentPassword'), newPassword: fields.get('newPassword') }
+    });
+    const status = document.getElementById('owner-password-status');
+    if (!response.success) {
+      if (status) status.textContent = response.error || 'Unable to change password.';
+      return;
+    }
+    form.reset();
+    if (status) status.textContent = 'Password changed.';
+  });
+  document.getElementById('update-shutdown-btn')?.addEventListener('click', async () => {
+    if (!confirm('Notify every player that the update is ready and require a refresh?')) return;
+    const response = await handleAPI('/api/admin/update-shutdown', { method: 'POST' });
+    if (!response.success) showPopup(response.error || 'Unable to start update shutdown.', 'error');
   });
   document.getElementById('admin-headline-form')?.addEventListener('submit', async event => {
     event.preventDefault();
@@ -3080,6 +3269,26 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('admin-headline-speed')?.addEventListener('input', event => {
     const label = document.getElementById('admin-headline-speed-value');
     if (label) label.textContent = `${event.target.value} seconds`;
+  });
+  document.getElementById('mini-headline-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const fields = new FormData(event.currentTarget);
+    const active = fields.get('active') === 'on';
+    const text = String(fields.get('text') || '').trim();
+    if (active && !text) {
+      showPopup('Enter headline text before enabling it.', 'error');
+      return;
+    }
+    const response = await handleAPI('/api/admin/headline', {
+      method: 'POST',
+      body: { ...currentHeadlineConfig, active, text }
+    });
+    if (!response.success) {
+      showPopup(response.error || 'Unable to save headline.', 'error');
+      return;
+    }
+    applyAdminHeadline(response.headline);
+    showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
   });
 
   Object.entries(LIVE_EVENT_PRESENTATION).forEach(([eventName, presentation]) => {
