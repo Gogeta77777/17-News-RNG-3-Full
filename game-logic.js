@@ -1,3 +1,4 @@
+  const emoji = key.startsWith('luck') ? '🍀' : key.startsWith('coin') ? '🪙' : '⚡';
 // ==================== GAME CONSTANTS ====================
 const taglines = [
   'The third installment',
@@ -58,7 +59,7 @@ const POTIONS = {
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effect: 'luck', effectKey: 'luck' },
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effect: 'luck', effectKey: 'luck', craftOnly: true },
   coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effect: 'coins', effectKey: 'coin' },
-  'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, duration: 120, effect: 'coins', effectKey: 'coin', craftOnly: true },
+  'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, maxMultiplier: 9, duration: 120, effect: 'coins', effectKey: 'coin', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
 };
 
@@ -261,18 +262,31 @@ function updatePotionDisplay() {
   const container = document.getElementById('potion-effects');
   if (!container) return;
 
-  container.innerHTML = '';
-  Object.entries(gameState.activeEffects).forEach(([type, effect]) => {
-    const remaining = Math.max(0, Math.ceil((effect.endTime - Date.now()) / 1000));
+  const activeEffects = gameState.activeEffects || {};
+  const cards = [];
+  Object.entries(activeEffects).forEach(([type, effect]) => {
+    const endTime = Number(effect?.endTime);
+    const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
     if (remaining <= 0) {
-      delete gameState.activeEffects[type];
+      delete activeEffects[type];
       return;
     }
     const div = document.createElement('div');
-    const effectName = type === 'luck' ? 'Luck' : type === 'coin' ? 'Coins' : type === 'speed' ? 'Speed' : type;
-    div.textContent = `${effectName} effect · ${Number(effect.multiplier) || 1}× · ${remaining}s`;
-    container.appendChild(div);
+    div.className = 'potion-effect-chip';
+    const effectName = type === 'luck' ? 'Luck' : type === 'deep-luck' ? 'Deep Luck' : type === 'coin' ? 'Coins' : type === 'speed' ? 'Speed' : type;
+    const multiplier = Math.max(1, Number(effect.multiplier) || 1);
+    const name = document.createElement('strong');
+    name.textContent = effectName;
+    const value = document.createElement('span');
+    value.textContent = `${multiplier}×`;
+    const timer = document.createElement('small');
+    timer.textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+    div.setAttribute('aria-label', `${effectName} multiplier ${multiplier} times, ${timer.textContent} remaining`);
+    div.append(name, value, timer);
+    cards.push(div);
   });
+  container.replaceChildren(...cards);
+  container.classList.toggle('hidden', cards.length === 0);
 }
 
 function getPotionMultiplier(potionType) {
@@ -365,11 +379,16 @@ function renderRotatingShopItems() {
     const card = document.createElement('div');
     card.className = 'shop-item';
     const emoji = item.name.includes('Fragment') ? '🔮' : item.name.includes('Clover') ? '🍀' : item.name.includes('Rock') ? '🌋' : item.name.includes('Ore') ? '⛏️' : '💧';
+    const itemKey = { 'Portal Fragment': 'fragments', 'Clover Leaf': 'clovers', 'Sea Essence': 'essence', 'Molten Rock': 'molten_rock', 'Ancient Ore': 'ancient_ore' }[item.name];
+    const owned = Number(gameState.itemInventory[itemKey]) || 0;
+    const affordable = Boolean(currentUser && Number(currentUser.coins) >= item.cost);
+    card.classList.toggle('is-affordable', affordable);
     card.innerHTML = `
       <h4 class="shop-item-name">${emoji} ${item.name}</h4>
       <p class="shop-item-price">🪙 ${formatCoins(item.cost)} coins</p>
       <small class="shop-item-chance">20% chance per restock</small>
-      <button class="potion-buy-btn shop-item-buy">Buy</button>
+      <small class="shop-item-owned">Owned · ${owned}</small>
+      <button class="potion-buy-btn shop-item-buy" ${affordable ? '' : 'disabled'}>${affordable ? 'Buy item' : 'Not enough coins'}</button>
     `;
     card.querySelector('.shop-item-buy')?.addEventListener('click', () => {
       buyShopItem(item.name);
@@ -428,6 +447,24 @@ function renderShop() {
   }
 }
 
+function setupShopViewSwitch() {
+  document.querySelectorAll('[data-shop-view]').forEach(button => {
+    if (button.dataset.bound) return;
+    button.addEventListener('click', () => {
+      const selectedView = button.dataset.shopView;
+      document.querySelectorAll('[data-shop-view]').forEach(tab => {
+        const active = tab.dataset.shopView === selectedView;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-pressed', String(active));
+      });
+      document.querySelectorAll('[data-shop-panel]').forEach(panel => {
+        panel.classList.toggle('hidden', panel.dataset.shopPanel !== selectedView);
+      });
+    });
+    button.dataset.bound = 'true';
+  });
+}
+
 function buyPotion(potionType, quantity = 1) {
   const potion = POTIONS[potionType];
   if (!potion || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) {
@@ -469,7 +506,9 @@ function usePotion(potionType) {
       currentUser = response.user;
       gameState.potionInventory = currentUser.potions || { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 };
       updateUI(currentUser);
-      showPopup(`${POTIONS[potionType].name} used. Matching ${POTIONS[potionType].effect} effects stack.`);
+      showPopup(potionType === 'coin-ii'
+        ? 'Coin Potion II used. Coin effects can now stack up to 9×.'
+        : `${POTIONS[potionType].name} used. Matching ${POTIONS[potionType].effect} effects stack.`);
     } else {
       showPopup(response.error || 'Unable to use potion', 'error');
     }
@@ -604,6 +643,7 @@ function renderInboxGiftOptions(giftType) {
   const options = giftType === 'item'
     ? [
       ['fragments', 'Portal Fragment'], ['clovers', 'Clover Leaf'], ['essence', 'Sea Essence'],
+      ['light_essence', 'Light Essence'],
       ['molten_rock', 'Molten Rock'], ['ancient_ore', 'Ancient Ore'], ['event_controller', 'Event Controller'],
       ['old_potato_sticker', 'Old Potato Sticker'], ['empty_vial', 'Empty Vial'], ['treasure_chest', 'Treasure Chest']
     ]
@@ -645,7 +685,7 @@ async function loadInbox(folder = activeInboxFolder) {
   }
 
   const giftNames = {
-    fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock',
+    fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence', molten_rock: 'Molten Rock',
     ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker',
     empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest',
     '17-news': '17 News', '17-news-reborn': '17 News Reborn', 'the-daily-ellerslilian': 'The Daily Ellerslilian',
@@ -732,6 +772,10 @@ window.refreshInboxBadge = refreshInboxBadge;
 window.handleIncomingInboxMessage = handleIncomingInboxMessage;
 window.getCurrentGameUsername = () => currentUser?.username || '';
 window.getCurrentGameUser = () => currentUser;
+window.updateGameUser = user => {
+  if (!user) return;
+  updateUI(user);
+};
 
 async function setActiveTitle(titleId) {
   const title = TITLES.find(t => t.id === titleId);
@@ -1399,8 +1443,9 @@ function renderInventory(user) {
         card.style.setProperty('--rarity-color', rarityColor);
         if (rarity.isGlobal) card.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
         const serialNumbers = rarity.halloweenOnly ? (user.inventory?.halloweenSerials?.[key] || []) : [];
-        const serialLabel = serialNumbers.length
-          ? `<span class="rarity-serials">Serial${serialNumbers.length === 1 ? '' : 's'}: ${serialNumbers.map(serial => `#${String(serial).padStart(6, '0')}`).join(', ')}</span>`
+        const latestSerial = serialNumbers.at(-1);
+        const serialLabel = latestSerial
+          ? `<span class="rarity-serials">Latest serial: #${String(latestSerial).padStart(6, '0')}</span>`
           : '';
         card.innerHTML = `
           <div class="rarity-card-head">
@@ -1428,13 +1473,14 @@ function renderInventory(user) {
       Object.entries(POTIONS).forEach(([key, potion]) => {
         const count = potions[key] || 0;
         if (count <= 0) return;
-        const emoji = key.startsWith('luck') ? '🍀' : '⚡';
+        const emoji = key.startsWith('luck') ? '🍀' : key.startsWith('coin') ? '🪙' : '⚡';
         const card = document.createElement('div');
         card.className = 'inventory-item potion-inventory-item';
         card.innerHTML = `
           <div class="potion-inventory-copy">
             <h4>${emoji} ${potion.name}</h4>
             <span>x${count} available</span>
+            ${key === 'coin-ii' ? '<small>4× coins · stack cap up to 9×</small>' : ''}
           </div>
           <button class="btn potion-use" type="button">Use Now</button>
         `;
@@ -1874,12 +1920,16 @@ async function loadAdminUsers() {
           <button class="btn" type="submit">Grant</button>
         </form>
         <form class="admin-adjust-form" data-adjustment="item">
-          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="molten_rock">Molten Rock</option><option value="ancient_ore">Ancient Ore</option><option value="event_controller">Event Controller</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
+          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="light_essence">Light Essence</option><option value="molten_rock">Molten Rock</option><option value="ancient_ore">Ancient Ore</option><option value="event_controller">Event Controller</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
         ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
         <form class="admin-forge-form"><span>Forge Realm</span><button class="btn" type="submit">${user.forge_realm_unlocked ? 'Revoke access' : 'Grant access'}</button></form>
+              <form class="admin-password-form">
+                <label>Set new password<input name="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
+                <button class="btn" type="submit">Change password</button>
+              </form>
       </div>
       ${(!(user.is_admin || (user.titles || []).includes('admin')) || String(user.username).toLowerCase() === String(currentUser?.username || '').toLowerCase()) ? `<form class="admin-username-form">
         <label>Change username<input name="username" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}" value="${escapeHtml(user.username)}" required></label>
@@ -1950,6 +2000,22 @@ async function loadAdminUsers() {
       }
       showPopup(`${grant ? 'Granted' : 'Revoked'} Forge Realm access for ${user.username}.`);
       loadAdminUsers();
+    });
+    row.querySelector('.admin-password-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      if (!confirm(`Set a new password for ${user.username}?`)) return;
+      const response = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST',
+        body: { type: 'password', newPassword: form.elements.newPassword.value }
+      });
+      if (!response.success) {
+        showPopup(response.error || 'Unable to change this player password.', 'error');
+        return;
+      }
+      form.reset();
+      showPopup(`Password changed for ${user.username}.`);
+      loadAdminAudit();
     });
     row.querySelectorAll('.admin-adjust-form').forEach(form => {
       form.addEventListener('submit', async event => {
@@ -2080,6 +2146,61 @@ async function loadAdminAudit() {
     row.append(actor, action, details, timestamp);
     return row;
   }));
+}
+
+async function loadAdminInboxLog() {
+  const list = document.getElementById('owner-inbox-log');
+  if (!list || !currentUser?.is_admin) return;
+  list.textContent = 'Loading inbox activity...';
+  const response = await handleAPI('/api/admin/inbox-log');
+  if (!response.success) {
+    list.textContent = response.error || 'Unable to load inbox activity.';
+    return;
+  }
+  if (!response.messages.length) {
+    list.textContent = 'No inbox messages or gifts have been sent yet.';
+    return;
+  }
+  const itemNames = {
+    fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence',
+    molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller',
+    old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest'
+  };
+  list.replaceChildren(...response.messages.map(message => {
+    const row = document.createElement('div');
+    row.className = 'owner-audit-row inbox-audit-row';
+    const route = document.createElement('strong');
+    route.textContent = `${message.sender || 'Unknown'} → ${message.recipient || 'Unknown'}`;
+    const note = document.createElement('span');
+    note.className = 'inbox-audit-note';
+    note.textContent = message.message || 'Gift only';
+    const details = document.createElement('span');
+    if (message.giftType === 'coins') {
+      details.textContent = `Sent ${formatCoins(message.giftAmount)} coins`;
+    } else if (message.giftType === 'item') {
+      details.textContent = `Sent ${message.giftAmount} × ${itemNames[message.giftKey] || message.giftKey}`;
+    } else if (message.giftType === 'potion') {
+      details.textContent = `Sent ${message.giftAmount} × ${POTIONS[message.giftKey]?.name || message.giftKey}`;
+    } else if (message.giftType === 'rarity') {
+      const rarity = [...rarityOptions, ...globalOptions, ...diveGlobalOptions, ...halloweenRarities].find(option => option.key === message.giftKey);
+      details.textContent = `Sent ${message.giftAmount} × ${rarity?.name || message.giftKey}`;
+    } else {
+      details.textContent = 'No gift attached';
+    }
+    const timestamp = document.createElement('small');
+    timestamp.textContent = formatChatTimestamp(message.createdAt);
+    row.append(route, note, details, timestamp);
+    return row;
+  }));
+}
+
+function setAdminPanelMinimized(minimized) {
+  const panel = document.getElementById('admin-panel');
+  const button = document.getElementById('minimize-admin-panel');
+  if (!panel || !button) return;
+  panel.classList.toggle('is-minimized', minimized);
+  button.textContent = minimized ? 'Restore Panel' : 'Minimize Panel';
+  button.setAttribute('aria-expanded', String(!minimized));
 }
 
 function updateGlobalDropPreview() {
@@ -2254,6 +2375,8 @@ const LIVE_EVENT_PRESENTATION = {
 };
 
 let blackholeCountdownTimer = null;
+let blackholeFinaleStartTimer = null;
+let blackholeFinaleEndTimer = null;
 
 function triggerCameraShake() {
   document.body.classList.remove('event-camera-shake');
@@ -2272,6 +2395,28 @@ function clearEventVisuals() {
   cameraShakeEndTimer = null;
   document.body.classList.remove('event-camera-shake');
   Object.values(LIVE_EVENT_PRESENTATION).forEach(event => document.body.classList.remove(event.className));
+  clearTimeout(blackholeFinaleStartTimer);
+  clearTimeout(blackholeFinaleEndTimer);
+  document.querySelector('.blackhole-finale-overlay')?.remove();
+  document.body.classList.remove('blackhole-finale');
+}
+
+function startBlackholeFinale() {
+  const overlay = document.createElement('div');
+  overlay.className = 'blackhole-finale-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+  const core = document.createElement('span');
+  core.className = 'blackhole-finale-core';
+  const flash = document.createElement('span');
+  flash.className = 'blackhole-finale-flash';
+  overlay.append(core, flash);
+  document.body.classList.add('blackhole-finale');
+  document.body.appendChild(overlay);
+  blackholeFinaleStartTimer = setTimeout(() => overlay.classList.add('is-flashing'), 1250);
+  blackholeFinaleEndTimer = setTimeout(() => {
+    overlay.remove();
+    document.body.classList.remove('blackhole-finale');
+  }, 6250);
 }
 
 function createAdminEventVisual(eventName) {
@@ -2389,6 +2534,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
     if (status) status.textContent = `LIVE · ${description}`;
   } else {
     clearEventVisuals();
+    if (eventName === 'blackhole') startBlackholeFinale();
     if (startButton) startButton.hidden = false;
     if (stopButton) stopButton.hidden = true;
     if (status) status.textContent = 'Ready · stays live until ended';
@@ -2757,6 +2903,7 @@ function setupRollButton() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+    setupShopViewSwitch();
   checkGameVersion();
   setInterval(checkGameVersion, 20000);
   document.addEventListener('visibilitychange', () => {
@@ -3178,6 +3325,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('admin-btn')?.addEventListener('click', () => {
     if (currentUser && (currentUser.is_admin || (currentUser.titles || []).includes('admin'))) {
       const panel = document.getElementById('admin-panel');
+      setAdminPanelMinimized(false);
       const isMini = !currentUser.is_admin;
       panel?.classList.toggle('mini-admin', isMini);
       const heading = panel?.querySelector('.admin-header h1');
@@ -3187,6 +3335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentUser.is_admin) {
         loadAdminUsers();
         loadAdminAudit();
+        loadAdminInboxLog();
         loadShutdownState();
       }
       loadAdminHeadline();
@@ -3198,6 +3347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('back-to-game')?.addEventListener('click', () => {
+    setAdminPanelMinimized(false);
     document.getElementById('admin-panel')?.classList.remove('mini-admin');
     if (miniAdminRefreshTimer) clearInterval(miniAdminRefreshTimer);
     showPage('game');
@@ -3205,6 +3355,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('refresh-admin-users')?.addEventListener('click', () => {
     loadAdminUsers();
     loadAdminAudit();
+    loadAdminInboxLog();
+  });
+  document.getElementById('refresh-inbox-log')?.addEventListener('click', loadAdminInboxLog);
+  document.getElementById('minimize-admin-panel')?.addEventListener('click', () => {
+    setAdminPanelMinimized(!document.getElementById('admin-panel')?.classList.contains('is-minimized'));
   });
   setupAdminTools();
   document.getElementById('shutdown-toggle')?.addEventListener('click', async () => {
