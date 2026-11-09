@@ -77,8 +77,11 @@ const inMemoryStore = {
   inboxMessages: [],
   adminAudit: []
 };
+const playtimeLastTick = new Map();
+const playtimeWritesInFlight = new Set();
+const adminChatMessages = [];
 const inboxClaimsInFlight = new Set();
-const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
+const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
 const ROTATING_SHOP_ITEMS = [
   { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
@@ -94,29 +97,36 @@ const MAX_TOTAL_LUCK_MULTIPLIER = 100;
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
-  { key: '17-news', name: '17 News', chance: 63.59, reward: 150, color: '#0f172a' },
+  { key: '17-news', name: '17 News', chance: 32.85, reward: 150, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
-  { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', chance: 2.5, reward: 800, color: '#a16207' },
-  { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 450, color: '#166534' },
-  { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 450, color: '#0d9488' },
-  { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 450, color: '#115e59' },
-  { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 550, color: '#7c3aed' },
-  { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 700, color: '#2dd4bf' },
-  { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 700, color: '#ea580c' },
-  { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 1050, color: '#f87171' },
-  { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 1250, color: '#c084fc' },
-  { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 1750, color: '#ddd6fe' },
-  { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 2250, color: '#facc15' },
-  { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 3333, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
-  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 5000, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
-  { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 7000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' },
-  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', chance: 0.07, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#4ade80' },
-  { key: 'lord-crinkle', name: 'Lord Crinkle', chance: 0.03, reward: 25000, isGlobal: true, color: '#e11d48', glowColor: '#fda4af' },
-  { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', chance: 0.01, reward: 50000, isGlobal: true, color: '#d946ef', glowColor: '#f0abfc' }
+  { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', chance: 2.5, reward: 2000, color: '#a16207' },
+  { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 1600, color: '#166534' },
+  { key: 'dominik-procter', name: 'Dominik Procter', chance: 3, reward: 1800, color: '#0d9488' },
+  { key: 'gabe-muir', name: 'Gabe Muir', chance: 2, reward: 2200, color: '#115e59' },
+  { key: 'inesh-jayasinghe', name: 'Inesh Jayasinghe', chance: 1.5, reward: 2500, color: '#7c3aed' },
+  { key: 'leo-thacker', name: 'Leo Thacker', chance: 0.8, reward: 3000, color: '#2dd4bf' },
+  { key: 'sam-whitworth', name: 'Sam Whitworth', chance: 0.7, reward: 3300, color: '#ea580c' },
+  { key: 'john-tan', name: 'John Tan', chance: 0.6, reward: 3600, color: '#f87171' },
+  { key: 'rison-pandigama', name: 'Rison Pandigama', chance: 0.4, reward: 4200, color: '#c084fc' },
+  { key: 'atticus-lok', name: 'Atticus Lok', chance: 0.3, reward: 5000, color: '#ddd6fe' },
+  { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 6000, color: '#facc15' },
+  { key: 'pod-1', name: 'Pod 1', chance: 10, reward: 800, color: '#38bdf8' },
+  { key: 'pod-2', name: 'Pod 2', chance: 10, reward: 800, color: '#22c55e' },
+  { key: 'william-marks', name: 'William marks', chance: 5, reward: 1400, color: '#f97316' },
+  { key: 'miharu-sato', name: 'Miharu Sato', chance: 5.5, reward: 1200, color: '#e879f9' },
+  { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 7000, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
+  { key: 'ellerslie-schoolcast', name: 'Ellerslie Schoolcast', chance: 0.1, reward: 8500, isGlobal: true, color: '#1e3a8a', glowColor: '#38bdf8' },
+  { key: 'the-ceo', name: 'The CEO', chance: 0.05, reward: 12000, isGlobal: true, color: '#000000', glowColor: '#f8fafc' },
+  { key: 'mrs-joseph-mcglashan', name: 'Mrs Joseph Mcglashan', chance: 0.07, reward: 10500, isGlobal: true, color: '#16a34a', glowColor: '#4ade80' },
+  { key: 'lord-crinkle', name: 'Lord Crinkle', chance: 0.03, reward: 15000, isGlobal: true, color: '#e11d48', glowColor: '#fda4af' },
+  { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', chance: 0.01, reward: 20000, isGlobal: true, color: '#d946ef', glowColor: '#f0abfc' },
+  { key: 'mr-vaughan', name: 'Mr Vaughan', chance: 0.08, reward: 9500, isGlobal: true, color: '#0ea5e9', glowColor: '#bae6fd' },
+  { key: 'mrs-bradley', name: 'Mrs Bradley', chance: 0.08, reward: 9500, isGlobal: true, color: '#db2777', glowColor: '#fbcfe8' },
+  { key: 'mrs-croft', name: 'Mrs Croft', chance: 0.08, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#bbf7d0' }
 ];
 const HALLOWEEN_RARITIES = [
-  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 12000, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
-  { key: 'grim-reaper', name: 'Grim Reaper', chance: 0.01, reward: 50000, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
+  { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 8500, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
+  { key: 'grim-reaper', name: 'Grim Reaper', chance: 0.01, reward: 20000, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
 ];
 const halloweenRaritySerials = new Map();
 const limitedCodeClaims = new Map();
@@ -134,11 +144,11 @@ function getActiveCoreRarities() {
 }
 
 const DIVE_OPTIONS = [
-  ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 61.04 } : rarity),
+  ...CORE_RARITIES.map(rarity => rarity.key === '17-news' ? { ...rarity, chance: 30.3 } : rarity),
   { key: 'treasure-chest', name: 'Treasure Chest', chance: 0.5, reward: 350, isItem: true, color: '#fbbf24' },
   { key: 'potion-cache', name: 'Potion Cache', chance: 1.5, reward: 0, isItem: true, itemType: 'potion', color: '#a3e635' },
   { key: 'fisher-baxter', name: 'Fisher Baxter', chance: 0.05, reward: 12000, color: '#7dd3fc', glowColor: '#dbeafe', diveOnly: true, isGlobal: true },
-  { key: 'sharky', name: 'Sharky', chance: 0.5, reward: 4500, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
+  { key: 'sharky', name: 'Sharky', chance: 0.5, reward: 4000, color: '#0ea5e9', glowColor: '#7dd3fc', diveOnly: true }
 ];
 
 function getActiveDiveOptions() {
@@ -181,6 +191,7 @@ const POTION_CATALOG = {
   'luck-ii': { name: 'Luck Potion II', cost: 18000, multiplier: 3, duration: 120, effectKey: 'luck', effect: 'luck' },
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effectKey: 'luck', effect: 'luck', craftOnly: true },
   coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effectKey: 'coin', effect: 'coins' },
+  'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, duration: 120, effectKey: 'coin', effect: 'coins', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effectKey: 'speed', effect: 'speed' },
 };
 const activeDiveSessions = new Map();
@@ -225,8 +236,10 @@ const TITLE_CATALOG = {
   blacksmith: { name: 'Blacksmith', color: '#b45309' },
   'halloween-2026': { name: 'Halloween 2026', color: '#f97316' },
   'multi-millionaire': { name: 'Multi-millionaire', color: '#eab308' },
-  willpower: { name: 'Willpower', color: '#818cf8' },
-  'this-is-my-year': { name: 'This is my year!', color: '#fda4af' }
+  willpower: { name: 'Willpower', color: '#22c55e' },
+  'this-is-my-year': { name: 'This is my year!', color: '#fda4af' },
+  'teachers-pet': { name: 'Teachers pet', color: '#facc15' },
+  'helping-hand': { name: 'Helping hand', color: '#38bdf8' }
 };
 
 function isAdministratorUser(user) {
@@ -284,6 +297,8 @@ function getUnlockedTitles(user) {
   if (user?.sea_realm_unlocked) titles.add('tidekeeper');
   if (user?.forge_realm_unlocked) titles.add('blacksmith');
   if (hasHalloweenDrop) titles.add('halloween-2026');
+  if (['mrs-joseph-mcglashan', 'mr-vaughan', 'mrs-bradley', 'mrs-croft'].every(key => Number(rarities[key]) > 0)) titles.add('teachers-pet');
+  if (normalizeList(user?.achievements).includes('finn-quest-3')) titles.add('helping-hand');
 
   return [...titles].filter(title => Object.prototype.hasOwnProperty.call(TITLE_CATALOG, title));
 }
@@ -379,7 +394,6 @@ function selectWeightedOption(options, luckMultiplier = 1) {
 }
 
 function createDiveSession() {
-  const now = Date.now();
   const positions = [];
   for (const y of [16, 50, 84]) {
     for (const x of [12, 37, 63, 88]) positions.push({ x, y });
@@ -394,7 +408,7 @@ function createDiveSession() {
     y: y + (Math.random() - 0.5) * 6,
     collected: false
   }));
-  return { nodes, cooldownUntil: now + 120000 };
+  return { nodes, cooldownUntil: 0 };
 }
 
 function getDiveState(session) {
@@ -453,6 +467,7 @@ async function findUser(username) {
       password: user.password,
       coins: user.coins,
       spins: user.spins,
+      playtime_seconds: Number(user.playtime_seconds) || 0,
       inventory,
       achievements: normalizeList(user.achievements),
       potions,
@@ -474,6 +489,7 @@ async function findUser(username) {
   if (!stored) return null;
   return {
     ...stored,
+      playtime_seconds: Number(stored.playtime_seconds) || 0,
     inventory: normalizeInventory(stored.inventory),
     achievements: normalizeList(stored.achievements),
     potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 }),
@@ -494,8 +510,8 @@ async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
     const result = await executeQuery(
-      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_admin, created_at, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_admin, created_at, last_login, playtime_seconds)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        ON CONFLICT (username) DO NOTHING
        RETURNING username`,
       [
@@ -515,7 +531,8 @@ async function saveUser(user) {
         user.forge_realm_unlocked || false,
         user.is_admin,
         user.created_at || new Date().toISOString(),
-        user.last_login || new Date().toISOString()
+        user.last_login || new Date().toISOString(),
+        Number(user.playtime_seconds) || 0
       ]
     );
     return result.rowCount === 1;
@@ -537,6 +554,26 @@ async function updateUser(username, updates) {
   }
   const existing = inMemoryStore.users[normalized] || {};
   inMemoryStore.users[normalized] = { ...existing, ...updates };
+}
+
+async function recordPlayerPlaytime(username, now = Date.now(), flush = false) {
+  const key = normalizeUsername(username);
+  const lastTick = playtimeLastTick.get(key);
+  if (!key || !Number.isFinite(lastTick) || playtimeWritesInFlight.has(key)) return;
+  const elapsedSeconds = Math.floor((now - lastTick) / 1000);
+  if (elapsedSeconds < 1 || (!flush && elapsedSeconds < 10)) return;
+  playtimeWritesInFlight.add(key);
+  playtimeLastTick.set(key, lastTick + elapsedSeconds * 1000);
+  try {
+    const user = await findUser(username);
+    if (user) {
+      const totalSeconds = (Number(user.playtime_seconds) || 0) + elapsedSeconds;
+      await updateUser(username, { playtime_seconds: totalSeconds });
+      io.to(`user:${key}`).emit('playtime-update', { seconds: totalSeconds });
+    }
+  } finally {
+    playtimeWritesInFlight.delete(key);
+  }
 }
 
 async function claimLimitedCode(code, username, maxUses, updates) {
@@ -613,7 +650,8 @@ async function ensureDatabase() {
       is_banned BOOLEAN NOT NULL DEFAULT false,
       ban_reason TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      last_login TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      playtime_seconds BIGINT NOT NULL DEFAULT 0
     )
   `);
   await executeQuery(`
@@ -697,7 +735,8 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS playtime_seconds BIGINT NOT NULL DEFAULT 0
   `);
   await executeQuery(`
     ALTER TABLE chat_messages
@@ -714,6 +753,22 @@ async function ensureDatabase() {
 }
 
 const GAME_EVENTS = {
+    'confetti-party': {
+      title: 'Confetti Party',
+      coinMultiplier: 2,
+      bonusCoins: 100,
+      durationSeconds: 180,
+      panelOnly: true,
+      description: 'A burst of color and 2× coins across the game'
+    },
+    blackhole: {
+      title: 'Blackhole',
+      coinMultiplier: 1,
+      bonusCoins: 0,
+      durationSeconds: 10,
+      ownerOnly: true,
+      description: 'A ten-second singularity grants Light Essence to players online at its close'
+    },
   'starlight-surge': {
     title: 'Starlight Surge',
     coinMultiplier: 2,
@@ -818,6 +873,24 @@ function endActiveGameEvent() {
     active: false,
     endedAt: new Date().toISOString()
   });
+  if (endedEvent.eventName === 'blackhole') grantBlackholeRewards().catch(error => console.error('Blackhole reward error:', error.message || error));
+}
+
+async function grantBlackholeRewards() {
+  const sockets = await io.fetchSockets();
+  const usernames = new Map();
+  sockets.forEach(socket => {
+    const username = socket.request?.session?.username;
+    if (username) usernames.set(normalizeUsername(username), username);
+  });
+  for (const username of usernames.values()) {
+    const user = await findUser(username);
+    if (!user) continue;
+    const items = normalizeRecord(user.items);
+    items.light_essence = (Number(items.light_essence) || 0) + 1;
+    await updateUser(username, { items: JSON.stringify(items) });
+    io.to(`user:${normalizeUsername(username)}`).emit('blackhole-reward', { item: 'Light Essence', amount: 1 });
+  }
 }
 
 function getActiveGameEvent() {
@@ -1028,7 +1101,43 @@ async function isAdminSocket(socket) {
   const username = socket.request?.session?.username;
   if (!username) return false;
   const user = await findUser(username);
-  return user && user.is_admin;
+  return user && hasAdminPanelAccess(user);
+}
+
+async function notifyChatTargets(message) {
+  const targets = new Set(String(message?.message || '').match(/@([A-Za-z0-9][A-Za-z0-9_-]{1,31})/g)?.map(value => value.slice(1).toLowerCase()) || []);
+  const sockets = await io.fetchSockets();
+  const onlineUsers = new Map();
+  sockets.forEach(socket => {
+    const username = socket.request?.session?.username;
+    if (username) onlineUsers.set(normalizeUsername(username), username);
+  });
+  const notification = {
+    username: message.username,
+    message: String(message.message || '').slice(0, 120),
+    timestamp: message.timestamp
+  };
+  targets.forEach(username => {
+    const onlineUsername = onlineUsers.get(username);
+    if (onlineUsername) io.to(`user:${normalizeUsername(onlineUsername)}`).emit('mention-notification', notification);
+  });
+  const replyUsername = normalizeUsername(message.replyTo?.username);
+  if (replyUsername && onlineUsers.has(replyUsername) && replyUsername !== normalizeUsername(message.username)) {
+    io.to(`user:${replyUsername}`).emit('reply-notification', notification);
+  }
+}
+
+async function broadcastOnlineRoster() {
+  const sockets = await io.fetchSockets();
+  const players = new Map();
+  sockets.forEach(socket => {
+    const username = socket.request?.session?.username;
+    if (!username) return;
+    const key = normalizeUsername(username);
+    players.set(key, { username, status: socket.data.activity || 'At the RNG console' });
+  });
+  io.emit('online-count', players.size);
+  io.emit('online-roster', [...players.values()]);
 }
 
 // Security middleware
@@ -1063,6 +1172,15 @@ const apiLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: req => req.originalUrl.split('?')[0] === '/api/spin',
+});
+
+const spinLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 180,
+  message: { success: false, error: 'Rolling too quickly. Please wait a moment and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
 // Body parsing
@@ -1106,12 +1224,17 @@ app.set('trust proxy', 1);
 
 // Apply rate limiting
 app.use(['/api/login', '/api/register'], authLimiter);
+app.use('/api/spin', spinLimiter);
 app.use('/api', apiLimiter);
 
 let gameShutdown = false;
+let gameUpdated = false;
 app.use('/api', async (req, res, next) => {
   const apiPath = req.originalUrl.split('?')[0].replace(/^\/api/, '') || '/';
   const maintenancePaths = ['/login', '/register', '/session', '/logout', '/admin/shutdown', '/admin/headline'];
+  if (gameUpdated && !['/session', '/logout'].includes(apiPath)) {
+    return res.status(503).json({ success: false, updated: true, error: 'Game has been updated. Please refresh your page.' });
+  }
   if (gameShutdown && !maintenancePaths.includes(apiPath)) {
     return res.status(503).json({ success: false, shutdown: true, error: 'Update or Fix in progress please wait' });
   }
@@ -1161,6 +1284,7 @@ function sanitizeUser(user) {
     username: user.username,
     coins: user.coins,
     spins: user.spins,
+    playtime_seconds: Number(user.playtime_seconds) || 0,
     inventory,
     achievements: normalizeList(user.achievements),
     potions: potions,
@@ -1237,6 +1361,7 @@ app.post('/api/register', async (req, res) => {
     password: hashPassword(password),
     coins: 0,
     spins: 0,
+    playtime_seconds: 0,
     inventory: { rarities: {} },
     achievements: [],
     potions: { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 },
@@ -1509,7 +1634,9 @@ app.post('/api/redeem-code', async (req, res) => {
     'THETHREEQUEL': { title: 'veteran' },
     'UPD3ISHERE!!': { coins: 20000, item: { key: 'ancient_ore', amount: 5 }, rewardMessage: '5 Ancient Ore and 20,000 coins' },
     'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' },
-    'LORDFINNHASRETURNED': { coins: 100000, potion: { key: 'coin', amount: 3 }, rewardMessage: '100,000 coins and 3 Coin Potions' }
+    'LORDFINNHASRETURNED': { coins: 100000, potion: { key: 'coin', amount: 3 }, rewardMessage: '100,000 coins and 3 Coin Potions' },
+    'SORRYFORTHEDELAY': { potion: { key: 'coin-ii', amount: 1 }, rewardMessage: '1 Coin Potion II' },
+    'UPDATE5ISHERE': { coins: 500000, item: { key: 'fragments', amount: 5 }, rewardMessage: '500,000 coins and 5 Portal Fragments' }
   };
 
   const reward = codeRewards[normalizedCode];
@@ -1820,6 +1947,13 @@ app.post('/api/forge/craft', async (req, res) => {
       items.clovers -= 10;
       items.old_potato_sticker -= 3;
       items.event_controller = (Number(items.event_controller) || 0) + 1;
+    } else if (recipe === 'coin-ii') {
+      if ((Number(items.fragments) || 0) < 5 || (Number(items.empty_vial) || 0) < 2) {
+        return res.status(400).json({ success: false, error: 'Requires 5 Portal Fragments and 2 Empty Vials.' });
+      }
+      items.fragments -= 5;
+      items.empty_vial -= 2;
+      potions['coin-ii'] = (Number(potions['coin-ii']) || 0) + 1;
     } else {
       return res.status(400).json({ success: false, error: 'Unknown Forge recipe.' });
     }
@@ -1829,6 +1963,66 @@ app.post('/api/forge/craft', async (req, res) => {
   } catch (error) {
     console.error('Forge craft error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to craft that item.' });
+  }
+});
+
+const FINN_QUESTS = [
+  { title: 'First signal', description: 'Complete 25 rolls.', kind: 'spins', target: 25, reward: { coins: 10000, fragments: 3 } },
+  { title: 'Steady hands', description: 'Collect 5 Clover Leaves.', kind: 'clovers', target: 5, reward: { coins: 30000, vials: 1 } },
+  { title: 'Through the fracture', description: 'Collect 10 Portal Fragments.', kind: 'fragments', target: 10, reward: { coins: 100000, fragments: 5 } }
+];
+const finnQuestClaimsInFlight = new Set();
+
+function getFinnQuestState(user) {
+  const achievements = normalizeList(user?.achievements);
+  const completed = FINN_QUESTS.filter((_, index) => achievements.includes(`finn-quest-${index + 1}`)).length;
+  const quest = FINN_QUESTS[completed] || null;
+  const items = normalizeRecord(user?.items);
+  const progress = !quest ? 0 : quest.kind === 'spins'
+    ? Number(user?.spins) || 0
+    : Number(items[quest.kind]) || 0;
+  return { completed, quest: quest ? { ...quest, progress: Math.min(progress, quest.target), ready: progress >= quest.target } : null };
+}
+
+app.get('/api/finn/quests', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const user = await findUser(req.session.username);
+  if (!user) return res.status(404).json({ success: false, error: 'Player not found.' });
+  res.json({ success: true, ...getFinnQuestState(user), user: sanitizeUser(user) });
+});
+
+app.post('/api/finn/quests/claim', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const claimKey = normalizeUsername(req.session.username);
+  if (finnQuestClaimsInFlight.has(claimKey)) return res.status(409).json({ success: false, error: 'Quest reward is already being claimed.' });
+  finnQuestClaimsInFlight.add(claimKey);
+  try {
+    const user = await findUser(req.session.username);
+    if (!user) return res.status(404).json({ success: false, error: 'Player not found.' });
+    const state = getFinnQuestState(user);
+    if (!state.quest) return res.status(409).json({ success: false, error: 'All of Lord Finn’s quests are complete.' });
+    if (!state.quest.ready) return res.status(409).json({ success: false, error: 'Quest requirements are not complete yet.' });
+    const stage = state.completed + 1;
+    const achievements = normalizeList(user.achievements);
+    achievements.push(`finn-quest-${stage}`);
+    const items = normalizeRecord(user.items);
+    items.fragments = (Number(items.fragments) || 0) + (Number(state.quest.reward.fragments) || 0);
+    items.empty_vial = (Number(items.empty_vial) || 0) + (Number(state.quest.reward.vials) || 0);
+    const coins = (Number(user.coins) || 0) + state.quest.reward.coins;
+    const updatedTitles = getUnlockedTitles({ ...user, coins, items, achievements });
+    await updateUser(user.username, {
+      achievements: JSON.stringify(achievements),
+      items: JSON.stringify(items),
+      coins,
+      titles: JSON.stringify(updatedTitles)
+    });
+    const updatedUser = await findUser(user.username);
+    res.json({ success: true, completed: stage, ...getFinnQuestState(updatedUser), reward: state.quest.reward, user: sanitizeUser(updatedUser) });
+  } catch (error) {
+    console.error('Finn quest claim error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to claim this quest right now.' });
+  } finally {
+    finnQuestClaimsInFlight.delete(claimKey);
   }
 });
 
@@ -1843,6 +2037,9 @@ app.post('/api/forge/use-event-controller', async (req, res) => {
     }
     if (GAME_EVENTS[eventName].ownerOnly) {
       return res.status(403).json({ success: false, error: 'This event can only be started from the Owner Panel.' });
+    }
+    if (GAME_EVENTS[eventName].panelOnly) {
+      return res.status(403).json({ success: false, error: 'This event can only be started from an Admin or Owner Panel.' });
     }
     if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
     const items = normalizeRecord(user.items);
@@ -1869,13 +2066,13 @@ app.post('/api/sea/dive/start', async (req, res) => {
     let session = activeDiveSessions.get(key);
     const now = Date.now();
     if (session?.nodes.every(node => node.collected) && now < session.cooldownUntil) {
-      return res.status(429).json({ success: false, cooldownUntil: session.cooldownUntil, dive: getDiveState(session), error: 'You must wait two minutes between dives.' });
+      return res.status(429).json({ success: false, serverTime: now, retryAfterMs: session.cooldownUntil - now, cooldownUntil: session.cooldownUntil, dive: getDiveState(session), error: 'You must wait two minutes between dives.' });
     }
     if (!session || session.nodes.every(node => node.collected)) {
       session = createDiveSession();
       activeDiveSessions.set(key, session);
     }
-    res.json({ success: true, dive: getDiveState(session) });
+    res.json({ success: true, serverTime: Date.now(), dive: getDiveState(session) });
   } catch (error) {
     console.error('Dive start error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to start the dive.' });
@@ -1926,7 +2123,7 @@ app.post('/api/sea/dive/collect', async (req, res) => {
     result.globalRevealToken = createGlobalRevealToken(user.username, result);
   }
   if (session.nodes.every(candidate => candidate.collected)) session.cooldownUntil = Date.now() + 120000;
-  res.json({ success: true, dive: getDiveState(session), result: { ...result, user: sanitizeUser(updatedUser) } });
+  res.json({ success: true, serverTime: Date.now(), dive: getDiveState(session), result: { ...result, user: sanitizeUser(updatedUser) } });
 });
 
 app.post('/api/sea/open-treasure-chest', async (req, res) => {
@@ -1998,8 +2195,8 @@ async function renamePlayerAccount(oldUsername, newUsername) {
     try {
       await client.query('BEGIN');
       const inserted = await client.query(
-        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login)
-         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login
+        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds)
+         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds
          FROM users WHERE username = $2 RETURNING username`,
         [newUsername, oldUsername]
       );
@@ -2034,6 +2231,10 @@ async function renamePlayerAccount(oldUsername, newUsername) {
 
   const oldKey = normalizeUsername(oldUsername);
   const newKey = normalizeUsername(newUsername);
+  if (playtimeLastTick.has(oldKey)) {
+    playtimeLastTick.set(newKey, playtimeLastTick.get(oldKey));
+    playtimeLastTick.delete(oldKey);
+  }
   if (activeEffectsStore[oldKey]) {
     activeEffectsStore[newKey] = activeEffectsStore[oldKey];
     delete activeEffectsStore[oldKey];
@@ -2160,7 +2361,7 @@ app.post('/api/admin/users/:username', async (req, res) => {
         const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
         potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
         updates = { potions: JSON.stringify(potions) };
-      } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
+        } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
         const items = normalizeRecord(target.items);
         items[item] = Math.min(999, (Number(items[item]) || 0) + quantity);
         updates = { items: JSON.stringify(items) };
@@ -2206,7 +2407,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     }
 
     const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem && !option.halloweenOnly);
-    const itemKeys = ['fragments', 'clovers', 'essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
+    const itemKeys = ['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
     if (!((type === 'rarity' && rarity) || (type === 'potion' && POTION_CATALOG[key]) || (type === 'item' && itemKeys.includes(key)))) {
       return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
     }
@@ -2215,7 +2416,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
       ? (await executeQuery('SELECT username FROM users')).rows.map(user => user.username)
       : Object.keys(inMemoryStore.users);
 
-    const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
+    const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
     const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : itemNames[key];
     if (pool) {
       await executeQuery(
@@ -2243,6 +2444,36 @@ app.post('/api/admin/global-drop', async (req, res) => {
     return res.status(503).json({ success: false, error: 'Unable to grant the global drop.' });
   }
 });
+
+app.get('/api/players/leaderboard', async (req, res) => {
+    if (!req.session?.username) return res.status(401).json({ success: false, error: 'Login required.' });
+    try {
+      const users = pool
+        ? (await executeQuery('SELECT * FROM users ORDER BY coins DESC, username ASC')).rows
+        : Object.values(inMemoryStore.users);
+      const sockets = await io.fetchSockets();
+      const online = new Map();
+      sockets.forEach(socket => {
+        const username = socket.request?.session?.username;
+        if (username) online.set(normalizeUsername(username), { username, status: socket.data.activity || 'At the RNG console' });
+      });
+      const players = users.map(user => {
+        const safe = sanitizeUser(user);
+        const presence = online.get(normalizeUsername(safe.username));
+        return {
+          username: safe.username,
+          online: Boolean(presence),
+          status: presence?.status || 'Offline',
+          coins: safe.coins,
+          rolls: safe.spins
+        };
+      }).sort((left, right) => (Number(right.coins) || 0) - (Number(left.coins) || 0) || left.username.localeCompare(right.username));
+      res.json({ success: true, onlineCount: online.size, players });
+    } catch (error) {
+      console.error('Leaderboard load error:', error.message || error);
+      res.status(503).json({ success: false, error: 'Unable to load players.' });
+    }
+  });
 
 app.get('/api/mini-admin/overview', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
@@ -2316,7 +2547,7 @@ app.post('/api/mini-admin/event', async (req, res) => {
     }
     const eventName = String(req.body?.eventName || '');
     const action = req.body?.action === 'stop' ? 'stop' : 'start';
-    if (!['starlight-surge', 'meteor-shower', 'abyssal-resonance'].includes(eventName)) {
+    if (!['starlight-surge', 'meteor-shower', 'abyssal-resonance', 'confetti-party'].includes(eventName)) {
       return res.status(400).json({ success: false, error: 'This event is not available in the Admin Panel.' });
     }
     if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
@@ -2440,13 +2671,13 @@ app.get('/api/admin/shutdown', async (req, res) => {
 
 app.get('/api/admin/headline', async (req, res) => {
   const user = req.session?.username ? await findUser(req.session.username) : null;
-  if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+  if (!hasAdminPanelAccess(user)) return res.status(403).json({ success: false, error: 'Admin Panel access required.' });
   res.json({ success: true, headline: adminHeadline });
 });
 
 app.post('/api/admin/headline', async (req, res) => {
   const user = req.session?.username ? await findUser(req.session.username) : null;
-  if (!user?.is_admin) return res.status(403).json({ success: false, error: 'Admin access required.' });
+  if (!hasAdminPanelAccess(user)) return res.status(403).json({ success: false, error: 'Admin Panel access required.' });
   if (typeof req.body?.active !== 'boolean') {
     return res.status(400).json({ success: false, error: 'Headline visibility must be enabled or disabled.' });
   }
@@ -2478,6 +2709,28 @@ app.post('/api/admin/shutdown', async (req, res) => {
   await recordAdminAudit(user.username, gameShutdown ? 'Enabled maintenance mode' : 'Resumed game services');
   io.emit('shutdown-state', { active: gameShutdown, message: 'Update or Fix in progress please wait' });
   res.json({ success: true, active: gameShutdown });
+});
+
+app.post('/api/admin/change-password', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const owner = await findUser(req.session.username);
+  if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+  const currentPassword = String(req.body?.currentPassword || '');
+  const newPassword = String(req.body?.newPassword || '');
+  if (hashPassword(currentPassword) !== owner.password) return res.status(400).json({ success: false, error: 'Current password is incorrect.' });
+  if (newPassword.length < 8 || newPassword.length > 128) return res.status(400).json({ success: false, error: 'New password must be 8–128 characters.' });
+  await updateUser(owner.username, { password: hashPassword(newPassword) });
+  await recordAdminAudit(owner.username, 'Changed owner password');
+  res.json({ success: true });
+});
+
+app.post('/api/admin/update-shutdown', async (req, res) => {
+  const owner = req.session?.username ? await findUser(req.session.username) : null;
+  if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+  gameUpdated = true;
+  await recordAdminAudit(owner.username, 'Started update shutdown');
+  io.emit('game-updated', { message: 'Game has been updated. Please refresh your page.' });
+  res.json({ success: true });
 });
 
 app.post('/api/admin/owner-command', async (req, res) => {
@@ -2825,6 +3078,7 @@ app.post('/api/chat', async (req, res) => {
     const badge = getChatBadge(user);
     const record = await saveChatMessage(req.session.username, text, badge.title, badge.titleColor, false, false, false, req.body?.replyTo);
     io.emit('chat-message', record);
+    await notifyChatTargets(record);
     res.json({ success: true, message: record });
   } catch (error) {
     console.error('Chat message error:', error);
@@ -2880,14 +3134,24 @@ io.on('connection', async (socket) => {
     return;
   }
   socket.data.isAdmin = Boolean(socketUser?.is_admin);
+  socket.data.canAdmin = Boolean(socketUser && hasAdminPanelAccess(socketUser));
   socket.data.isBanned = false;
-  if (socketUsername) socket.join(`user:${normalizeUsername(socketUsername)}`);
-  connectedUsers += 1;
-  io.emit('online-count', connectedUsers);
+  socket.data.activity = 'At the RNG console';
+  if (socketUsername) {
+    const playtimeKey = normalizeUsername(socketUsername);
+    if (!playtimeLastTick.has(playtimeKey)) playtimeLastTick.set(playtimeKey, Date.now());
+    socket.join(`user:${playtimeKey}`);
+  }
+  if (socket.data.canAdmin) {
+    socket.join('admin-chat');
+    socket.emit('admin-chat-history', adminChatMessages);
+  }
+  broadcastOnlineRoster();
 
   if (gameShutdown && !socket.data.isAdmin) {
     socket.emit('shutdown-state', { active: true, message: 'Update or Fix in progress please wait' });
   }
+  if (gameUpdated) socket.emit('game-updated', { message: 'Game has been updated. Please refresh your page.' });
   socket.emit('admin-headline', adminHeadline);
 
   socket.emit('chat-history', await getRecentChatMessages(60, false));
@@ -2903,14 +3167,21 @@ io.on('connection', async (socket) => {
     system: true
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     clearTimeout(socket.data.chatTypingTimeout);
     if (socket.data.chatTyping && socketUsername) {
       socket.broadcast.emit('chat-typing', { username: socketUsername, typing: false });
     }
     console.log(`🔌 RNG 3 Player disconnected: ${socket.id}`);
-    connectedUsers = Math.max(0, connectedUsers - 1);
-    io.emit('online-count', connectedUsers);
+    if (socketUsername) {
+      const playtimeKey = normalizeUsername(socketUsername);
+      const remainingSockets = await io.in(`user:${playtimeKey}`).fetchSockets();
+      if (!remainingSockets.length) {
+        await recordPlayerPlaytime(socketUsername, Date.now(), true);
+        playtimeLastTick.delete(playtimeKey);
+      }
+    }
+    broadcastOnlineRoster();
   });
 
   socket.on('join-game', () => {
@@ -2921,11 +3192,14 @@ io.on('connection', async (socket) => {
     });
   });
 
-  socket.on('player-activity', activity => {
-    if (!socket.request?.session?.username || socket.data.isBanned) return;
+  socket.on('player-activity', async activity => {
+    const username = socket.request?.session?.username;
+    if (!username || socket.data.isBanned) return;
     const safeActivity = String(activity || '').trim().slice(0, 64);
     if (['At the RNG console', 'Diving in the Sea Realm', 'At the Forge', 'Browsing inventory', 'Using the shop', 'Browsing titles', 'In chat', 'Viewing settings'].includes(safeActivity)) {
       socket.data.activity = safeActivity;
+      await recordPlayerPlaytime(username);
+      broadcastOnlineRoster();
     }
   });
 
@@ -2952,6 +3226,25 @@ io.on('connection', async (socket) => {
     const badge = getChatBadge(user);
     const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false, false, false, data?.replyTo);
     io.emit('chat-message', record);
+    await notifyChatTargets(record);
+  });
+
+  socket.on('admin-chat-message', async data => {
+    const username = socket.request?.session?.username;
+    if (!username || socket.data.isBanned || !(await isAdminSocket(socket))) return;
+    await socket.join('admin-chat');
+    const text = String(data?.message || '').trim().slice(0, 500);
+    if (!text) return;
+    const record = { username, message: text, timestamp: new Date().toISOString() };
+    adminChatMessages.push(record);
+    if (adminChatMessages.length > 100) adminChatMessages.shift();
+    io.to('admin-chat').emit('admin-chat-message', record);
+  });
+
+  socket.on('admin-chat-history-request', async () => {
+    if (!(await isAdminSocket(socket))) return;
+    await socket.join('admin-chat');
+    socket.emit('admin-chat-history', adminChatMessages);
   });
 
   socket.on('chat-typing', isTyping => {
@@ -3013,6 +3306,10 @@ io.on('connection', async (socket) => {
       const action = data?.action === 'stop' ? 'stop' : 'start';
       if (!Object.prototype.hasOwnProperty.call(GAME_EVENTS, eventName)) {
         respond({ success: false, error: 'Unknown event.' });
+        return;
+      }
+      if (GAME_EVENTS[eventName].ownerOnly && !socket.data.isAdmin) {
+        respond({ success: false, error: 'This event is only available to the owner.' });
         return;
       }
       if (action === 'stop') {
