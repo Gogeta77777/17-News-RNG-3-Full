@@ -6045,6 +6045,76 @@
 
         @media (max-width: 560px) {
         }
+        .chat-status { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+            .finn-watch-meter i::after { width: var(--signal-coherence, 74%); animation: none; transition: width 400ms ease; }
+            .shop-item-chance { display: block; margin: -4px 0 8px; color: #a7f3d0; font-size: 0.72rem; }
+            .potion-effects { display: flex; flex-wrap: wrap; gap: 6px; }
+            .potion-effects > div { position: relative; overflow: hidden; border: 1px solid rgba(74, 222, 128, 0.28); background: linear-gradient(110deg, rgba(20, 83, 45, 0.56), rgba(15, 23, 42, 0.82)); color: #dcfce7; font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+            .mini-headline-form { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 9px; margin: 14px 0; padding: 14px; border-left: 2px solid #67e8f9; background: rgba(15, 23, 42, 0.56); }
+            .mini-headline-form h3, .mini-headline-form span { grid-column: 1 / -1; margin: 0; }
+            .mini-headline-form label { display: grid; gap: 6px; color: #cbd5e1; font-size: 0.82rem; }
+        .chat-status > span { color: #86efac; }
+        .chat-status strong { color: #f8fafc; font-variant-numeric: tabular-nums; }
+        .player-list-dialog { width: min(460px, calc(100vw - 28px)); max-height: min(72vh, 620px); padding: 0; border: 1px solid rgba(125, 211, 252, 0.32); background: #101923; color: #f1f5f9; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); }
+        .player-list-dialog::backdrop { background: rgba(3, 10, 17, 0.72); backdrop-filter: blur(5px); }
+        .player-list-dialog > section { padding: 20px; }
+        .player-list-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(226, 232, 240, 0.12); }
+        .player-list-dialog header span { color: #67e8f9; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
+        .player-list-dialog h2 { margin: 4px 0 0; font-size: 1.25rem; }
+        .player-list { display: grid; max-height: 52vh; overflow-y: auto; }
+        .player-list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 2px; border-bottom: 1px solid rgba(226, 232, 240, 0.08); }
+        .player-list-row > div { display: grid; gap: 3px; min-width: 0; }
+        .player-list-row strong { overflow: hidden; color: #f8fafc; text-overflow: ellipsis; }
+        .player-list-row span { color: #a7b5c3; font-size: 0.8rem; }
+        .leaderboard-dialog { width: min(900px, calc(100vw - 28px)); }
+        .leaderboard-list { max-height: 68vh; overflow: auto; }
+        .leaderboard-list table { width: 100%; border-collapse: collapse; text-align: left; }
+        .leaderboard-list th, .leaderboard-list td { padding: 10px 12px; border-bottom: 1px solid rgba(226, 232, 240, 0.1); }
+        .leaderboard-list th { position: sticky; top: 0; background: #101923; color: #7dd3fc; font-size: 0.72rem; text-transform: uppercase; }
+        .leaderboard-list td { color: #dbe5ed; font-size: 0.84rem; }
+        .leaderboard-list td:nth-child(3), .leaderboard-list td:nth-child(4) { text-align: right; font-variant-numeric: tabular-nums; }
+        #admin-chat-view .chat-messages { min-height: 300px; }
+        .admin-chat-message { padding: 8px 10px; border-left: 2px solid #fb7185; background: rgba(251, 113, 133, 0.07); color: #e2e8f0; }
+        .admin-chat-message strong { color: #fda4af; }
+        .portal-lightning { position: absolute; z-index: 1; inset: 3px; border: 2px solid transparent; border-radius: 50%; pointer-events: none; opacity: 0.8; background: conic-gradient(from 25deg, transparent 0 7%, #d8b4fe 8%, transparent 10% 27%, #a855f7 28%, transparent 30% 54%, #e9d5ff 55%, transparent 58% 76%, #9333ea 77%, transparent 80%); filter: drop-shadow(0 0 5px #a855f7); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; animation: portalLightning 1.8s steps(2, end) infinite; }
+        @keyframes portalLightning { 0%, 74%, 100% { opacity: 0.18; transform: rotate(0deg) scale(0.98); } 78%, 86% { opacity: 1; transform: rotate(8deg) scale(1.02); } }
+        .realm-art-unknown::before, .realm-art-unknown::after { position: absolute; inset: -35%; content: ''; pointer-events: none; }
+        .realm-art-unknown::before { background: repeating-conic-gradient(from 12deg at 52% 47%, transparent 0 8deg, rgba(168, 85, 247, 0.1) 9deg, transparent 11deg 22deg); animation: unknownRealmFold 18s linear infinite; }
+        .realm-art-unknown::after { background: radial-gradient(ellipse at 50% 50%, transparent 12%, rgba(12, 8, 24, 0.24) 45%, rgba(3, 7, 18, 0.82) 75%); animation: unknownRealmPulse 5s ease-in-out infinite alternate; }
+        @keyframes unknownRealmFold { to { transform: rotate(360deg) scale(0.85); } }
+        @keyframes unknownRealmPulse { to { transform: scale(0.92) skewX(4deg); opacity: 0.72; } }
+        .event-confetti-piece { position: absolute; top: -12vh; left: var(--confetti-left); width: 7px; height: 12px; background: hsl(var(--confetti-hue) 92% 66%); box-shadow: 0 0 8px hsl(var(--confetti-hue) 90% 65% / 0.55); animation: confettiDrift var(--confetti-duration) var(--confetti-delay) linear infinite; }
+        @keyframes confettiDrift { to { transform: translate3d(8vw, 115vh, 0) rotate(760deg); } }
+        .event-blackhole-core { position: absolute; top: 50%; left: 50%; width: min(30vmin, 240px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #02030a 0 44%, #25094a 49%, #a855f7 52%, rgba(168, 85, 247, 0.16) 58%, transparent 72%); box-shadow: 0 0 50px rgba(168, 85, 247, 0.58), 0 0 120px rgba(91, 33, 182, 0.36); transform: translate(-50%, -50%); animation: blackholePulse 2.2s ease-in-out infinite alternate; }
+        @keyframes blackholePulse { to { scale: 1.13; filter: brightness(1.4); } }
+        .event-blackhole-mote { position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #e9d5ff; box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); animation: blackholeSuck var(--mote-duration) var(--mote-delay) ease-in infinite; }
+        @keyframes blackholeSuck { from { opacity: 0; transform: rotate(var(--mote-angle)) translateX(46vw) scale(0.4); } 25% { opacity: 1; } to { opacity: 0; transform: rotate(calc(var(--mote-angle) + 300deg)) translateX(3vmin) scale(1.1); } }
+        .event-item.event-confetti { border-color: rgba(34, 211, 238, 0.42); background: radial-gradient(circle at 88% 5%, rgba(34, 211, 238, 0.16), transparent 40%), linear-gradient(145deg, #16363a, #111827); }
+        .event-item.event-blackhole { border-color: rgba(192, 132, 252, 0.5); background: radial-gradient(circle at 50% -10%, rgba(147, 51, 234, 0.26), transparent 55%), linear-gradient(145deg, #21152f, #0d111d); }
+        .event-visual-prismfall::after { position: absolute; inset: -20%; background: conic-gradient(from 25deg at 50% 35%, transparent 0 16%, rgba(255, 78, 195, 0.12) 19%, transparent 22% 43%, rgba(68, 220, 255, 0.12) 47%, transparent 51% 76%, rgba(255, 221, 110, 0.1) 80%, transparent 84%); content: ''; mix-blend-mode: screen; animation: prismRefraction 13s linear infinite; }
+        @keyframes prismRefraction { to { transform: rotate(360deg) scale(0.9); } }
+        .event-visual-gravity-well::after { position: absolute; top: 50%; left: 50%; width: 110vmax; height: 110vmax; border: 1px solid rgba(167, 139, 250, 0.18); border-radius: 50%; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.16) 0 8%, transparent 8.5% 22%, rgba(129, 140, 248, 0.07) 22.5% 23%, transparent 24% 38%, rgba(192, 132, 252, 0.06) 38.5% 39%, transparent 40%); content: ''; transform: translate(-50%, -50%) scaleX(0.82); animation: gravityLensing 7s ease-in-out infinite alternate; }
+        @keyframes gravityLensing { to { transform: translate(-50%, -50%) scaleX(0.58) rotate(8deg); opacity: 0.55; } }
+        .titles-container .titles-list, .titles-container .titles-available { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+        .titles-container h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-bottom: 9px; border-bottom: 1px solid rgba(148, 163, 184, 0.16); }
+        .forge-workbench { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+        .forge-recipe-coin { border-color: rgba(74, 222, 128, 0.34); }
+        .system-control-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .owner-password-form label { display: grid; gap: 5px; margin-top: 8px; color: #cbd5e1; font-size: 0.8rem; }
+        .owner-password-form input { width: 100%; }
+            .settings-roll-count { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 16px; }
+            .settings-roll-count h3 { grid-column: 1; grid-row: 1; }
+            .settings-roll-count > #settings-total-rolls { grid-column: 2; grid-row: 1; }
+            .settings-total-playtime { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.16); color: #b8c5d3; font-size: 0.83rem; }
+                .settings-total-playtime > div { display: grid; gap: 3px; }
+                .settings-total-playtime small { color: #8193a6; font-size: 0.7rem; }
+            .settings-roll-count .settings-total-playtime strong { color: #86efac; font-size: 0.95rem; }
+            .settings-roll-count #leaderboard-btn { grid-column: 1 / -1; justify-self: start; }
+        @media (max-width: 560px) {
+            .player-list-dialog > section { padding: 14px; }
+            .leaderboard-list th, .leaderboard-list td { padding: 8px 6px; font-size: 0.72rem; }
+            .chat-status { gap: 6px; }
+        }
     </style>
 </head>
 <body>
@@ -6129,7 +6199,14 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">Update 4</span></h3>
+                <h3>Latest Updates <span class="update-version">Expansion Update</span></h3>
+                <div class="log-entry">
+                    <div class="date">9 Nov 2026 / Expansion Update</div>
+                    <p><strong>New faces, quests, events, and tools for the next realm.</strong></p>
+                    <p>✦ Mr Vaughan, Mrs Bradley, and Mrs Croft join the global pool; Pod 1, Pod 2, William marks, and Miharu Sato join normal rolls.</p>
+                    <p>✦ Collect the four teacher rarities for Teachers pet, and complete Lord Finn’s three quests for Helping hand.</p>
+                    <p>✦ Forge Coin Potion II, follow live player status, use mentions across realms, and meet the Confetti Party and Blackhole events.</p>
+                </div>
                 <div class="log-entry">
                     <div class="date">1 Nov 2026 / Update 4</div>
                     <p><strong>New discoveries, better tools, and a fresh home for your messages.</strong></p>
@@ -6372,11 +6449,12 @@
                                     <h2>Community Chat</h2>
                                     <p class="chat-subtitle">Player conversation and global rarity discoveries.</p>
                                 </div>
-                                <div class="chat-status">🟢 Online</div>
+                                <div class="chat-status"><span>● <strong id="online-count">0</strong> online</span><button class="btn btn-small" id="view-online-btn" type="button">View</button></div>
                             </div>
                             <div class="chat-view-tabs" role="group" aria-label="Chat views">
                                 <button class="chat-view-tab active" type="button" data-chat-view="players" aria-pressed="true">Players</button>
                                 <button class="chat-view-tab" type="button" data-chat-view="globals" aria-pressed="false">Global Drops</button>
+                                <button class="chat-view-tab admin-chat-tab hidden" type="button" data-chat-view="admin" aria-pressed="false">Admin Chat</button>
                             </div>
                             <div class="chat-view-panel" id="player-chat-view">
                                 <div class="chat-messages" id="chat-messages"></div>
@@ -6387,12 +6465,17 @@
                                 </div>
                                 <div class="chat-input-area">
                                     <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
+                                    <button class="btn" id="insert-mention-btn" type="button" aria-label="Mention a player">@</button>
                                     <button class="btn" id="send-chat">Send</button>
                                 </div>
                             </div>
                             <div class="chat-view-panel hidden" id="global-chat-view">
                                 <div class="global-rarity-counts" id="global-rarity-counts"></div>
                                 <div class="chat-messages" id="global-chat-messages" aria-label="Global rarity announcements"></div>
+                            </div>
+                            <div class="chat-view-panel hidden" id="admin-chat-view">
+                                <div class="chat-messages" id="admin-chat-messages" aria-label="Private administrator chat"></div>
+                                <div class="chat-input-area"><input type="text" id="admin-chat-input" maxlength="500" placeholder="Message the admin team..."><button class="btn" id="send-admin-chat" type="button">Send</button></div>
                             </div>
                         </div>
                     </div>
@@ -6429,6 +6512,8 @@
                             <div class="settings-section settings-roll-count">
                                 <h3>Total Rolls</h3>
                                 <strong id="settings-total-rolls">0</strong>
+                                <div class="settings-total-playtime"><div><span>Total Playtime</span><small>Tracked from Update 5</small></div><strong id="settings-total-playtime">0h 0m</strong></div>
+                                <button class="btn" id="leaderboard-btn" type="button">Leaderboard</button>
                             </div>
                             <div class="settings-section">
                                 <h3>Redeem Code</h3>
@@ -6457,6 +6542,7 @@
                                         <span class="portal-ring portal-ring-inner" aria-hidden="true"></span>
                                         <span class="portal-spiral portal-spiral-a" aria-hidden="true"></span>
                                         <span class="portal-spiral portal-spiral-b" aria-hidden="true"></span>
+                                        <span class="portal-lightning" aria-hidden="true"></span>
                                         <button class="portal-lock" id="portal-lock" type="button" aria-label="Unlock the portal">🔒</button>
                                         <span class="portal-orb" aria-hidden="true">
                                             <span class="portal-glitch-spiral portal-glitch-spiral-a"></span>
@@ -6483,6 +6569,13 @@
             </div>
         </div>
     </div>
+
+    <dialog class="player-list-dialog" id="online-players-dialog" aria-labelledby="online-players-title">
+        <section><header><div><span>LIVE PRESENCE</span><h2 id="online-players-title">Players online</h2></div><button class="btn btn-small" type="button" data-close-dialog="online-players-dialog" aria-label="Close player list">×</button></header><div class="player-list" id="online-player-list"></div></section>
+    </dialog>
+    <dialog class="player-list-dialog leaderboard-dialog" id="leaderboard-dialog" aria-labelledby="leaderboard-title">
+        <section><header><div><span>PLAYER RECORDS</span><h2 id="leaderboard-title">Leaderboard</h2></div><button class="btn btn-small" type="button" data-close-dialog="leaderboard-dialog" aria-label="Close leaderboard">×</button></header><div class="leaderboard-list" id="leaderboard-list"></div></section>
+    </dialog>
 
     <div class="finn-exit-flash" id="finn-exit-flash" aria-hidden="true"></div>
     <div class="finn-dialog-overlay hidden" id="finn-dialog-overlay" role="presentation">
@@ -6549,6 +6642,7 @@
                             <defs><linearGradient id="realm-fracture-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d2ff"/><stop offset=".45" stop-color="#b969ff"/><stop offset="1" stop-color="#7045c4"/></linearGradient></defs>
                             <path d="M283 2 274 18 281 29 260 42 268 53 247 66 255 78 235 91 243 104 221 116 229 128 206 140 212 151 191 166 M260 42 279 47 286 60 M247 66 229 59 222 47 M243 104 264 110 271 121 M221 116 203 107 195 94"/>
                             <path d="M102 0 111 15 101 27 119 39 112 52 128 64 122 76"/>
+                            <path d="M40 14 53 28 45 39 65 54 57 66 74 79 66 94 M355 12 342 27 351 40 332 55 341 69 322 83 330 96 M305 112 291 124 302 135 285 148 293 162 279 178 M151 106 164 117 155 129 174 141 167 155"/>
                         </svg>
                         <span class="realm-question-logo">?</span>
                     </div>
@@ -6599,6 +6693,7 @@
                 <div class="forge-hero-copy"><h2>Crafting</h2><p>Turn collected items into potions and event tools. Build the controller first if you want to activate any event.</p></div>
             </section>
             <section class="forge-resources" aria-label="Forge materials">
+                <div><span>🌀 Portal Fragments</span><strong id="forge-fragments">0</strong></div>
                 <div><span>🍀 Clover Leaves</span><strong id="forge-clovers">0</strong></div>
                 <div><span>🏷️ Potato Stickers</span><strong id="forge-stickers">0</strong></div>
                 <div><span>🧪 Empty Vials</span><strong id="forge-vials">0</strong></div>
@@ -6621,6 +6716,14 @@
                     <div class="forge-cost"><span><b>10</b> Clover Leaves</span><span><b>3</b> Old Potato Stickers</span></div>
                     <small class="forge-recipe-note" id="forge-controller-note">You still need 10 Clover Leaves and 3 Old Potato Stickers to craft this.</small>
                     <button class="btn forge-craft-button" id="craft-event-controller" type="button">Craft Controller</button>
+                </article>
+                <article class="forge-recipe forge-recipe-coin">
+                    <span class="forge-recipe-type">POTION</span>
+                    <h3>Coin Potion II</h3>
+                    <p>A four-times coin effect for two minutes.</p>
+                    <div class="forge-cost"><span><b>5</b> Portal Fragments</span><span><b>2</b> Empty Vials</span></div>
+                    <small class="forge-recipe-note" id="forge-coin-ii-note">Requires 5 Portal Fragments and 2 Empty Vials.</small>
+                    <button class="btn forge-craft-button" id="craft-coin-ii" type="button">Craft Potion</button>
                 </article>
             </section>
             <section class="forge-activation">
@@ -6668,6 +6771,7 @@
                 <div class="owner-command-grid">
                     <div class="owner-command-card"><strong>Clear all chat</strong><span>Remove messages from both Player Chat and Global Drops.</span><button class="btn danger-btn" type="button" data-owner-command="clear-chat">Clear chat history</button></div>
                     <div class="owner-command-card"><strong>End active event</strong><span>Stop the currently running game event.</span><button class="btn" type="button" data-owner-command="end-active-event">End active event</button></div>
+                    <form class="owner-command-card owner-password-form" id="owner-password-form"><strong>Change owner password</strong><label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required></label><label>New password<input name="newPassword" type="password" minlength="8" autocomplete="new-password" required></label><button class="btn" type="submit">Update password</button><span id="owner-password-status" role="status"></span></form>
                 </div>
             </div>
             <div class="admin-section">
@@ -6730,6 +6834,20 @@
                         <div class="event-buttons"><button class="btn" id="activate-gravity-well">Open Gravity Well</button><button class="btn stop-btn" id="deactivate-gravity-well" hidden>Close Gravity Well</button></div>
                         <div class="event-status" id="gravity-well-status">Owner only · ready</div>
                     </div>
+                    <div class="event-item event-confetti">
+                        <div class="event-kicker">COMMUNITY EVENT / CONFETTI</div>
+                        <h3>Confetti Party</h3>
+                        <p>A colorful three-minute celebration with 2× coins.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-confetti-party" type="button">Start Confetti Party</button><button class="btn stop-btn" id="deactivate-confetti-party" type="button" hidden>End Party</button></div>
+                        <div class="event-status" id="confetti-party-status">Ready · admin or owner</div>
+                    </div>
+                    <div class="event-item event-blackhole owner-only-event">
+                        <div class="event-kicker">OWNER SIGNAL / SINGULARITY</div>
+                        <h3>Blackhole</h3>
+                        <p>A ten-second collapse grants Light Essence to everyone online.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-blackhole" type="button">Open Blackhole</button></div>
+                        <div class="event-status" id="blackhole-status">Owner only · ready</div>
+                    </div>
                 </div>
             </div>
 
@@ -6740,8 +6858,16 @@
                     <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
                     <button class="btn" data-mini-event="meteor-shower" type="button">Call Meteor Shower</button>
                     <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
+                    <button class="btn" data-mini-event="confetti-party" type="button">Start Confetti Party</button>
                     <button class="btn stop-btn" data-mini-stop type="button">End My Event</button>
                 </div>
+                <form class="mini-headline-form" id="mini-headline-form">
+                    <h3>Moving headline</h3>
+                    <label><input type="checkbox" name="active"> Show headline</label>
+                    <label>Headline<input name="text" maxlength="220" placeholder="Message for players"></label>
+                    <button class="btn" type="submit">Save headline</button>
+                    <span id="mini-headline-status" role="status">Headline is off</span>
+                </form>
                 <form class="mini-ops-announcement" id="mini-announcement-form">
                     <label>Announcement title<input name="title" maxlength="80" required></label>
                     <label>Message<textarea name="content" maxlength="500" required></textarea></label>
@@ -6773,7 +6899,7 @@
                 <h2>Service Control</h2>
                 <div class="system-control-row">
                     <div><strong id="shutdown-status">All systems online</strong><span>Maintenance mode blocks rolls, chat, and game services for every player.</span></div>
-                    <button class="btn danger-btn" id="shutdown-toggle" type="button">Begin shutdown</button>
+                    <div class="system-control-actions"><button class="btn danger-btn" id="shutdown-toggle" type="button">Begin shutdown</button><button class="btn" id="update-shutdown-btn" type="button">Update, please refresh</button></div>
                 </div>
             </div>
 
@@ -6782,9 +6908,6 @@
                 <div class="chat-controls">
                     <button class="btn" id="broadcast-btn">📢 Broadcast Message</button>
                     <button class="btn danger-btn" id="clear-chat-btn">🗑️ Clear Chat</button>
-                    <div class="chat-stats">
-                        <span id="online-count">0 users online</span>
-                    </div>
                 </div>
             </div>
 
