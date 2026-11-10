@@ -238,7 +238,7 @@ const TITLE_CATALOG = {
   'multi-millionaire': { name: 'Multi-millionaire', color: '#eab308' },
   willpower: { name: 'Willpower', color: '#22c55e' },
   'this-is-my-year': { name: 'This is my year!', color: '#c084fc' },
-  billionaire: { name: 'Billionaire', color: '#a3e635' },
+  billionaire: { name: 'Billionaire', color: '#4f46e5' },
   'teachers-pet': { name: 'Teachers pet', color: '#facc15' },
   'helping-hand': { name: 'Helping hand', color: '#38bdf8' }
 };
