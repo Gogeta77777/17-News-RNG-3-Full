@@ -276,7 +276,7 @@ function initMultiplayer() {
     return;
   }
 
-  socket = io();
+  socket = io({ autoConnect: false });
   socketReady = true;
 
   socket.on('connect', () => {
@@ -360,13 +360,7 @@ function initMultiplayer() {
   socket.on('admin-chat-message', message => appendAdminChatMessage(message));
 
   socket.on('mention-notification', message => {
-    showPopup(message.isEveryone
-      ? `${message.username} pinged everyone in chat.`
-      : `${message.username} mentioned you in chat: ${message.message}`);
-  });
-
-  socket.on('chat-ping-cooldown', data => {
-    showPopup(`Please wait ${Number(data?.remainingSeconds) || 30}s before pinging everyone again.`, 'error');
+    showPopup(`${message.username} mentioned you in chat: ${message.message}`);
   });
 
   socket.on('reply-notification', message => {
@@ -506,10 +500,8 @@ function initMultiplayer() {
   });
   document.getElementById('leaderboard-btn')?.addEventListener('click', loadLeaderboard);
   document.getElementById('insert-mention-btn')?.addEventListener('click', () => {
-    const input = document.getElementById('chat-input');
-    if (!input) return;
-    input.value = `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}@everyone `;
-    input.focus();
+    renderOnlinePlayers();
+    document.getElementById('online-players-dialog')?.showModal();
   });
   document.querySelectorAll('[data-close-dialog]').forEach(button => {
     button.addEventListener('click', () => document.getElementById(button.dataset.closeDialog)?.close());
