@@ -71,8 +71,8 @@ const ROTATING_SHOP_ITEMS = [
 ];
 
 const TITLES = [
-  { id: 'owner', name: 'Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
-  { id: 'admin', name: 'Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks the Admin Panel' },
+  { id: 'owner', name: '👑 Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
+  { id: 'admin', name: '🛡️ Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks the Admin Panel' },
   { id: 'veteran', name: 'Veteran', color: '#2563eb', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
@@ -86,8 +86,8 @@ const TITLES = [
   { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' },
   { id: 'multi-millionaire', name: 'Multi-millionaire', color: '#eab308', requirement: 'coins:10000000', description: 'Have more than 10,000,000 coins' },
   { id: 'willpower', name: 'Willpower', color: '#22c55e', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
-  { id: 'this-is-my-year', name: 'This is my year!', color: '#d946ef', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
-  { id: 'billionaire', name: 'Billionaire', color: '#e879f9', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
+  { id: 'this-is-my-year', name: 'This is my year!', color: '#cbd5e1', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
+  { id: 'billionaire', name: 'Billionaire', color: '#a3e635', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
   { id: 'teachers-pet', name: 'Teachers pet', color: '#facc15', requirement: 'teacher-rarities', description: 'Obtain Mrs Joseph Mcglashan, Mr Vaughan, Mrs Bradley, and Mrs Croft' },
   { id: 'helping-hand', name: 'Helping hand', color: '#38bdf8', requirement: 'finn-quests', description: 'Complete all three of Lord Finn’s quests' }
 ];
@@ -551,7 +551,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
       card.innerHTML = `
-        <div class="title-name${['billionaire', 'this-is-my-year'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
+        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
@@ -570,7 +570,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
       card.innerHTML = `
-        <div class="title-name${['billionaire', 'this-is-my-year'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color};">${title.name}</div>
+        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color};">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
@@ -1599,11 +1599,7 @@ function updateUI(user) {
   
   const usernameDisplay = document.getElementById('game-username');
   usernameDisplay.textContent = user.username;
-  usernameDisplay.classList.toggle('title-shine', ['owner', 'admin', 'billionaire'].includes(user.active_title));
-  usernameDisplay.classList.toggle('title-owner', user.active_title === 'owner');
-  usernameDisplay.classList.toggle('title-admin', user.active_title === 'admin');
-  usernameDisplay.classList.toggle('title-billionaire', user.active_title === 'billionaire');
-  usernameDisplay.classList.toggle('title-silver', user.active_title === 'this-is-my-year');
+  usernameDisplay.classList.remove('title-shine', 'title-owner', 'title-admin', 'title-billionaire', 'title-silver');
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
@@ -1728,8 +1724,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     }
     const titleRequirement = titleDefinition?.description || '';
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
-    const titleShine = titleDefinition?.id === 'owner' ? ' title-shine title-owner' : titleDefinition?.id === 'admin' ? ' title-shine title-admin' : ['billionaire', 'this-is-my-year'].includes(titleDefinition?.id) ? ' title-shine title-silver' : '';
-    const specialTitleClass = ['owner', 'admin', 'this-is-my-year', 'billionaire'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
+    const specialTitleClass = ['owner', 'admin'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
     const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name${specialTitleClass}">${escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
@@ -1741,7 +1736,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       ${replyContext}
       ${isAnnouncement ? '<span class="global-drop-kicker">ADMIN EVENT</span>' : ''}
       ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
-      <span class="username${titleShine}" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
+      <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
       <span>${escapeHtml(message)}</span>
       ${replyButton}
       <br><small style="opacity: 0.7;">${time}</small>
@@ -2218,6 +2213,34 @@ async function loadAdminInboxLog() {
   }));
 }
 
+async function loadAdminRulesAgreements() {
+  const list = document.getElementById('rules-agreement-log');
+  if (!list || !(currentUser?.is_admin || (currentUser?.titles || []).includes('admin'))) return;
+  list.textContent = 'Loading agreement statuses...';
+  const response = await handleAPI('/api/admin/rules-agreements');
+  if (!response.success) {
+    list.textContent = response.error || 'Unable to load the Rules Agreement Log.';
+    return;
+  }
+  if (!response.records.length) {
+    list.textContent = 'No player accounts found.';
+    return;
+  }
+  list.replaceChildren(...response.records.map(record => {
+    const row = document.createElement('div');
+    row.className = 'owner-audit-row';
+    const username = document.createElement('strong');
+    username.textContent = record.username;
+    const status = document.createElement('span');
+    status.textContent = record.agreedAt ? 'Agreed' : 'Not agreed';
+    status.classList.toggle('rules-agreement-accepted', Boolean(record.agreedAt));
+    const timestamp = document.createElement('small');
+    timestamp.textContent = record.agreedAt ? formatChatTimestamp(record.agreedAt) : 'Awaiting agreement';
+    row.append(username, status, timestamp);
+    return row;
+  }));
+}
+
 function setAdminPanelMinimized(minimized) {
   const panel = document.getElementById('admin-panel');
   const button = document.getElementById('minimize-admin-panel');
@@ -2626,6 +2649,20 @@ function showLanding() {
 }
 
 // ==================== AUTH HANDLERS ====================
+function showRulesDialog(forceAgreement = false) {
+  const dialog = document.getElementById('rules-dialog');
+  if (!dialog || !currentUser) return;
+  const needsAgreement = forceAgreement || !currentUser.rules_agreed_at;
+  dialog.dataset.required = String(needsAgreement);
+  const closeButton = document.getElementById('rules-close-btn');
+  const acceptButton = document.getElementById('rules-accept-btn');
+  const status = document.getElementById('rules-dialog-status');
+  if (closeButton) closeButton.hidden = needsAgreement;
+  if (acceptButton) acceptButton.textContent = needsAgreement ? 'I Agree & Continue' : 'Close Rules';
+  if (status) status.textContent = '';
+  if (!dialog.open) dialog.showModal();
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   const button = e.target.querySelector('button[type="submit"]');
@@ -2659,14 +2696,17 @@ async function handleLogin(e) {
     if (data.success && data.user) {
       currentUser = data.user;
       console.log('✅ Logged in as:', currentUser.username);
-      window.refreshMultiplayerSession?.();
-      window.loadChatFallback?.();
-      window.refreshInboxBadge?.();
       showPopup('Welcome back, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
       setupRollButton();
       updateUI(currentUser);
+      if (currentUser.rules_agreed_at) {
+        window.refreshMultiplayerSession?.();
+        window.loadChatFallback?.();
+        window.refreshInboxBadge?.();
+      }
+      else showRulesDialog(true);
       window.updatePlayerActivity?.('At the RNG console');
       e.target.reset();
     } else {
@@ -2718,14 +2758,17 @@ async function handleRegister(e) {
 
     if (data.success && data.user) {
       currentUser = data.user;
-      window.refreshMultiplayerSession?.();
-      window.loadChatFallback?.();
-      window.refreshInboxBadge?.();
       showPopup('Account created! Welcome, ' + currentUser.username + '!', '#27ae60');
       showPage('game');
       setupPortalUI();
       setupRollButton();
       updateUI(currentUser);
+      if (currentUser.rules_agreed_at) {
+        window.refreshMultiplayerSession?.();
+        window.loadChatFallback?.();
+        window.refreshInboxBadge?.();
+      }
+      else showRulesDialog(true);
       window.updatePlayerActivity?.('At the RNG console');
       e.target.reset();
     } else {
@@ -2750,11 +2793,14 @@ async function loadSession() {
       return;
     }
     currentUser = response.user;
-    window.refreshMultiplayerSession?.();
-    window.loadChatFallback?.();
-    window.refreshInboxBadge?.();
     showGamePage();
     updateUI(response.user);
+    if (currentUser.rules_agreed_at) {
+      window.refreshMultiplayerSession?.();
+      window.loadChatFallback?.();
+      window.refreshInboxBadge?.();
+    }
+    else showRulesDialog(true);
     window.updatePlayerActivity?.('At the RNG console');
     setupPortalUI();
     setupRollButton();
@@ -3352,6 +3398,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentUser.is_admin || (currentUser.titles || []).includes('admin')) {
         loadAdminAudit();
         loadAdminInboxLog();
+        loadAdminRulesAgreements();
       }
       loadAdminHeadline();
       loadMiniAdminOverview();
@@ -3367,12 +3414,48 @@ document.addEventListener('DOMContentLoaded', () => {
     if (miniAdminRefreshTimer) clearInterval(miniAdminRefreshTimer);
     showPage('game');
   });
+  document.getElementById('rules-btn')?.addEventListener('click', () => showRulesDialog());
+  document.getElementById('rules-close-btn')?.addEventListener('click', () => {
+    const dialog = document.getElementById('rules-dialog');
+    if (dialog && dialog.dataset.required !== 'true') dialog.close();
+  });
+  document.getElementById('rules-dialog')?.addEventListener('cancel', event => {
+    if (event.currentTarget.dataset.required === 'true') event.preventDefault();
+  });
+  document.getElementById('rules-accept-btn')?.addEventListener('click', async () => {
+    const dialog = document.getElementById('rules-dialog');
+    const button = document.getElementById('rules-accept-btn');
+    const status = document.getElementById('rules-dialog-status');
+    if (!dialog || !button) return;
+    if (dialog.dataset.required !== 'true') {
+      dialog.close();
+      return;
+    }
+    button.disabled = true;
+    if (status) status.textContent = 'Saving your agreement...';
+    const response = await handleAPI('/api/rules-agreement', { method: 'POST', body: {} });
+    if (!response.success || !response.user?.rules_agreed_at) {
+      if (status) status.textContent = response.error || 'Unable to save your agreement. Please try again.';
+      button.disabled = false;
+      return;
+    }
+    currentUser.rules_agreed_at = response.user.rules_agreed_at;
+    dialog.dataset.required = 'false';
+    dialog.close();
+    showPopup('Thanks for understanding. You may now play.');
+    window.refreshMultiplayerSession?.();
+    window.loadChatFallback?.();
+    window.refreshInboxBadge?.();
+    button.disabled = false;
+  });
   document.getElementById('refresh-admin-users')?.addEventListener('click', () => {
     loadAdminUsers();
     loadAdminAudit();
     loadAdminInboxLog();
+    loadAdminRulesAgreements();
   });
   document.getElementById('refresh-inbox-log')?.addEventListener('click', loadAdminInboxLog);
+  document.getElementById('refresh-rules-agreements')?.addEventListener('click', loadAdminRulesAgreements);
   document.getElementById('minimize-admin-panel')?.addEventListener('click', () => {
     setAdminPanelMinimized(!document.getElementById('admin-panel')?.classList.contains('is-minimized'));
   });
