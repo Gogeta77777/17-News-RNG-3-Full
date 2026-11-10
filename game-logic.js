@@ -1730,7 +1730,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
     const titleShine = titleDefinition?.id === 'owner' ? ' title-shine title-owner' : titleDefinition?.id === 'admin' ? ' title-shine title-admin' : ['billionaire', 'this-is-my-year'].includes(titleDefinition?.id) ? ' title-shine title-silver' : '';
     const specialTitleClass = ['owner', 'admin', 'this-is-my-year', 'billionaire'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
-    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}${specialTitleClass}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name${specialTitleClass}">${escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
