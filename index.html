@@ -515,6 +515,26 @@
             font-size: 1.05rem;
         }
 
+        .username.title-owner,
+        .username-text.title-owner {
+            color: transparent;
+            background-image: linear-gradient(110deg, #8b5e00 0%, #fbbf24 24%, #f8fafc 42%, #e8a900 56%, #fff 72%, #9a6700 100%);
+            background-size: 240% 100%;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: ownerNameShine 2.8s linear infinite;
+        }
+        .username.title-admin,
+        .username-text.title-admin {
+            color: transparent;
+            background-image: linear-gradient(110deg, #9f1239 0%, #ef4444 25%, #f8fafc 43%, #dc2626 58%, #e2e8f0 74%, #881337 100%);
+            background-size: 240% 100%;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: adminNameShine 2.5s linear infinite;
+        }
+        .username-text { display: inline-block; }
+
         @keyframes ownerNameShine { to { background-position: -140% 50%; } }
         @keyframes adminNameShine { to { background-position: -140% 50%; } }
 
@@ -4107,43 +4127,19 @@
         }
         .chat-title-badge.prestige-title {
             margin-right: 8px;
-            padding: 3px 8px;
+            padding: 4px 9px;
             border-color: rgba(226, 232, 240, 0.2);
             background: rgba(15, 23, 42, 0.16);
-            font-size: 0.77rem;
+            font-size: 0.83rem;
         }
         .chat-title-name {
             display: inline-block;
             color: var(--title-color);
             text-shadow: none;
         }
-        .title-icon {
-            color: initial;
-            -webkit-text-fill-color: initial;
-        }
-        .title-shine-text {
-            display: inline-block;
-        }
-        .chat-title-name.title-owner .title-shine-text,
-        .title-name.title-owner .title-shine-text {
-            color: transparent;
-            background-image: linear-gradient(110deg, #8b5e00 0%, #fbbf24 24%, #f8fafc 42%, #e8a900 56%, #fff 72%, #9a6700 100%);
-            background-size: 240% 100%;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: ownerNameShine 2.8s linear infinite;
-        }
-        .chat-title-name.title-admin .title-shine-text,
-        .title-name.title-admin .title-shine-text {
-            color: transparent;
-            background-image: linear-gradient(110deg, #9f1239 0%, #ef4444 25%, #f8fafc 43%, #dc2626 58%, #e2e8f0 74%, #881337 100%);
-            background-size: 240% 100%;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: adminNameShine 2.5s linear infinite;
-        }
         @media (prefers-reduced-motion: reduce) {
-            .chat-title-name .title-shine-text, .title-name .title-shine-text {
+            .username.title-owner, .username.title-admin,
+            .username-text.title-owner, .username-text.title-admin {
                 animation: none;
                 background-position: center;
             }
