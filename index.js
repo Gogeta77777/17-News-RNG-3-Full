@@ -80,7 +80,6 @@ const inMemoryStore = {
 };
 const playtimeLastTick = new Map();
 const playtimeWritesInFlight = new Set();
-const chatPingCooldowns = new Map();
 const inboxClaimsInFlight = new Set();
 const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
@@ -223,8 +222,8 @@ function getShopRotation(timestamp = Date.now()) {
 }
 
 const TITLE_CATALOG = {
-  owner: { name: 'Owner', color: '#fbbf24' },
-  admin: { name: 'Admin', color: '#fb7185' },
+  owner: { name: '👑 Owner', color: '#fbbf24' },
+  admin: { name: '🛡️ Admin', color: '#fb7185' },
   veteran: { name: 'Veteran', color: '#2563eb' },
   millionaire: { name: 'Millionaire', color: '#4ade80' },
   portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
@@ -238,8 +237,8 @@ const TITLE_CATALOG = {
   'halloween-2026': { name: 'Halloween 2026', color: '#f97316' },
   'multi-millionaire': { name: 'Multi-millionaire', color: '#eab308' },
   willpower: { name: 'Willpower', color: '#22c55e' },
-  'this-is-my-year': { name: 'This is my year!', color: '#d946ef' },
-  billionaire: { name: 'Billionaire', color: '#e879f9' },
+  'this-is-my-year': { name: 'This is my year!', color: '#cbd5e1' },
+  billionaire: { name: 'Billionaire', color: '#a3e635' },
   'teachers-pet': { name: 'Teachers pet', color: '#facc15' },
   'helping-hand': { name: 'Helping hand', color: '#38bdf8' }
 };
@@ -483,6 +482,7 @@ async function findUser(username) {
       active_title: user.active_title || null,
       created_at: user.created_at,
       last_login: user.last_login,
+      rules_agreed_at: user.rules_agreed_at || null,
       is_admin: isAdministratorUser(user),
       is_banned: user.is_banned || false,
       ban_reason: user.ban_reason || '',
@@ -506,6 +506,7 @@ async function findUser(username) {
     ban_reason: stored.ban_reason || '',
     portal_unlocked: stored.portal_unlocked || false,
     active_title: stored.active_title || null,
+    rules_agreed_at: stored.rules_agreed_at || null,
     sea_realm_unlocked: stored.sea_realm_unlocked || false,
     forge_realm_unlocked: stored.forge_realm_unlocked || false
   };
@@ -743,7 +744,8 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      ADD COLUMN IF NOT EXISTS playtime_seconds BIGINT NOT NULL DEFAULT 0
+      ADD COLUMN IF NOT EXISTS playtime_seconds BIGINT NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS rules_agreed_at TIMESTAMPTZ
   `);
   await executeQuery(`
     ALTER TABLE chat_messages
@@ -1212,24 +1214,6 @@ async function notifyChatTargets(message) {
     message: String(message.message || '').slice(0, 120),
     timestamp: message.timestamp
   };
-  const senderKey = normalizeUsername(message.username);
-  if (targets.delete('everyone')) {
-    const now = Date.now();
-    const lastPing = chatPingCooldowns.get(senderKey) || 0;
-    if (now - lastPing < 30000) {
-      io.to(`user:${senderKey}`).emit('chat-ping-cooldown', {
-        remainingSeconds: Math.ceil((30000 - (now - lastPing)) / 1000)
-      });
-    } else {
-      chatPingCooldowns.set(senderKey, now);
-      const everyoneNotification = { ...notification, isEveryone: true };
-      onlineUsers.forEach((onlineUsername, username) => {
-        if (username !== senderKey) {
-          io.to(`user:${normalizeUsername(onlineUsername)}`).emit('mention-notification', everyoneNotification);
-        }
-      });
-    }
-  }
   targets.forEach(username => {
     const onlineUsername = onlineUsers.get(username);
     if (onlineUsername) io.to(`user:${normalizeUsername(onlineUsername)}`).emit('mention-notification', notification);
@@ -1344,7 +1328,7 @@ let gameShutdown = false;
 let gameUpdated = false;
 app.use('/api', async (req, res, next) => {
   const apiPath = req.originalUrl.split('?')[0].replace(/^\/api/, '') || '/';
-  const maintenancePaths = ['/login', '/register', '/session', '/logout', '/admin/shutdown', '/admin/headline'];
+  const maintenancePaths = ['/login', '/register', '/session', '/logout', '/rules-agreement', '/admin/shutdown', '/admin/headline'];
   if (gameUpdated && !['/session', '/logout'].includes(apiPath)) {
     return res.status(503).json({ success: false, updated: true, error: 'Game has been updated. Please refresh your page.' });
   }
@@ -1358,6 +1342,13 @@ app.use('/api', async (req, res, next) => {
     const user = await findUser(req.session.username);
     if (user?.is_banned) {
       return res.status(403).json({ success: false, banned: true, banReason: user.ban_reason || '' });
+    }
+    if (user && !user.rules_agreed_at && !['/rules-agreement', '/version', '/health'].includes(apiPath)) {
+      return res.status(403).json({
+        success: false,
+        rulesAgreementRequired: true,
+        error: 'Please agree to the Community Guidelines before playing.'
+      });
     }
     next();
   } catch (error) {
@@ -1398,6 +1389,7 @@ function sanitizeUser(user) {
     coins: user.coins,
     spins: user.spins,
     playtime_seconds: Number(user.playtime_seconds) || 0,
+    rules_agreed_at: user.rules_agreed_at || null,
     inventory,
     achievements: normalizeList(user.achievements),
     potions: potions,
@@ -1552,6 +1544,29 @@ app.get('/api/session', async (req, res) => {
     return res.json({ success: false, user: null });
   }
   res.json({ success: true, user: sanitizeUser(user) });
+});
+
+app.post('/api/rules-agreement', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Please log in to agree to the guidelines.' });
+  try {
+    let user = await findUser(req.session.username);
+    if (!user) return res.status(401).json({ success: false, error: 'Account not found. Please log in again.' });
+    if (!user.rules_agreed_at) {
+      if (pool) {
+        await executeQuery(
+          'UPDATE users SET rules_agreed_at = NOW() WHERE username = $1 AND rules_agreed_at IS NULL',
+          [req.session.username]
+        );
+      } else {
+        inMemoryStore.users[req.session.username].rules_agreed_at = new Date().toISOString();
+      }
+      user = await findUser(req.session.username);
+    }
+    res.json({ success: true, user: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Rules agreement error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to save your agreement. Please try again.' });
+  }
 });
 
 app.get('/api/health', async (req, res) => {
@@ -2336,14 +2351,37 @@ app.get('/api/admin/audit', async (req, res) => {
   }
 });
 
+app.get('/api/admin/rules-agreements', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user || !hasAdminPanelAccess(user)) {
+      return res.status(403).json({ success: false, error: 'Admin Panel access required.' });
+    }
+    if (pool) {
+      const result = await executeQuery(
+        'SELECT username, rules_agreed_at AS "agreedAt" FROM users ORDER BY username ASC'
+      );
+      return res.json({ success: true, records: result.rows });
+    }
+    const records = Object.values(inMemoryStore.users)
+      .map(account => ({ username: account.username, agreedAt: account.rules_agreed_at || null }))
+      .sort((left, right) => left.username.localeCompare(right.username));
+    res.json({ success: true, records });
+  } catch (error) {
+    console.error('Rules agreement log error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to load the Rules Agreement Log.' });
+  }
+});
+
 async function renamePlayerAccount(oldUsername, newUsername) {
   if (pool) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const inserted = await client.query(
-        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds)
-         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds
+        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds, rules_agreed_at)
+         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds, rules_agreed_at
          FROM users WHERE username = $2 RETURNING username`,
         [newUsername, oldUsername]
       );
@@ -3285,7 +3323,18 @@ io.use((socket, next) => {
     setHeader: () => {},
     removeHeader: () => {}
   };
-  sessionMiddleware(socket.request, response, next);
+  sessionMiddleware(socket.request, response, async error => {
+    if (error) return next(error);
+    const username = socket.request?.session?.username;
+    if (!username) return next();
+    try {
+      const user = await findUser(username);
+      if (user && !user.rules_agreed_at) return next(new Error('rules-agreement-required'));
+      next();
+    } catch (lookupError) {
+      next(lookupError);
+    }
+  });
 });
 
 
