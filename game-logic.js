@@ -86,7 +86,7 @@ const TITLES = [
   { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' },
   { id: 'multi-millionaire', name: 'Multi-millionaire', color: '#eab308', requirement: 'coins:10000000', description: 'Have more than 10,000,000 coins' },
   { id: 'willpower', name: 'Willpower', color: '#22c55e', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
-  { id: 'this-is-my-year', name: 'This is my year!', color: '#cbd5e1', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
+  { id: 'this-is-my-year', name: 'This is my year!', color: '#c084fc', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
   { id: 'billionaire', name: 'Billionaire', color: '#a3e635', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
   { id: 'teachers-pet', name: 'Teachers pet', color: '#facc15', requirement: 'teacher-rarities', description: 'Obtain Mrs Joseph Mcglashan, Mr Vaughan, Mrs Bradley, and Mrs Croft' },
   { id: 'helping-hand', name: 'Helping hand', color: '#38bdf8', requirement: 'finn-quests', description: 'Complete all three of Lord Finn’s quests' }
@@ -537,6 +537,14 @@ function buyShopItem(itemName) {
 }
 
 // ==================== TITLE SYSTEM ====================
+function renderTitleName(title) {
+  const icons = { owner: '👑', admin: '🛡️' };
+  const icon = icons[title.id];
+  if (!icon) return escapeHtml(title.name);
+  const name = title.name.slice(icon.length).trim();
+  return `<span class="title-icon" aria-hidden="true">${icon}</span><span class="title-shine-text">${escapeHtml(name)}</span>`;
+}
+
 function renderTitles() {
   const listDiv = document.getElementById('titles-list');
   const availDiv = document.getElementById('titles-available');
@@ -551,7 +559,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
       card.innerHTML = `
-        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
+        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color}; font-size: 1.1rem;">${renderTitleName(title)}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
@@ -570,7 +578,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
       card.innerHTML = `
-        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color};">${title.name}</div>
+        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color};">${renderTitleName(title)}</div>
         <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
@@ -1725,7 +1733,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     const titleRequirement = titleDefinition?.description || '';
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
     const specialTitleClass = ['owner', 'admin'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
-    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name${specialTitleClass}">${escapeHtml(displayTitle)}</span></span>` : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name${specialTitleClass}">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
