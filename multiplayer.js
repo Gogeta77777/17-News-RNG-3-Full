@@ -80,6 +80,36 @@ function showReplyNotification(message) {
   setTimeout(() => notification.remove(), 6000);
 }
 
+function showChatModerationWarning(warning) {
+  if (!warning?.username) return;
+  document.querySelector('.chat-moderation-warning')?.remove();
+  const notice = document.createElement('aside');
+  notice.className = 'chat-moderation-warning';
+  notice.setAttribute('role', 'alert');
+  const icon = document.createElement('span');
+  icon.className = 'chat-moderation-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '!';
+  const copy = document.createElement('div');
+  copy.className = 'chat-moderation-copy';
+  const label = document.createElement('small');
+  label.textContent = 'COMMUNITY MODERATION';
+  const username = document.createElement('strong');
+  username.textContent = warning.username;
+  const message = document.createElement('span');
+  message.textContent = warning.message || 'Do not do it again.';
+  copy.append(label, username, message);
+  const dismiss = document.createElement('button');
+  dismiss.className = 'chat-moderation-dismiss';
+  dismiss.type = 'button';
+  dismiss.setAttribute('aria-label', 'Dismiss moderation notice');
+  dismiss.textContent = '×';
+  dismiss.addEventListener('click', () => notice.remove(), { once: true });
+  notice.append(icon, copy, dismiss);
+  document.body.appendChild(notice);
+  setTimeout(() => notice.remove(), 8000);
+}
+
 function setLocalChatTyping(isTyping) {
   if (!socket?.connected) {
     isTyping = false;
@@ -304,6 +334,8 @@ function initMultiplayer() {
     addChatMessage('System', message.message, message.timestamp, true);
   });
 
+  socket.on('chat-moderation-warning', showChatModerationWarning);
+
   socket.on('online-count', (count) => {
     const onlineCount = document.getElementById('online-count');
     if (onlineCount) onlineCount.textContent = String(Number(count) || 0);
@@ -328,7 +360,13 @@ function initMultiplayer() {
   socket.on('admin-chat-message', message => appendAdminChatMessage(message));
 
   socket.on('mention-notification', message => {
-    showPopup(`${message.username} mentioned you in chat: ${message.message}`);
+    showPopup(message.isEveryone
+      ? `${message.username} pinged everyone in chat.`
+      : `${message.username} mentioned you in chat: ${message.message}`);
+  });
+
+  socket.on('chat-ping-cooldown', data => {
+    showPopup(`Please wait ${Number(data?.remainingSeconds) || 30}s before pinging everyone again.`, 'error');
   });
 
   socket.on('reply-notification', message => {
@@ -471,6 +509,12 @@ function initMultiplayer() {
     renderOnlinePlayers();
     document.getElementById('online-players-dialog')?.showModal();
   });
+  document.getElementById('ping-everyone-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    input.value = `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}@everyone `;
+    input.focus();
+  });
   document.querySelectorAll('[data-close-dialog]').forEach(button => {
     button.addEventListener('click', () => document.getElementById(button.dataset.closeDialog)?.close());
   });
@@ -562,7 +606,9 @@ function sendChatToServer(message, attachment = null) {
     if (typeof handleAPI === 'function') {
       handleAPI('/api/chat', { method: 'POST', body: { message: text, replyTo: currentChatReply, attachment } }).then((response) => {
         if (!response.success) {
-          addChatMessage('System', response.error || 'Unable to send chat.', new Date().toISOString(), true);
+          if (response.code !== 'CHAT_MODERATION') {
+            addChatMessage('System', response.error || 'Unable to send chat.', new Date().toISOString(), true);
+          }
         } else {
           const sentMessage = response.message;
           if (sentMessage) {
