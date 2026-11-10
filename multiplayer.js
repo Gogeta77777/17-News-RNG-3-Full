@@ -130,7 +130,7 @@ async function loadChatFallback() {
   if (!container) return;
   container.innerHTML = '';
   response.messages.filter(message => !message.isGlobalDrop).forEach((message) => {
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null, message.id);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null, message.id, message.attachment || null);
   });
 }
 
@@ -234,8 +234,9 @@ async function loadLeaderboard() {
 
 function updateAdminChatVisibility() {
   const user = window.getCurrentGameUser?.();
-  const allowed = Boolean(user?.is_admin || user?.titles?.includes('admin'));
+  const allowed = Boolean(user?.is_admin || user?.titles?.includes('admin') || user?.titles?.includes('owner'));
   document.querySelector('[data-chat-view="admin"]')?.classList.toggle('hidden', !allowed);
+  document.querySelectorAll('.chat-attach-btn').forEach(button => button.classList.toggle('hidden', !allowed));
   if (!allowed && getCurrentChatView() === 'admin') setChatView('players');
 }
 
@@ -259,7 +260,7 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.filter(message => !message.isGlobalDrop).forEach((message) => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null, message.id);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, false, message.isAnnouncement || false, message.replyTo || null, message.id, message.attachment || null);
     });
   });
 
@@ -268,25 +269,25 @@ function initMultiplayer() {
     if (!container) return;
     container.innerHTML = '';
     messages.forEach(message => {
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false, null, message.id);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, false, message.isAnnouncement || false, null, message.id, message.attachment || null);
     });
   });
 
   socket.on('chat-message', (message) => {
     if (message.isGlobalDrop) {
       if (!isChatViewOpen('globals')) bumpChatUnread('globals');
-      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id);
+      addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id, message.attachment || null);
       refreshGlobalRarityCounts();
       return;
     }
     if (!isChatViewOpen('players')) bumpChatUnread('players');
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false, message.replyTo || null, message.id);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', message.isGlobalDrop || false, message.isGlobalDrop || false, message.isAnnouncement || false, message.replyTo || null, message.id, message.attachment || null);
   });
 
   socket.on('global-chat-message', message => {
     if (!message) return;
     if (!isChatViewOpen('globals')) bumpChatUnread('globals');
-    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id);
+    addChatMessage(message.username || 'Guest', message.message, message.timestamp, message.system, message.title || null, message.titleColor || '#7dd3fc', true, true, message.isAnnouncement || false, null, message.id, message.attachment || null);
     refreshGlobalRarityCounts();
   });
 
@@ -435,7 +436,31 @@ function initMultiplayer() {
   });
 
   const sendButton = document.getElementById('send-chat');
-  sendButton?.addEventListener('click', () => setLocalChatTyping(false));
+  sendButton?.addEventListener('click', async () => {
+    if (sendButton.disabled) return;
+    sendButton.disabled = true;
+    setLocalChatTyping(false);
+    const input = document.getElementById('chat-input');
+    const message = input?.value || '';
+    try {
+      const attachment = await readChatAttachment('chat-attachment');
+      if (attachment === false) return;
+      sendChatToServer(message, attachment);
+      if (input) input.value = '';
+      clearChatAttachment('chat-attachment');
+    } finally {
+      sendButton.disabled = false;
+    }
+  });
+  document.querySelectorAll('[data-chat-attachment-trigger]').forEach(button => {
+    button.addEventListener('click', () => document.getElementById(button.dataset.chatAttachmentTrigger)?.click());
+  });
+  document.querySelectorAll('.chat-attachment-input').forEach(input => {
+    input.addEventListener('change', () => {
+      const label = document.querySelector(`[data-chat-attachment-name="${input.id}"]`);
+      if (label) label.textContent = input.files?.[0]?.name || '';
+    });
+  });
   document.getElementById('cancel-chat-reply')?.addEventListener('click', clearChatReplyTarget);
   document.getElementById('view-online-btn')?.addEventListener('click', () => {
     renderOnlinePlayers();
@@ -449,7 +474,7 @@ function initMultiplayer() {
   document.querySelectorAll('[data-close-dialog]').forEach(button => {
     button.addEventListener('click', () => document.getElementById(button.dataset.closeDialog)?.close());
   });
-  document.getElementById('send-admin-chat')?.addEventListener('click', sendAdminChatMessage);
+  document.getElementById('send-admin-chat')?.addEventListener('click', () => sendAdminChatMessage());
   document.getElementById('admin-chat-input')?.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -468,38 +493,81 @@ function updatePlayerActivity(activity) {
 }
 
 function appendAdminChatMessage(message) {
-  const container = document.getElementById('admin-chat-messages');
-  if (!container || !message) return;
-  const row = document.createElement('p');
-  row.className = 'admin-chat-message';
-  const name = document.createElement('strong');
-  name.textContent = `${message.username}: `;
-  const text = document.createTextNode(String(message.message || ''));
-  row.append(name, text);
-  container.appendChild(row);
-  container.scrollTop = container.scrollHeight;
+  if (!message) return;
+  addChatMessage(message.username || 'Guest', message.message || '', message.timestamp, false, message.title || null, message.titleColor || '#7dd3fc', false, false, false, null, message.id, message.attachment || null, 'admin-chat-messages');
 }
 
-function sendAdminChatMessage() {
+function clearChatAttachment(inputId) {
+  const input = document.getElementById(inputId);
+  if (input) input.value = '';
+  const label = document.querySelector(`[data-chat-attachment-name="${inputId}"]`);
+  if (label) label.textContent = '';
+}
+
+function readChatAttachment(inputId) {
+  const input = document.getElementById(inputId);
+  const file = input?.files?.[0];
+  if (!file) return Promise.resolve(null);
+  const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain']);
+  if (!allowedTypes.has(file.type)) {
+    showPopup('Choose an image, PDF, or text file.', 'error');
+    return Promise.resolve(false);
+  }
+  if (file.size > 480 * 1024) {
+    showPopup('Attachments must be smaller than 480 KB.', 'error');
+    return Promise.resolve(false);
+  }
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      resolve({ name: file.name, type: file.type, data: String(reader.result || '') });
+    });
+    reader.addEventListener('error', () => {
+      showPopup('Unable to read that attachment.', 'error');
+      resolve(false);
+    });
+    reader.readAsDataURL(file);
+  });
+}
+
+async function sendAdminChatMessage() {
   const input = document.getElementById('admin-chat-input');
+  const sendButton = document.getElementById('send-admin-chat');
+  if (sendButton?.disabled) return;
+  if (sendButton) sendButton.disabled = true;
   const message = String(input?.value || '').trim();
-  if (!message || !socket?.connected) return;
-  socket.emit('admin-chat-message', { message });
-  input.value = '';
+  try {
+    const attachment = await readChatAttachment('admin-chat-attachment');
+    if (attachment === false) return;
+    if (!message && !attachment) return;
+    if (!socket?.connected) {
+      showPopup('Admin chat is disconnected. Reconnect before sending.', 'error');
+      return;
+    }
+    socket.emit('admin-chat-message', { message, attachment });
+    if (input) input.value = '';
+    clearChatAttachment('admin-chat-attachment');
+  } finally {
+    if (sendButton) sendButton.disabled = false;
+  }
 }
 
-function sendChatToServer(message) {
+function sendChatToServer(message, attachment = null) {
   const text = String(message || '').trim();
-  if (!text) return;
+  if (!text && !attachment) return;
   if (socket && socket.connected) {
     setLocalChatTyping(false);
   }
   if (!socket || !socket.connected) {
     if (typeof handleAPI === 'function') {
-      handleAPI('/api/chat', { method: 'POST', body: { message: text, replyTo: currentChatReply } }).then((response) => {
+      handleAPI('/api/chat', { method: 'POST', body: { message: text, replyTo: currentChatReply, attachment } }).then((response) => {
         if (!response.success) {
           addChatMessage('System', response.error || 'Unable to send chat.', new Date().toISOString(), true);
         } else {
+          const sentMessage = response.message;
+          if (sentMessage) {
+            addChatMessage(sentMessage.username || 'Guest', sentMessage.message, sentMessage.timestamp, sentMessage.system, sentMessage.title || null, sentMessage.titleColor || '#7dd3fc', false, false, sentMessage.isAnnouncement || false, sentMessage.replyTo || null, sentMessage.id, sentMessage.attachment || null);
+          }
           clearChatReplyTarget();
         }
       });
@@ -508,7 +576,7 @@ function sendChatToServer(message) {
     addChatMessage('System', 'Unable to send chat: disconnected from server.', new Date().toISOString(), true);
     return;
   }
-  socket.emit('chat-message', { message: text, replyTo: currentChatReply });
+  socket.emit('chat-message', { message: text, replyTo: currentChatReply, attachment });
   clearChatReplyTarget();
 }
 
@@ -545,10 +613,10 @@ window.refreshMultiplayerSession = refreshMultiplayerSession;
 window.loadChatFallback = loadChatFallback;
 window.loadGlobalChatFallback = loadGlobalChatFallback;
 window.setChatReplyTarget = setChatReplyTarget;
+window.updateAdminChatVisibility = updateAdminChatVisibility;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
 window.updatePlayerActivity = updatePlayerActivity;
-window.updateAdminChatVisibility = updateAdminChatVisibility;
 
 document.addEventListener('DOMContentLoaded', () => {
   initMultiplayer();
