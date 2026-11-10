@@ -515,46 +515,8 @@
             font-size: 1.05rem;
         }
 
-        .username.title-shine {
-            color: #e7eaf0;
-            background: linear-gradient(108deg, #8b929e 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
-            background-size: 230% 100%;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: titleNameShine 3.4s ease-in-out infinite;
-        }
-        .username.title-owner {
-            background-image: linear-gradient(110deg, #b77900 0%, #ffd44f 24%, #fff6bf 42%, #e8a900 56%, #fff0a3 72%, #c88700 100%);
-            background-size: 240% 100%;
-            animation: ownerNameShine 2.8s linear infinite;
-        }
-        .username.title-admin {
-            background-image: linear-gradient(110deg, #9f1239 0%, #fb7185 25%, #fff1f2 43%, #e11d48 58%, #ffe4e6 74%, #881337 100%);
-            background-size: 240% 100%;
-            animation: adminNameShine 2.5s linear infinite;
-        }
-        .username.title-silver {
-            background-image: linear-gradient(110deg, #727985 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
-            background-size: 240% 100%;
-            animation: titleNameShine 3.8s ease-in-out infinite;
-        }
-        .username.title-billionaire {
-            background-image: linear-gradient(105deg, #626b78 0%, #e2e8f0 16%, #fff 30%, #9ca3af 46%, #fff 60%, #cbd5e1 78%, #626b78 100%);
-            background-size: 240% 100%;
-            animation: billionaireNameShine 2.4s linear infinite;
-        }
-
-        @keyframes titleNameShine {
-            0%, 12% { background-position: 100% 50%; }
-            75%, 100% { background-position: 0 50%; }
-        }
         @keyframes ownerNameShine { to { background-position: -140% 50%; } }
         @keyframes adminNameShine { to { background-position: -140% 50%; } }
-        @keyframes billionaireNameShine { to { background-position: -140% 50%; } }
-
-        @media (prefers-reduced-motion: reduce) {
-            .username.title-shine { animation: none; background-position: center; }
-        }
 
         .coins {
             font-size: 0.95rem;
@@ -4157,7 +4119,7 @@
         }
         .chat-title-name.title-owner {
             color: transparent;
-            background-image: linear-gradient(110deg, #b77900 0%, #ffd44f 24%, #fff6bf 42%, #e8a900 56%, #fff0a3 72%, #c88700 100%);
+            background-image: linear-gradient(110deg, #8b5e00 0%, #fbbf24 24%, #f8fafc 42%, #e8a900 56%, #fff 72%, #9a6700 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -4165,43 +4127,30 @@
         }
         .chat-title-name.title-admin {
             color: transparent;
-            background-image: linear-gradient(110deg, #9f1239 0%, #fb7185 25%, #fff1f2 43%, #e11d48 58%, #ffe4e6 74%, #881337 100%);
+            background-image: linear-gradient(110deg, #9f1239 0%, #ef4444 25%, #f8fafc 43%, #dc2626 58%, #e2e8f0 74%, #881337 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: adminNameShine 2.5s linear infinite;
         }
-        .chat-title-name.title-this-is-my-year {
-            color: transparent;
-            background-image: linear-gradient(108deg, #858d99 0%, #f8fafc 18%, #b8c0cc 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #727985 100%);
-            background-size: 240% 100%;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: yearNameShine 3.8s ease-in-out infinite;
-        }
-        .chat-title-name.title-billionaire {
-            color: transparent;
-            background-image: linear-gradient(105deg, #626b78 0%, #e2e8f0 16%, #fff 30%, #9ca3af 46%, #fff 60%, #cbd5e1 78%, #626b78 100%);
-            background-size: 240% 100%;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: billionaireNameShine 2.4s linear infinite;
-        }
-        .title-name.title-billionaire, .title-name.title-this-is-my-year {
+        .title-name.title-owner, .title-name.title-admin {
             color: transparent !important;
-            background-image: linear-gradient(108deg, #858d99 0%, #f8fafc 18%, #b8c0cc 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #727985 100%);
-            background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            animation: yearNameShine 3.8s ease-in-out infinite;
         }
-        .title-name.title-billionaire { background-image: linear-gradient(105deg, #626b78 0%, #e2e8f0 16%, #fff 30%, #9ca3af 46%, #fff 60%, #cbd5e1 78%, #626b78 100%); animation: billionaireNameShine 2.4s linear infinite; }
-        @keyframes yearNameShine { 0%, 12% { background-position: 100% 50%; } 75%, 100% { background-position: 0 50%; } }
+        .title-name.title-owner {
+            background-image: linear-gradient(110deg, #8b5e00 0%, #fbbf24 24%, #f8fafc 42%, #e8a900 56%, #fff 72%, #9a6700 100%);
+            background-size: 240% 100%;
+            animation: ownerNameShine 2.8s linear infinite;
+        }
+        .title-name.title-admin {
+            background-image: linear-gradient(110deg, #9f1239 0%, #ef4444 25%, #f8fafc 43%, #dc2626 58%, #e2e8f0 74%, #881337 100%);
+            background-size: 240% 100%;
+            animation: adminNameShine 2.5s linear infinite;
+        }
         @media (prefers-reduced-motion: reduce) {
             .chat-title-name.title-owner, .chat-title-name.title-admin,
-            .chat-title-name.title-this-is-my-year, .chat-title-name.title-billionaire,
-            .username.title-billionaire, .username.title-silver, .title-name.title-billionaire, .title-name.title-this-is-my-year {
+            .title-name.title-owner, .title-name.title-admin {
                 animation: none;
                 background-position: center;
             }
@@ -5982,11 +5931,13 @@
         .owner-audit-row { display: grid; grid-template-columns: minmax(100px, 0.7fr) minmax(120px, 0.8fr) minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.13); color: #dbeafe; font-size: 0.74rem; }
         .owner-audit-row strong { color: #c4b5fd; }
         .owner-audit-row small { color: #8196ad; white-space: nowrap; }
+        #rules-agreement-section .owner-audit-row { grid-template-columns: minmax(120px, 1fr) minmax(110px, 0.6fr) auto; }
+        .rules-agreement-accepted { color: #86efac; }
         .admin-title-form { display: flex; align-items: end; gap: 8px; color: #bfdbfe; font-size: 0.76rem; }
         .admin-title-form .btn { white-space: nowrap; }
         .admin-forge-form { display: flex; align-items: end; gap: 8px; color: #fed7aa; font-size: 0.76rem; }
         .admin-forge-form .btn { white-space: nowrap; }
-        .admin-panel.mini-admin > .admin-content > .admin-section:not(#mini-ops-section):not(#owner-audit-section):not(#owner-inbox-log-section) { display: none; }
+        .admin-panel.mini-admin > .admin-content > .admin-section:not(#mini-ops-section):not(#owner-audit-section):not(#owner-inbox-log-section):not(#rules-agreement-section) { display: none; }
         .admin-panel.mini-admin .admin-header-actions #refresh-admin-users { display: none; }
         @media (max-width: 700px) {
             .global-drop-form { grid-template-columns: minmax(0, 1fr); }
@@ -5997,6 +5948,7 @@
             .mini-ban-form { grid-column: 2 / -1; justify-content: stretch; }
             .mini-ban-form input { flex: 1 1 auto; min-width: 0; }
             .owner-audit-row { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
+            #rules-agreement-section .owner-audit-row { grid-template-columns: minmax(0, 1fr) auto; }
             .owner-audit-row > span:nth-child(3) { grid-column: 1 / -1; }
         }
         .event-visual-layer {
@@ -6152,6 +6104,19 @@
         .player-list-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(226, 232, 240, 0.12); }
         .player-list-dialog header span { color: #67e8f9; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
         .player-list-dialog h2 { margin: 4px 0 0; font-size: 1.25rem; }
+        .rules-dialog { width: min(680px, calc(100vw - 28px)); max-height: min(86vh, 760px); margin: auto; padding: 0; border: 1px solid rgba(125, 211, 252, 0.32); background: #101923; color: #f1f5f9; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65); }
+        .rules-dialog::backdrop { background: rgba(3, 10, 17, 0.78); backdrop-filter: blur(6px); }
+        .rules-dialog > section { padding: clamp(18px, 4vw, 28px); }
+        .rules-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(226, 232, 240, 0.12); }
+        .rules-dialog header span { color: #67e8f9; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; }
+        .rules-dialog h2 { margin: 4px 0 0; font-size: 1.4rem; }
+        .rules-dialog-content { max-height: calc(86vh - 120px); overflow-y: auto; padding-top: 12px; }
+        .rules-dialog-content p, .rules-dialog-content li { color: #dbe5ed; line-height: 1.55; }
+        .rules-dialog-content li { margin: 8px 0; }
+        .rules-dialog-content ul { padding-left: 22px; }
+        .rules-dialog-status { min-height: 1.3em; color: #fca5a5 !important; }
+        .rules-dialog-content > .btn { width: 100%; }
+        #rules-close-btn[hidden] { display: none; }
         .player-list { display: grid; max-height: 52vh; overflow-y: auto; }
         .player-list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 2px; border-bottom: 1px solid rgba(226, 232, 240, 0.08); }
         .player-list-row > div { display: grid; gap: 3px; min-width: 0; }
@@ -6262,7 +6227,7 @@
             .shop-item-buy:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.35); }
             .potion-card { min-height: 245px; }
             .potion-card .potion-purchase-controls { margin-top: auto; }
-            .player-list-dialog, .shop-guide-dialog { position: fixed; inset: 50% auto auto 50%; margin: 0; transform: translate(-50%, -50%); }
+            .player-list-dialog, .rules-dialog, .shop-guide-dialog { position: fixed; inset: 50% auto auto 50%; margin: 0; transform: translate(-50%, -50%); }
             .leaderboard-dialog { width: min(940px, calc(100vw - 28px)); }
             .leaderboard-list table { min-width: 560px; }
             .leaderboard-list tbody tr { transition: background 140ms ease; }
@@ -6650,7 +6615,7 @@
                                 </div>
                                 <div class="chat-input-area">
                                     <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
-                                    <button class="btn" id="insert-mention-btn" type="button" aria-label="Insert @everyone ping" title="Ping everyone online">@</button>
+                                    <button class="btn" id="insert-mention-btn" type="button" aria-label="Mention a player" title="Mention a player">@</button>
                                     <button class="btn chat-attach-btn hidden" type="button" data-chat-attachment-trigger="chat-attachment">Attach</button>
                                     <input class="chat-attachment-input" id="chat-attachment" type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain">
                                     <span class="chat-attachment-name" data-chat-attachment-name="chat-attachment"></span>
@@ -6708,6 +6673,7 @@
                                 <strong id="settings-total-rolls">0</strong>
                                 <div class="settings-total-playtime"><div><span>Total Playtime</span><small>Tracked from Update 5</small></div><strong id="settings-total-playtime">0h 0m</strong></div>
                                 <button class="btn" id="leaderboard-btn" type="button">Leaderboard</button>
+                                <button class="btn" id="rules-btn" type="button">Rules</button>
                             </div>
                             <div class="settings-section">
                                 <h3>Redeem Code</h3>
@@ -6769,6 +6735,25 @@
     </dialog>
     <dialog class="player-list-dialog leaderboard-dialog" id="leaderboard-dialog" aria-labelledby="leaderboard-title">
         <section><header><div><span>PLAYER RECORDS</span><h2 id="leaderboard-title">Leaderboard</h2></div><button class="btn btn-small" type="button" data-close-dialog="leaderboard-dialog" aria-label="Close leaderboard">×</button></header><div class="leaderboard-list" id="leaderboard-list"></div></section>
+    </dialog>
+    <dialog class="rules-dialog" id="rules-dialog" aria-labelledby="rules-dialog-title">
+        <section>
+            <header><div><span>17 NEWS / COMMUNITY</span><h2 id="rules-dialog-title">Community Guidelines</h2></div><button class="btn btn-small" id="rules-close-btn" type="button" aria-label="Close Rules">×</button></header>
+            <div class="rules-dialog-content">
+                <p>To play, please read and agree to these community guidelines. 17 News moderation is active 24/7.</p>
+                <ul>
+                    <li>Do not exploit glitches, abuse bugs, or use unintended game mechanics for an unfair advantage. Report issues instead.</li>
+                    <li>Do not steal or attempt to steal accounts, coins, items, or other players’ property.</li>
+                    <li>Do not hack, cheat, use unauthorized scripts, or interfere with the game or its services.</li>
+                    <li>Do not bully, harass, threaten, discriminate against, or impersonate other players.</li>
+                    <li>Keep chat respectful: no hate speech, explicit content, scams, spam, or sharing another person’s private information.</li>
+                    <li>Do not evade moderation or encourage others to break these rules. Use common sense and treat the community fairly.</li>
+                </ul>
+                <p>Breaking these rules may result in a warning, ban, or worse. Moderation decisions are made to protect the community.</p>
+                <p class="rules-dialog-status" id="rules-dialog-status" role="status"></p>
+                <button class="btn" id="rules-accept-btn" type="button">I Agree &amp; Continue</button>
+            </div>
+        </section>
     </dialog>
 
     <div class="finn-exit-flash" id="finn-exit-flash" aria-hidden="true"></div>
@@ -7080,6 +7065,11 @@
             <div class="admin-section" id="owner-inbox-log-section">
                 <div class="owner-audit-heading"><div><h2>Inbox Activity</h2><p>Recent player messages and gifts, newest first.</p></div><button class="btn" id="refresh-inbox-log" type="button">Refresh log</button></div>
                 <div class="owner-audit-list owner-inbox-log" id="owner-inbox-log" aria-live="polite"></div>
+            </div>
+
+            <div class="admin-section" id="rules-agreement-section">
+                <div class="owner-audit-heading"><div><h2>Rules Agreement Log</h2><p>Players who agreed and players still waiting to agree.</p></div><button class="btn" id="refresh-rules-agreements" type="button">Refresh log</button></div>
+                <div class="owner-audit-list" id="rules-agreement-log" aria-live="polite"></div>
             </div>
 
             <div class="admin-section" id="global-drop-section">
