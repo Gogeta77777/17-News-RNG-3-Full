@@ -4095,11 +4095,11 @@
             display: inline-flex;
             align-items: center;
             margin-right: 7px;
-            padding: 2px 6px;
+            padding: 3px 7px;
             border: 1px solid color-mix(in srgb, var(--title-color), transparent 46%);
             border-radius: 3px;
             color: var(--title-color);
-            font-size: 0.68rem;
+            font-size: 0.74rem;
             font-weight: 800;
             text-shadow: none;
             vertical-align: 1px;
@@ -4110,14 +4110,22 @@
             padding: 3px 8px;
             border-color: rgba(226, 232, 240, 0.2);
             background: rgba(15, 23, 42, 0.16);
-            font-size: 0.72rem;
+            font-size: 0.77rem;
         }
         .chat-title-name {
             display: inline-block;
             color: var(--title-color);
             text-shadow: none;
         }
-        .chat-title-name.title-owner {
+        .title-icon {
+            color: initial;
+            -webkit-text-fill-color: initial;
+        }
+        .title-shine-text {
+            display: inline-block;
+        }
+        .chat-title-name.title-owner .title-shine-text,
+        .title-name.title-owner .title-shine-text {
             color: transparent;
             background-image: linear-gradient(110deg, #8b5e00 0%, #fbbf24 24%, #f8fafc 42%, #e8a900 56%, #fff 72%, #9a6700 100%);
             background-size: 240% 100%;
@@ -4125,32 +4133,17 @@
             -webkit-text-fill-color: transparent;
             animation: ownerNameShine 2.8s linear infinite;
         }
-        .chat-title-name.title-admin {
+        .chat-title-name.title-admin .title-shine-text,
+        .title-name.title-admin .title-shine-text {
             color: transparent;
             background-image: linear-gradient(110deg, #9f1239 0%, #ef4444 25%, #f8fafc 43%, #dc2626 58%, #e2e8f0 74%, #881337 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: adminNameShine 2.5s linear infinite;
-        }
-        .title-name.title-owner, .title-name.title-admin {
-            color: transparent !important;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .title-name.title-owner {
-            background-image: linear-gradient(110deg, #8b5e00 0%, #fbbf24 24%, #f8fafc 42%, #e8a900 56%, #fff 72%, #9a6700 100%);
-            background-size: 240% 100%;
-            animation: ownerNameShine 2.8s linear infinite;
-        }
-        .title-name.title-admin {
-            background-image: linear-gradient(110deg, #9f1239 0%, #ef4444 25%, #f8fafc 43%, #dc2626 58%, #e2e8f0 74%, #881337 100%);
-            background-size: 240% 100%;
             animation: adminNameShine 2.5s linear infinite;
         }
         @media (prefers-reduced-motion: reduce) {
-            .chat-title-name.title-owner, .chat-title-name.title-admin,
-            .title-name.title-owner, .title-name.title-admin {
+            .chat-title-name .title-shine-text, .title-name .title-shine-text {
                 animation: none;
                 background-position: center;
             }
@@ -4380,6 +4373,8 @@
         .settings-roll-count { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
         .settings-roll-count h3 { margin: 0; }
         .settings-roll-count strong { color: #7dd3fc; font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+        .settings-rules-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+        .settings-rules-section h3 { margin: 0; font-size: 0.9rem; }
         .system-control-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
         .system-control-row div { display: grid; gap: 5px; }
         .system-control-row strong { color: #86efac; }
@@ -6673,7 +6668,10 @@
                                 <strong id="settings-total-rolls">0</strong>
                                 <div class="settings-total-playtime"><div><span>Total Playtime</span><small>Tracked from Update 5</small></div><strong id="settings-total-playtime">0h 0m</strong></div>
                                 <button class="btn" id="leaderboard-btn" type="button">Leaderboard</button>
-                                <button class="btn" id="rules-btn" type="button">Rules</button>
+                            </div>
+                            <div class="settings-section settings-rules-section">
+                                <h3>Community Guidelines</h3>
+                                <button class="btn btn-small" id="rules-btn" type="button">Rules</button>
                             </div>
                             <div class="settings-section">
                                 <h3>Redeem Code</h3>
