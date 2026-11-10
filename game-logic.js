@@ -548,11 +548,10 @@ function renderTitles() {
       if (!title) return;
       const card = document.createElement('div');
       card.className = 'title-card active';
-      if (title.id === 'billionaire') card.classList.add('title-card-billionaire');
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
       card.innerHTML = `
-        <div class="title-name${title.id === 'billionaire' ? ' title-billionaire' : ''}" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
+        <div class="title-name${['billionaire', 'this-is-my-year'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
@@ -568,11 +567,10 @@ function renderTitles() {
       if (gameState.userTitles.includes(title.id)) return;
       const card = document.createElement('div');
       card.className = 'title-card';
-      if (title.id === 'billionaire') card.classList.add('title-card-billionaire');
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
       card.innerHTML = `
-        <div class="title-name${title.id === 'billionaire' ? ' title-billionaire' : ''}" style="color: ${title.color};">${title.name}</div>
+        <div class="title-name${['billionaire', 'this-is-my-year'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color};">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
@@ -1605,6 +1603,7 @@ function updateUI(user) {
   usernameDisplay.classList.toggle('title-owner', user.active_title === 'owner');
   usernameDisplay.classList.toggle('title-admin', user.active_title === 'admin');
   usernameDisplay.classList.toggle('title-billionaire', user.active_title === 'billionaire');
+  usernameDisplay.classList.toggle('title-silver', user.active_title === 'this-is-my-year');
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
@@ -1729,7 +1728,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     }
     const titleRequirement = titleDefinition?.description || '';
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
-    const titleShine = titleDefinition?.id === 'owner' ? ' title-shine title-owner' : titleDefinition?.id === 'admin' ? ' title-shine title-admin' : titleDefinition?.id === 'billionaire' ? ' title-shine title-billionaire' : '';
+    const titleShine = titleDefinition?.id === 'owner' ? ' title-shine title-owner' : titleDefinition?.id === 'admin' ? ' title-shine title-admin' : ['billionaire', 'this-is-my-year'].includes(titleDefinition?.id) ? ' title-shine title-silver' : '';
     const specialTitleClass = ['owner', 'admin', 'this-is-my-year', 'billionaire'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
     const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}${specialTitleClass}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
