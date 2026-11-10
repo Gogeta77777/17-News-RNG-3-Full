@@ -524,7 +524,7 @@
             animation: titleNameShine 3.4s ease-in-out infinite;
         }
         .username.title-owner {
-            background-image: linear-gradient(110deg, #92620a 0%, #fbbf24 24%, #fff7c2 42%, #f59e0b 56%, #fff1a8 72%, #a16207 100%);
+            background-image: linear-gradient(110deg, #b77900 0%, #ffd44f 24%, #fff6bf 42%, #e8a900 56%, #fff0a3 72%, #c88700 100%);
             background-size: 240% 100%;
             animation: ownerNameShine 2.8s linear infinite;
         }
@@ -533,8 +533,13 @@
             background-size: 240% 100%;
             animation: adminNameShine 2.5s linear infinite;
         }
-        .username.title-billionaire, .username.title-silver {
+        .username.title-silver {
             background-image: linear-gradient(110deg, #727985 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
+            background-size: 240% 100%;
+            animation: titleNameShine 3.8s ease-in-out infinite;
+        }
+        .username.title-billionaire {
+            background-image: linear-gradient(105deg, #626b78 0%, #e2e8f0 16%, #fff 30%, #9ca3af 46%, #fff 60%, #cbd5e1 78%, #626b78 100%);
             background-size: 240% 100%;
             animation: billionaireNameShine 2.4s linear infinite;
         }
@@ -4134,77 +4139,68 @@
             color: var(--title-color);
             font-size: 0.68rem;
             font-weight: 800;
-            text-shadow: var(--title-glow);
+            text-shadow: none;
             vertical-align: 1px;
+            box-shadow: none;
         }
         .chat-title-badge.prestige-title {
             margin-right: 8px;
             padding: 3px 8px;
-            border-color: color-mix(in srgb, var(--title-color), transparent 18%);
-            background: color-mix(in srgb, var(--title-color), transparent 91%);
+            border-color: rgba(226, 232, 240, 0.2);
+            background: rgba(15, 23, 42, 0.16);
             font-size: 0.72rem;
-            box-shadow: 0 0 12px color-mix(in srgb, var(--title-color), transparent 72%);
         }
-        .chat-title-badge.title-owner {
-            border-color: rgba(251, 191, 36, 0.72);
-            background: rgba(120, 53, 15, 0.12);
+        .chat-title-name {
+            display: inline-block;
+            color: var(--title-color);
+            text-shadow: none;
+        }
+        .chat-title-name.title-owner {
             color: transparent;
-            background-image: linear-gradient(110deg, #92620a 0%, #fbbf24 24%, #fff7c2 42%, #f59e0b 56%, #fff1a8 72%, #a16207 100%);
+            background-image: linear-gradient(110deg, #b77900 0%, #ffd44f 24%, #fff6bf 42%, #e8a900 56%, #fff0a3 72%, #c88700 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            box-shadow: none;
             animation: ownerNameShine 2.8s linear infinite;
         }
-        .chat-title-badge.title-admin {
-            border-color: rgba(251, 113, 133, 0.72);
-            background: rgba(136, 19, 55, 0.12);
+        .chat-title-name.title-admin {
             color: transparent;
             background-image: linear-gradient(110deg, #9f1239 0%, #fb7185 25%, #fff1f2 43%, #e11d48 58%, #ffe4e6 74%, #881337 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            box-shadow: none;
             animation: adminNameShine 2.5s linear infinite;
         }
-        .chat-title-badge.title-this-is-my-year {
-            border-color: rgba(217, 70, 239, 0.48);
-            background: rgba(126, 34, 206, 0.08);
+        .chat-title-name.title-this-is-my-year {
             color: transparent;
-            background-image: linear-gradient(108deg, #727985 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
+            background-image: linear-gradient(108deg, #858d99 0%, #f8fafc 18%, #b8c0cc 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #727985 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            box-shadow: none;
-            animation: titleNameShine 3.4s ease-in-out infinite;
+            animation: yearNameShine 3.8s ease-in-out infinite;
         }
-        .chat-title-badge.title-billionaire {
-            border-color: rgba(232, 121, 249, 0.48);
-            background: rgba(112, 26, 117, 0.08);
+        .chat-title-name.title-billionaire {
             color: transparent;
-            background-image: linear-gradient(108deg, #727985 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
+            background-image: linear-gradient(105deg, #626b78 0%, #e2e8f0 16%, #fff 30%, #9ca3af 46%, #fff 60%, #cbd5e1 78%, #626b78 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            box-shadow: none;
-            animation: titleNameShine 3.4s ease-in-out infinite;
+            animation: billionaireNameShine 2.4s linear infinite;
         }
         .title-name.title-billionaire, .title-name.title-this-is-my-year {
             color: transparent !important;
-            background-image: linear-gradient(108deg, #727985 0%, #f8fafc 18%, #aeb6c3 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #858d99 100%);
+            background-image: linear-gradient(108deg, #858d99 0%, #f8fafc 18%, #b8c0cc 34%, #fff 48%, #9da5b2 66%, #f1f3f6 82%, #727985 100%);
             background-size: 240% 100%;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: none;
-            animation: titleNameShine 3.4s ease-in-out infinite;
+            animation: yearNameShine 3.8s ease-in-out infinite;
         }
+        .title-name.title-billionaire { background-image: linear-gradient(105deg, #626b78 0%, #e2e8f0 16%, #fff 30%, #9ca3af 46%, #fff 60%, #cbd5e1 78%, #626b78 100%); animation: billionaireNameShine 2.4s linear infinite; }
+        @keyframes yearNameShine { 0%, 12% { background-position: 100% 50%; } 75%, 100% { background-position: 0 50%; } }
         @media (prefers-reduced-motion: reduce) {
-            .chat-title-badge.title-owner, .chat-title-badge.title-admin,
-            .chat-title-badge.title-this-is-my-year, .chat-title-badge.title-billionaire,
+            .chat-title-name.title-owner, .chat-title-name.title-admin,
+            .chat-title-name.title-this-is-my-year, .chat-title-name.title-billionaire,
             .username.title-billionaire, .username.title-silver, .title-name.title-billionaire, .title-name.title-this-is-my-year {
                 animation: none;
                 background-position: center;
@@ -6198,12 +6194,10 @@
         .chat-moderation-copy span { color: #fed7aa; font-size: 0.8rem; }
         .chat-moderation-dismiss { width: 28px; height: 28px; border: 1px solid rgba(255, 247, 237, 0.22); background: transparent; color: #fff7ed; font-size: 1.1rem; cursor: pointer; }
         @keyframes moderationNoticeIn { from { opacity: 0; translate: 0 -8px; } to { opacity: 1; translate: 0 0; } }
-        .chat-ping-everyone { white-space: nowrap; }
         @media (max-width: 560px) {
             .chat-input-area { flex-wrap: wrap; }
             .chat-input-area input[type="text"] { flex: 1 1 100%; }
             .chat-attachment-name { flex: 1 1 auto; }
-            .chat-ping-everyone { flex: 1 1 auto; }
         }
         .portal-lightning { position: absolute; z-index: 1; inset: 3px; border: 2px solid transparent; border-radius: 50%; pointer-events: none; opacity: 0.8; background: conic-gradient(from 25deg, transparent 0 7%, #d8b4fe 8%, transparent 10% 27%, #a855f7 28%, transparent 30% 54%, #e9d5ff 55%, transparent 58% 76%, #9333ea 77%, transparent 80%); filter: drop-shadow(0 0 5px #a855f7); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; animation: portalLightning 1.8s steps(2, end) infinite; }
         @keyframes portalLightning { 0%, 74%, 100% { opacity: 0.18; transform: rotate(0deg) scale(0.98); } 78%, 86% { opacity: 1; transform: rotate(8deg) scale(1.02); } }
@@ -6656,8 +6650,7 @@
                                 </div>
                                 <div class="chat-input-area">
                                     <input type="text" id="chat-input" placeholder="Type to chat..." maxlength="500">
-                                    <button class="btn" id="insert-mention-btn" type="button" aria-label="Mention a player">@</button>
-                                    <button class="btn chat-ping-everyone" id="ping-everyone-btn" type="button" title="Notify everyone online (30-second cooldown)">Ping everyone</button>
+                                    <button class="btn" id="insert-mention-btn" type="button" aria-label="Insert @everyone ping" title="Ping everyone online">@</button>
                                     <button class="btn chat-attach-btn hidden" type="button" data-chat-attachment-trigger="chat-attachment">Attach</button>
                                     <input class="chat-attachment-input" id="chat-attachment" type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain">
                                     <span class="chat-attachment-name" data-chat-attachment-name="chat-attachment"></span>
