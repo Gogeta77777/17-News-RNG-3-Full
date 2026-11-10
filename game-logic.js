@@ -86,7 +86,8 @@ const TITLES = [
   { id: 'halloween-2026', name: 'Halloween 2026', color: '#f97316', requirement: 'halloween-rarity', description: 'Obtain Grim Reaper or Pumpkin Baxter' },
   { id: 'multi-millionaire', name: 'Multi-millionaire', color: '#eab308', requirement: 'coins:10000000', description: 'Have more than 10,000,000 coins' },
   { id: 'willpower', name: 'Willpower', color: '#22c55e', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
-  { id: 'this-is-my-year', name: 'This is my year!', color: '#fda4af', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
+  { id: 'this-is-my-year', name: 'This is my year!', color: '#d946ef', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
+  { id: 'billionaire', name: 'Billionaire', color: '#e879f9', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
   { id: 'teachers-pet', name: 'Teachers pet', color: '#facc15', requirement: 'teacher-rarities', description: 'Obtain Mrs Joseph Mcglashan, Mr Vaughan, Mrs Bradley, and Mrs Croft' },
   { id: 'helping-hand', name: 'Helping hand', color: '#38bdf8', requirement: 'finn-quests', description: 'Complete all three of Lord Finn’s quests' }
 ];
@@ -547,10 +548,11 @@ function renderTitles() {
       if (!title) return;
       const card = document.createElement('div');
       card.className = 'title-card active';
+      if (title.id === 'billionaire') card.classList.add('title-card-billionaire');
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
+        <div class="title-name${title.id === 'billionaire' ? ' title-billionaire' : ''}" style="color: ${title.color}; font-size: 1.1rem;">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
@@ -566,10 +568,11 @@ function renderTitles() {
       if (gameState.userTitles.includes(title.id)) return;
       const card = document.createElement('div');
       card.className = 'title-card';
+      if (title.id === 'billionaire') card.classList.add('title-card-billionaire');
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color};">${title.name}</div>
+        <div class="title-name${title.id === 'billionaire' ? ' title-billionaire' : ''}" style="color: ${title.color};">${title.name}</div>
         <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
@@ -804,6 +807,7 @@ function checkTitleUnlocks(user) {
     existing.add('millionaire');
   }
   if (user.coins > 10000000) existing.add('multi-millionaire');
+  if (user.coins >= 1000000000) existing.add('billionaire');
   if (user.portal_unlocked) {
     existing.add('portalmancer');
   }
@@ -1597,7 +1601,10 @@ function updateUI(user) {
   
   const usernameDisplay = document.getElementById('game-username');
   usernameDisplay.textContent = user.username;
-  usernameDisplay.classList.toggle('title-shine', ['owner', 'admin'].includes(user.active_title));
+  usernameDisplay.classList.toggle('title-shine', ['owner', 'admin', 'billionaire'].includes(user.active_title));
+  usernameDisplay.classList.toggle('title-owner', user.active_title === 'owner');
+  usernameDisplay.classList.toggle('title-admin', user.active_title === 'admin');
+  usernameDisplay.classList.toggle('title-billionaire', user.active_title === 'billionaire');
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
@@ -1694,8 +1701,8 @@ function formatChatTimestamp(timestamp) {
   return `${day} · ${time}`;
 }
 
-function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null, messageId = null) {
-  const chatMessages = document.getElementById(isGlobalDrop ? 'global-chat-messages' : 'chat-messages');
+function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null, messageId = null, attachment = null, containerId = null) {
+  const chatMessages = document.getElementById(containerId || (isGlobalDrop ? 'global-chat-messages' : 'chat-messages'));
   if (!chatMessages) return;
   
   const msgEl = document.createElement('div');
@@ -1721,13 +1728,14 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
     }
     const titleRequirement = titleDefinition?.description || '';
-    const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year'].includes(titleDefinition.id);
-    const titleShine = ['owner', 'admin'].includes(titleDefinition?.id) ? ' title-shine' : '';
-    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
+    const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
+    const titleShine = titleDefinition?.id === 'owner' ? ' title-shine title-owner' : titleDefinition?.id === 'admin' ? ' title-shine title-admin' : titleDefinition?.id === 'billionaire' ? ' title-shine title-billionaire' : '';
+    const specialTitleClass = ['owner', 'admin', 'this-is-my-year', 'billionaire'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}${specialTitleClass}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor}; --title-glow:${textShadow};">${escapeHtml(displayTitle)}</span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
-    const replyButton = !isGlobalDrop && !isAnnouncement
+    const replyButton = !containerId && !isGlobalDrop && !isAnnouncement
       ? '<button class="chat-reply-button" type="button">Reply</button>'
       : '';
     msgEl.innerHTML = `
@@ -1741,10 +1749,28 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     `;
   }
 
+  if (attachment?.type && attachment?.data?.startsWith(`data:${attachment.type};base64,`)) {
+    const isImage = attachment.type.startsWith('image/');
+    const attachmentElement = document.createElement(isImage ? 'img' : 'a');
+    attachmentElement.className = isImage ? 'chat-message-attachment' : 'chat-message-attachment-link';
+    attachmentElement.setAttribute('aria-label', attachment.name || 'Chat attachment');
+    if (isImage) {
+      attachmentElement.alt = attachment.name || 'Chat attachment';
+      attachmentElement.src = attachment.data;
+      attachmentElement.loading = 'lazy';
+    } else {
+      attachmentElement.href = attachment.data;
+      attachmentElement.download = attachment.name || 'attachment';
+      attachmentElement.rel = 'noopener noreferrer';
+      attachmentElement.textContent = `📎 ${attachment.name || 'Download attachment'}`;
+    }
+    msgEl.appendChild(attachmentElement);
+  }
+
   msgEl.querySelector('.chat-reply-button')?.addEventListener('click', () => {
     window.setChatReplyTarget?.({ username, message });
   });
-  if (messageId && (currentUser?.is_admin || currentUser?.titles?.includes('admin'))) {
+  if (messageId && (currentUser?.is_admin || currentUser?.titles?.includes('admin') || currentUser?.titles?.includes('owner'))) {
     const deleteButton = document.createElement('button');
     deleteButton.className = 'chat-delete-button';
     deleteButton.type = 'button';
@@ -2121,7 +2147,7 @@ async function loadMiniAdminOverview() {
 
 async function loadAdminAudit() {
   const list = document.getElementById('admin-audit-list');
-  if (!list || !currentUser?.is_admin) return;
+  if (!list || !(currentUser?.is_admin || (currentUser?.titles || []).includes('admin'))) return;
   const response = await handleAPI('/api/admin/audit');
   if (!response.success) {
     list.textContent = response.error || 'Unable to load admin activity.';
@@ -2149,7 +2175,7 @@ async function loadAdminAudit() {
 
 async function loadAdminInboxLog() {
   const list = document.getElementById('owner-inbox-log');
-  if (!list || !currentUser?.is_admin) return;
+  if (!list || !(currentUser?.is_admin || (currentUser?.titles || []).includes('admin'))) return;
   list.textContent = 'Loading inbox activity...';
   const response = await handleAPI('/api/admin/inbox-log');
   if (!response.success) {
@@ -2929,15 +2955,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show landing page and start tagline
   showPage('landing');
   
-  // Chat send button
-  document.getElementById('send-chat')?.addEventListener('click', () => {
-    const input = document.getElementById('chat-input');
-    if (input && input.value.trim()) {
-      sendChatToServer(input.value);
-      input.value = '';
-    }
-  });
-  
   // Allow Enter key in chat input
   document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -3331,9 +3348,11 @@ document.addEventListener('DOMContentLoaded', () => {
       showPage('admin-panel');
       if (currentUser.is_admin) {
         loadAdminUsers();
+        loadShutdownState();
+      }
+      if (currentUser.is_admin || (currentUser.titles || []).includes('admin')) {
         loadAdminAudit();
         loadAdminInboxLog();
-        loadShutdownState();
       }
       loadAdminHeadline();
       loadMiniAdminOverview();
