@@ -87,7 +87,7 @@ const TITLES = [
   { id: 'multi-millionaire', name: 'Multi-millionaire', color: '#eab308', requirement: 'coins:10000000', description: 'Have more than 10,000,000 coins' },
   { id: 'willpower', name: 'Willpower', color: '#22c55e', requirement: 'spins:10000', description: 'Complete more than 10,000 rolls' },
   { id: 'this-is-my-year', name: 'This is my year!', color: '#c084fc', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
-  { id: 'billionaire', name: 'Billionaire', color: '#a3e635', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
+  { id: 'billionaire', name: 'Billionaire', color: '#4f46e5', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
   { id: 'teachers-pet', name: 'Teachers pet', color: '#facc15', requirement: 'teacher-rarities', description: 'Obtain Mrs Joseph Mcglashan, Mr Vaughan, Mrs Bradley, and Mrs Croft' },
   { id: 'helping-hand', name: 'Helping hand', color: '#38bdf8', requirement: 'finn-quests', description: 'Complete all three of Lord Finn’s quests' }
 ];
@@ -538,11 +538,7 @@ function buyShopItem(itemName) {
 
 // ==================== TITLE SYSTEM ====================
 function renderTitleName(title) {
-  const icons = { owner: '👑', admin: '🛡️' };
-  const icon = icons[title.id];
-  if (!icon) return escapeHtml(title.name);
-  const name = title.name.slice(icon.length).trim();
-  return `<span class="title-icon" aria-hidden="true">${icon}</span><span class="title-shine-text">${escapeHtml(name)}</span>`;
+  return escapeHtml(title.name);
 }
 
 function renderTitles() {
@@ -559,7 +555,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
       card.innerHTML = `
-        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color}; font-size: 1.1rem;">${renderTitleName(title)}</div>
+        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${renderTitleName(title)}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
@@ -578,7 +574,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.opacity = '0.6';
       card.innerHTML = `
-        <div class="title-name${['owner', 'admin'].includes(title.id) ? ` title-${title.id}` : ''}" style="color: ${title.color};">${renderTitleName(title)}</div>
+        <div class="title-name" style="color: ${title.color};">${renderTitleName(title)}</div>
         <div class="title-status" style="font-size: 0.85rem;">${title.description}</div>
       `;
       availDiv.appendChild(card);
@@ -1607,7 +1603,10 @@ function updateUI(user) {
   
   const usernameDisplay = document.getElementById('game-username');
   usernameDisplay.textContent = user.username;
-  usernameDisplay.classList.remove('title-shine', 'title-owner', 'title-admin', 'title-billionaire', 'title-silver');
+  usernameDisplay.classList.remove('title-owner', 'title-admin');
+  if (user.active_title === 'owner' || user.active_title === 'admin') {
+    usernameDisplay.classList.add(`title-${user.active_title}`);
+  }
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
@@ -1732,8 +1731,8 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     }
     const titleRequirement = titleDefinition?.description || '';
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
-    const specialTitleClass = ['owner', 'admin'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
-    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name${specialTitleClass}">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
+    const wearerTitleClass = ['owner', 'admin'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
@@ -1744,7 +1743,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       ${replyContext}
       ${isAnnouncement ? '<span class="global-drop-kicker">ADMIN EVENT</span>' : ''}
       ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
-      <span class="username" style="font-weight: bold;">${titleLabel}${escapeHtml(username)}:</span>
+      <span class="username" style="font-weight: bold;">${titleLabel}<span class="username-text${wearerTitleClass}">${escapeHtml(username)}</span>:</span>
       <span>${escapeHtml(message)}</span>
       ${replyButton}
       <br><small style="opacity: 0.7;">${time}</small>
