@@ -80,6 +80,7 @@ const inMemoryStore = {
 };
 const playtimeLastTick = new Map();
 const playtimeWritesInFlight = new Set();
+const chatPingCooldowns = new Map();
 const inboxClaimsInFlight = new Set();
 const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
@@ -1055,11 +1056,10 @@ function containsProfanity(message) {
 }
 
 function warnForProfanity(username) {
-  io.emit('system-message', {
-    username: 'System',
-    message: `${username}, do not do it again.`,
-    timestamp: new Date().toISOString(),
-    system: true
+  io.emit('chat-moderation-warning', {
+    username: String(username || 'Player').slice(0, 32),
+    message: 'Do not do it again.',
+    timestamp: new Date().toISOString()
   });
 }
 
@@ -1212,6 +1212,24 @@ async function notifyChatTargets(message) {
     message: String(message.message || '').slice(0, 120),
     timestamp: message.timestamp
   };
+  const senderKey = normalizeUsername(message.username);
+  if (targets.delete('everyone')) {
+    const now = Date.now();
+    const lastPing = chatPingCooldowns.get(senderKey) || 0;
+    if (now - lastPing < 30000) {
+      io.to(`user:${senderKey}`).emit('chat-ping-cooldown', {
+        remainingSeconds: Math.ceil((30000 - (now - lastPing)) / 1000)
+      });
+    } else {
+      chatPingCooldowns.set(senderKey, now);
+      const everyoneNotification = { ...notification, isEveryone: true };
+      onlineUsers.forEach((onlineUsername, username) => {
+        if (username !== senderKey) {
+          io.to(`user:${normalizeUsername(onlineUsername)}`).emit('mention-notification', everyoneNotification);
+        }
+      });
+    }
+  }
   targets.forEach(username => {
     const onlineUsername = onlineUsers.get(username);
     if (onlineUsername) io.to(`user:${normalizeUsername(onlineUsername)}`).emit('mention-notification', notification);
@@ -3215,7 +3233,11 @@ app.post('/api/chat', async (req, res) => {
     const user = await findUser(req.session.username);
     if (containsProfanity(text)) {
       warnForProfanity(req.session.username);
-      return res.status(400).json({ success: false, error: `${req.session.username}, do not do it again.` });
+      return res.status(400).json({
+        success: false,
+        code: 'CHAT_MODERATION',
+        error: `${req.session.username}, do not do it again.`
+      });
     }
     const attachmentResult = validateChatAttachment(req.body?.attachment, hasAdminPanelAccess(user));
     if (attachmentResult.error) return res.status(400).json({ success: false, error: attachmentResult.error });
