@@ -74,12 +74,12 @@ if (USE_POSTGRES) {
 const inMemoryStore = {
   users: {},
   chatMessages: [],
+  adminChatMessages: [],
   inboxMessages: [],
   adminAudit: []
 };
 const playtimeLastTick = new Map();
 const playtimeWritesInFlight = new Set();
-const adminChatMessages = [];
 const inboxClaimsInFlight = new Set();
 const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
@@ -237,7 +237,8 @@ const TITLE_CATALOG = {
   'halloween-2026': { name: 'Halloween 2026', color: '#f97316' },
   'multi-millionaire': { name: 'Multi-millionaire', color: '#eab308' },
   willpower: { name: 'Willpower', color: '#22c55e' },
-  'this-is-my-year': { name: 'This is my year!', color: '#fda4af' },
+  'this-is-my-year': { name: 'This is my year!', color: '#d946ef' },
+  billionaire: { name: 'Billionaire', color: '#e879f9' },
   'teachers-pet': { name: 'Teachers pet', color: '#facc15' },
   'helping-hand': { name: 'Helping hand', color: '#38bdf8' }
 };
@@ -286,6 +287,7 @@ function getUnlockedTitles(user) {
   if (isAdministratorUser(user)) titles.add('owner');
   if ((Number(user?.coins) || 0) >= 1000000) titles.add('millionaire');
   if ((Number(user?.coins) || 0) > 10000000) titles.add('multi-millionaire');
+  if ((Number(user?.coins) || 0) >= 1000000000) titles.add('billionaire');
   if (user?.portal_unlocked) titles.add('portalmancer');
   if (spins >= 1000) titles.add('locked-in');
   if (spins >= 5000) titles.add('endless-frequency');
@@ -307,7 +309,7 @@ function getChatBadge(user) {
   const titles = getUnlockedTitles(user);
   const titleId = user?.active_title && titles.includes(user.active_title)
     ? user.active_title
-    : (isAdministratorUser(user) ? 'owner' : null);
+    : (isAdministratorUser(user) ? 'owner' : titles.includes('admin') ? 'admin' : null);
   const definition = titleId ? TITLE_CATALOG[titleId] : null;
   return { title: definition?.name || null, titleColor: definition?.color || '#7dd3fc' };
 }
@@ -668,7 +670,9 @@ async function ensureDatabase() {
       is_global BOOLEAN NOT NULL DEFAULT false,
       is_announcement BOOLEAN NOT NULL DEFAULT false,
       reply_to_username TEXT,
-      reply_to_message TEXT
+      reply_to_message TEXT,
+      attachment_data TEXT,
+      is_admin_chat BOOLEAN NOT NULL DEFAULT false
     )
   `);
   await executeQuery(`
@@ -748,7 +752,9 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS is_announcement BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS reply_to_username TEXT,
-      ADD COLUMN IF NOT EXISTS reply_to_message TEXT
+      ADD COLUMN IF NOT EXISTS reply_to_message TEXT,
+      ADD COLUMN IF NOT EXISTS attachment_data TEXT,
+      ADD COLUMN IF NOT EXISTS is_admin_chat BOOLEAN NOT NULL DEFAULT false
   `);
   await executeQuery('CREATE INDEX IF NOT EXISTS chat_messages_created_at_idx ON chat_messages (created_at DESC)');
   await executeQuery("UPDATE users SET inventory = inventory #- ARRAY['rarities', 'kayla-walters'] WHERE inventory ? 'rarities' AND (inventory->'rarities') ? 'kayla-walters'");
@@ -941,8 +947,8 @@ let connectedUsers = 0;
 async function getRecentChatMessages(limit = 60, globalOnly = null) {
   if (pool) {
     const result = await executeQuery(
-      `SELECT id, username, message, created_at, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message
-       FROM chat_messages ${globalOnly === null ? '' : 'WHERE is_global = $1'}
+      `SELECT id, username, message, created_at, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message, attachment_data
+       FROM chat_messages WHERE is_admin_chat = false${globalOnly === null ? '' : ' AND is_global = $1'}
        ORDER BY created_at DESC LIMIT $${globalOnly === null ? 1 : 2}`,
       globalOnly === null ? [limit] : [globalOnly, limit]
     );
@@ -956,14 +962,36 @@ async function getRecentChatMessages(limit = 60, globalOnly = null) {
       system: row.system || false,
       isGlobalDrop: row.is_global || false,
       isAnnouncement: row.is_announcement || false,
+      attachment: row.attachment_data ? JSON.parse(row.attachment_data) : null,
       replyTo: row.reply_to_username && row.reply_to_message
         ? { username: row.reply_to_username, message: row.reply_to_message }
         : null
     }));
   }
   return inMemoryStore.chatMessages
-    .filter(message => globalOnly === null || Boolean(message.isGlobalDrop) === globalOnly)
+    .filter(message => !message.isAdminChat && (globalOnly === null || Boolean(message.isGlobalDrop) === globalOnly))
     .slice(-limit);
+}
+
+async function getRecentAdminChatMessages(limit = 100) {
+  if (pool) {
+    const result = await executeQuery(
+      `SELECT id, username, message, created_at, title, title_color, attachment_data
+       FROM chat_messages WHERE is_admin_chat = true
+       ORDER BY created_at DESC LIMIT $1`,
+      [limit]
+    );
+    return result.rows.reverse().map(row => ({
+      id: row.id,
+      username: row.username,
+      message: row.message,
+      timestamp: row.created_at,
+      title: row.title,
+      titleColor: row.title_color || '#7dd3fc',
+      attachment: row.attachment_data ? JSON.parse(row.attachment_data) : null
+    }));
+  }
+  return inMemoryStore.adminChatMessages.slice(-limit);
 }
 
 async function getGlobalRarityCounts() {
@@ -987,7 +1015,55 @@ function normalizeChatReply(replyTo) {
   return replyUsername && replyMessage ? { username: replyUsername, message: replyMessage } : null;
 }
 
-async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false, replyTo = null) {
+function validateChatAttachment(attachment, canAttach) {
+  if (attachment == null) return { attachment: null };
+  if (!canAttach) return { error: 'Attachments are only available to administrators.' };
+  const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain']);
+  const type = String(attachment?.type || '').toLowerCase();
+  const data = String(attachment?.data || '');
+  if (!allowedTypes.has(type) || !data.startsWith(`data:${type};base64,`)) {
+    return { error: 'Choose a supported image, PDF, or text file.' };
+  }
+  const encoded = data.slice(data.indexOf(',') + 1);
+  if (!encoded || encoded.length > 700000 || !/^[a-z0-9+/]+={0,2}$/i.test(encoded)) {
+    return { error: 'Attachments must be smaller than 480 KB.' };
+  }
+  return {
+    attachment: {
+      name: String(attachment.name || 'attachment').replace(/[\\/\u0000-\u001f]/g, '_').slice(0, 100),
+      type,
+      data
+    }
+  };
+}
+
+function containsProfanity(message) {
+  const normalized = String(message || '').normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[0]/g, 'o')
+    .replace(/[1!|]/g, 'i')
+    .replace(/[3]/g, 'e')
+    .replace(/[4@]/g, 'a')
+    .replace(/[5$]/g, 's')
+    .replace(/[7]/g, 't');
+  const blockedWords = ['wtf', 'fuck', 'fucker', 'fucking', 'shit', 'shitty', 'bitch', 'bastard', 'ass', 'asshole', 'arse', 'arsehole', 'damn', 'crap', 'dick', 'pussy', 'cunt', 'motherfucker', 'jackass'];
+  return blockedWords.some(word => {
+    const spacedWord = word.split('').join('[^a-z0-9]*');
+    return new RegExp(`(?:^|[^a-z0-9])${spacedWord}(?:$|[^a-z0-9])`, 'i').test(normalized);
+  });
+}
+
+function warnForProfanity(username) {
+  io.emit('system-message', {
+    username: 'System',
+    message: `${username}, do not do it again.`,
+    timestamp: new Date().toISOString(),
+    system: true
+  });
+}
+
+async function saveChatMessage(username, message, title = null, titleColor = '#7dd3fc', system = false, isGlobalDrop = false, isAnnouncement = false, replyTo = null, attachment = null, isAdminChat = false) {
   const record = {
     id: null,
     username: username || 'Guest',
@@ -998,20 +1074,24 @@ async function saveChatMessage(username, message, title = null, titleColor = '#7
     system,
     isGlobalDrop,
     isAnnouncement,
-    replyTo: normalizeChatReply(replyTo)
+    replyTo: normalizeChatReply(replyTo),
+    attachment,
+    isAdminChat
   };
 
   if (pool) {
     const result = await executeQuery(
-      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
-      [record.username, record.message, title, titleColor, system, isGlobalDrop, isAnnouncement, record.replyTo?.username || null, record.replyTo?.message || null]
+      'INSERT INTO chat_messages (username, message, title, title_color, system, is_global, is_announcement, reply_to_username, reply_to_message, attachment_data, is_admin_chat) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id',
+      [record.username, record.message, title, titleColor, system, isGlobalDrop, isAnnouncement, record.replyTo?.username || null, record.replyTo?.message || null, attachment ? JSON.stringify(attachment) : null, isAdminChat]
     );
     record.id = result.rows[0].id;
   } else {
     record.id = crypto.randomUUID();
-    inMemoryStore.chatMessages.push(record);
-    if (inMemoryStore.chatMessages.length > 200) {
-      inMemoryStore.chatMessages.shift();
+    const messages = isAdminChat ? inMemoryStore.adminChatMessages : inMemoryStore.chatMessages;
+    messages.push(record);
+    const maxMessages = isAdminChat ? 100 : 200;
+    if (messages.length > maxMessages) {
+      messages.shift();
     }
   }
 
@@ -1023,6 +1103,7 @@ async function clearChatHistory() {
     await executeQuery('TRUNCATE chat_messages');
   }
   inMemoryStore.chatMessages = [];
+  inMemoryStore.adminChatMessages = [];
 }
 
 function prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, amount) {
@@ -1105,6 +1186,17 @@ async function isAdminSocket(socket) {
   if (!username) return false;
   const user = await findUser(username);
   return user && hasAdminPanelAccess(user);
+}
+
+async function broadcastAdminChatMessage(message) {
+  const sockets = await io.in('admin-chat').fetchSockets();
+  await Promise.all(sockets.map(async socket => {
+    if (await isAdminSocket(socket)) {
+      socket.emit('admin-chat-message', message);
+    } else {
+      await socket.leave('admin-chat');
+    }
+  }));
 }
 
 async function notifyChatTargets(message) {
@@ -2177,8 +2269,8 @@ app.get('/api/admin/users', async (req, res) => {
 
 app.get('/api/admin/inbox-log', async (req, res) => {
     if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-    const owner = await findUser(req.session.username);
-    if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+    const user = await findUser(req.session.username);
+    if (!user || !hasAdminPanelAccess(user)) return res.status(403).json({ success: false, error: 'Admin Panel access required.' });
     try {
       if (pool) {
         const result = await executeQuery(
@@ -2210,8 +2302,8 @@ app.get('/api/admin/inbox-log', async (req, res) => {
 
 app.get('/api/admin/audit', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  const owner = await findUser(req.session.username);
-  if (!owner?.is_admin) return res.status(403).json({ success: false, error: 'Owner Panel access required.' });
+  const user = await findUser(req.session.username);
+  if (!user || !hasAdminPanelAccess(user)) return res.status(403).json({ success: false, error: 'Admin Panel access required.' });
   try {
     if (pool) {
       const result = await executeQuery(
@@ -3116,13 +3208,19 @@ app.post('/api/chat', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Login required to chat.' });
   }
   const text = String(req.body?.message || '').trim().slice(0, 500);
-  if (!text) {
+  if (!text && !req.body?.attachment) {
     return res.status(400).json({ success: false, error: 'Message cannot be empty.' });
   }
   try {
     const user = await findUser(req.session.username);
+    if (containsProfanity(text)) {
+      warnForProfanity(req.session.username);
+      return res.status(400).json({ success: false, error: `${req.session.username}, do not do it again.` });
+    }
+    const attachmentResult = validateChatAttachment(req.body?.attachment, hasAdminPanelAccess(user));
+    if (attachmentResult.error) return res.status(400).json({ success: false, error: attachmentResult.error });
     const badge = getChatBadge(user);
-    const record = await saveChatMessage(req.session.username, text, badge.title, badge.titleColor, false, false, false, req.body?.replyTo);
+    const record = await saveChatMessage(req.session.username, text, badge.title, badge.titleColor, false, false, false, req.body?.replyTo, attachmentResult.attachment);
     io.emit('chat-message', record);
     await notifyChatTargets(record);
     res.json({ success: true, message: record });
@@ -3190,7 +3288,6 @@ io.on('connection', async (socket) => {
   }
   if (socket.data.canAdmin) {
     socket.join('admin-chat');
-    socket.emit('admin-chat-history', adminChatMessages);
   }
   broadcastOnlineRoster();
 
@@ -3202,6 +3299,7 @@ io.on('connection', async (socket) => {
 
   socket.emit('chat-history', await getRecentChatMessages(60, false));
   socket.emit('global-chat-history', await getRecentChatMessages(100, true));
+  if (socket.data.canAdmin) socket.emit('admin-chat-history', await getRecentAdminChatMessages(100));
   const runningEvent = getActiveGameEvent();
   if (runningEvent) {
     socket.emit('theme-event', { ...runningEvent, active: true });
@@ -3267,10 +3365,19 @@ io.on('connection', async (socket) => {
       socket.broadcast.emit('chat-typing', { username: socketUsername, typing: false });
     }
     const text = String(data?.message || '').trim().slice(0, 500);
-    if (!text) return;
+    if (!text && !data?.attachment) return;
     const user = await findUser(username);
+    if (containsProfanity(text)) {
+      warnForProfanity(username);
+      return;
+    }
+    const attachmentResult = validateChatAttachment(data?.attachment, hasAdminPanelAccess(user));
+    if (attachmentResult.error) {
+      socket.emit('system-message', { username: 'System', message: attachmentResult.error, timestamp: new Date().toISOString(), system: true });
+      return;
+    }
     const badge = getChatBadge(user);
-    const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false, false, false, data?.replyTo);
+    const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false, false, false, data?.replyTo, attachmentResult.attachment);
     io.emit('chat-message', record);
     await notifyChatTargets(record);
   });
@@ -3280,17 +3387,26 @@ io.on('connection', async (socket) => {
     if (!username || socket.data.isBanned || !(await isAdminSocket(socket))) return;
     await socket.join('admin-chat');
     const text = String(data?.message || '').trim().slice(0, 500);
-    if (!text) return;
-    const record = { username, message: text, timestamp: new Date().toISOString() };
-    adminChatMessages.push(record);
-    if (adminChatMessages.length > 100) adminChatMessages.shift();
-    io.to('admin-chat').emit('admin-chat-message', record);
+    if (!text && !data?.attachment) return;
+    if (containsProfanity(text)) {
+      warnForProfanity(username);
+      return;
+    }
+    const user = await findUser(username);
+    const attachmentResult = validateChatAttachment(data?.attachment, true);
+    if (attachmentResult.error) {
+      socket.emit('system-message', { username: 'System', message: attachmentResult.error, timestamp: new Date().toISOString(), system: true });
+      return;
+    }
+    const badge = getChatBadge(user);
+    const record = await saveChatMessage(username, text, badge.title, badge.titleColor, false, false, false, null, attachmentResult.attachment, true);
+    await broadcastAdminChatMessage(record);
   });
 
   socket.on('admin-chat-history-request', async () => {
     if (!(await isAdminSocket(socket))) return;
     await socket.join('admin-chat');
-    socket.emit('admin-chat-history', adminChatMessages);
+    socket.emit('admin-chat-history', await getRecentAdminChatMessages(100));
   });
 
   socket.on('chat-typing', isTyping => {
