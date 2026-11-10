@@ -506,10 +506,6 @@ function initMultiplayer() {
   });
   document.getElementById('leaderboard-btn')?.addEventListener('click', loadLeaderboard);
   document.getElementById('insert-mention-btn')?.addEventListener('click', () => {
-    renderOnlinePlayers();
-    document.getElementById('online-players-dialog')?.showModal();
-  });
-  document.getElementById('ping-everyone-btn')?.addEventListener('click', () => {
     const input = document.getElementById('chat-input');
     if (!input) return;
     input.value = `${input.value}${input.value && !input.value.endsWith(' ') ? ' ' : ''}@everyone `;
