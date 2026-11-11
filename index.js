@@ -224,6 +224,7 @@ function getShopRotation(timestamp = Date.now()) {
 const TITLE_CATALOG = {
   owner: { name: '👑 Owner', color: '#fbbf24' },
   admin: { name: '🛡️ Admin', color: '#fb7185' },
+  'birthday-boy': { name: '🎂 Birthday Boy', color: '#f472b6' },
   veteran: { name: 'Veteran', color: '#2563eb' },
   millionaire: { name: 'Millionaire', color: '#4ade80' },
   portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
@@ -767,18 +768,26 @@ const GAME_EVENTS = {
     'confetti-party': {
       title: 'Confetti Party',
       coinMultiplier: 2,
-      bonusCoins: 100,
-      durationSeconds: 180,
-      panelOnly: true,
-      description: 'A burst of color and 2× coins across the game'
+      bonusCoins: 250,
+      durationSeconds: 240,
+      description: 'A four-minute confetti celebration with 2× coins and +250 coins per roll'
     },
     blackhole: {
       title: 'Blackhole',
-      coinMultiplier: 1,
-      bonusCoins: 0,
-      durationSeconds: 10,
+      coinMultiplier: 2,
+      bonusCoins: 250,
+      luckMultiplier: 2,
+      durationSeconds: 45,
       ownerOnly: true,
-      description: 'A ten-second singularity grants Light Essence to players online at its close'
+      description: 'A 45-second singularity bends luck and grants Light Essence plus 1,000 coins to players online at its close'
+    },
+    nuke: {
+      title: 'Nuke',
+      coinMultiplier: 5,
+      bonusCoins: 1000,
+      durationSeconds: 20,
+      ownerOnly: true,
+      description: 'A 20-second world-shaking blast grants 5× coins and +1,000 coins per roll'
     },
   'starlight-surge': {
     title: 'Starlight Surge',
@@ -899,7 +908,8 @@ async function grantBlackholeRewards() {
     if (!user) continue;
     const items = normalizeRecord(user.items);
     items.light_essence = (Number(items.light_essence) || 0) + 1;
-    await updateUser(username, { items: JSON.stringify(items) });
+    const coins = Math.min(2147483647, (Number(user.coins) || 0) + 1000);
+    await updateUser(username, { items: JSON.stringify(items), coins });
     const updatedUser = await findUser(username);
     io.to(`user:${normalizeUsername(username)}`).emit('blackhole-reward', { item: 'Light Essence', amount: 1, user: sanitizeUser(updatedUser) });
   }
@@ -912,7 +922,7 @@ function getActiveGameEvent() {
   return activeGameEvent;
 }
 
-function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null) {
+function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null, source = 'panel') {
   const config = GAME_EVENTS[eventName];
   if (!config) return null;
   endActiveGameEvent();
@@ -923,6 +933,7 @@ function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null) 
     eventName,
     title: config.title,
     initiatedBy,
+    source,
     durationSeconds,
     coinMultiplier: config.coinMultiplier,
     bonusCoins: config.bonusCoins,
@@ -2175,7 +2186,7 @@ app.post('/api/forge/use-event-controller', async (req, res) => {
     if ((Number(items.event_controller) || 0) < 1) return res.status(400).json({ success: false, error: 'You need an Event Controller.' });
     items.event_controller -= 1;
     await updateUser(req.session.username, { items: JSON.stringify(items) });
-    const event = startGameEvent(eventName, user.username, 120);
+    const event = startGameEvent(eventName, user.username, 120, 'event-controller');
     const updated = await findUser(req.session.username);
     res.json({ success: true, event: { title: event.title, durationSeconds: event.durationSeconds }, user: sanitizeUser(updated) });
   } catch (error) {
@@ -2529,14 +2540,16 @@ app.post('/api/admin/users/:username', async (req, res) => {
       };
     } else if (type === 'title') {
       if (normalizeUsername(admin.username) !== 'mr_fernanski') {
-        return res.status(403).json({ success: false, error: 'Only Mr Fernanski can grant the Admin title.' });
+        return res.status(403).json({ success: false, error: 'Only Mr Fernanski can grant special titles.' });
       }
-      if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether to grant the Admin title.' });
-      const titles = getUnlockedTitles(target).filter(title => title !== 'admin');
-      if (grant) titles.push('admin');
+      const titleId = String(req.body?.titleId || 'admin');
+      if (!['admin', 'birthday-boy'].includes(titleId)) return res.status(400).json({ success: false, error: 'Choose a valid special title.' });
+      if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether to grant the title.' });
+      const titles = getUnlockedTitles(target).filter(title => title !== titleId);
+      if (grant) titles.push(titleId);
       updates = {
         titles: JSON.stringify(titles),
-        ...(!grant && target.active_title === 'admin' ? { active_title: null } : {})
+        ...(!grant && target.active_title === titleId ? { active_title: null } : {})
       };
     } else if (type === 'forge-realm') {
       if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether Forge access should be enabled.' });
