@@ -533,10 +533,37 @@
             -webkit-text-fill-color: transparent;
             animation: adminNameShine 2.5s linear infinite;
         }
+        .username.title-birthday-boy,
+        .username-text.title-birthday-boy {
+            position: relative;
+            color: transparent;
+            background-image: linear-gradient(90deg, #f472b6, #facc15, #4ade80, #38bdf8, #c084fc, #f472b6);
+            background-size: 260% 100%;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: birthdayNameShine 2.8s linear infinite;
+        }
         .username-text { display: inline-block; }
+        .username-text.title-birthday-boy::before,
+        .username-text.title-birthday-boy::after {
+            position: absolute;
+            top: 0.1em;
+            left: 48%;
+            width: 4px;
+            height: 7px;
+            border-radius: 1px;
+            background: #facc15;
+            box-shadow: -15px -4px #38bdf8, 14px -7px #fb7185, 23px 4px #4ade80, -24px 6px #c084fc, 7px 10px #fb923c;
+            content: '';
+            pointer-events: none;
+            animation: birthdayConfetti 1.5s ease-in-out infinite;
+        }
+        .username-text.title-birthday-boy::after { animation-delay: -0.75s; transform: rotate(45deg); }
 
         @keyframes ownerNameShine { to { background-position: -140% 50%; } }
         @keyframes adminNameShine { to { background-position: -140% 50%; } }
+        @keyframes birthdayNameShine { to { background-position: -160% 50%; } }
+        @keyframes birthdayConfetti { 0%, 100% { opacity: 0; translate: 0 2px; rotate: 0deg; } 35%, 65% { opacity: 1; } 80% { opacity: 0; translate: 0 -7px; rotate: 35deg; } }
 
         .coins {
             font-size: 0.95rem;
@@ -2870,14 +2897,16 @@
 
         .title-card {
             background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(59, 130, 246, 0.1));
-            border: 2px solid rgba(96, 165, 250, 0.3);
+            border: 3px solid rgba(96, 165, 250, 0.3);
             border-radius: 12px;
             padding: 16px;
+            min-height: 146px;
             text-align: center;
             transition: all 0.3s ease;
         }
 
         .title-card.active {
+            border-width: 3px;
             border-color: rgba(96, 165, 250, 0.8);
             background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(59, 130, 246, 0.2));
         }
@@ -2885,7 +2914,7 @@
         .title-name {
             font-weight: 700;
             margin: 8px 0;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
         }
 
         .title-status {
@@ -4137,9 +4166,18 @@
             color: var(--title-color);
             text-shadow: none;
         }
+        .chat-title-badge.birthday-title-badge {
+            border: 2px solid transparent;
+            background: linear-gradient(rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.96)) padding-box, conic-gradient(#f87171, #facc15, #4ade80, #38bdf8, #a78bfa, #f472b6, #f87171) border-box;
+            animation: birthdayBadgeHue 3.5s linear infinite;
+        }
+        .chat-title-badge.birthday-title-badge .chat-title-name { color: #fff7ed; }
+        @keyframes birthdayBadgeHue { to { filter: hue-rotate(360deg); } }
         @media (prefers-reduced-motion: reduce) {
             .username.title-owner, .username.title-admin,
-            .username-text.title-owner, .username-text.title-admin {
+            .username-text.title-owner, .username-text.title-admin,
+            .username.title-birthday-boy, .username-text.title-birthday-boy,
+            .chat-title-badge.birthday-title-badge {
                 animation: none;
                 background-position: center;
             }
@@ -6162,22 +6200,52 @@
         .realm-art-unknown::after { background: radial-gradient(ellipse at 50% 50%, transparent 12%, rgba(12, 8, 24, 0.24) 45%, rgba(3, 7, 18, 0.82) 75%); animation: unknownRealmPulse 5s ease-in-out infinite alternate; }
         @keyframes unknownRealmFold { to { transform: rotate(360deg) scale(0.85); } }
         @keyframes unknownRealmPulse { to { transform: scale(0.92) skewX(4deg); opacity: 0.72; } }
-        .event-confetti-piece { position: absolute; top: -12vh; left: var(--confetti-left); width: 7px; height: 12px; background: hsl(var(--confetti-hue) 92% 66%); box-shadow: 0 0 8px hsl(var(--confetti-hue) 90% 65% / 0.55); animation: confettiDrift var(--confetti-duration) var(--confetti-delay) linear infinite; }
+        .event-visual-confetti-party::before { position: absolute; inset: -20%; background: radial-gradient(ellipse at 18% 0%, rgba(255, 87, 181, 0.18), transparent 34%), radial-gradient(ellipse at 82% 0%, rgba(34, 211, 238, 0.2), transparent 38%); content: ''; animation: confettiSpotlight 8s ease-in-out infinite alternate; }
+        @keyframes confettiSpotlight { to { transform: translateX(10%) scale(1.12); filter: hue-rotate(90deg); } }
+        .event-confetti-piece { position: absolute; top: -12vh; left: var(--confetti-left); width: var(--confetti-size); height: calc(var(--confetti-size) * 1.55); border-radius: 1px; background: hsl(var(--confetti-hue) 92% 66%); box-shadow: 0 0 8px hsl(var(--confetti-hue) 90% 65% / 0.55); animation: confettiDrift var(--confetti-duration) var(--confetti-delay) linear infinite; }
+        .event-confetti-shape-1 { border-radius: 50%; }
+        .event-confetti-shape-2 { width: calc(var(--confetti-size) * 0.6); height: calc(var(--confetti-size) * 1.8); }
         @keyframes confettiDrift { to { transform: translate3d(8vw, 115vh, 0) rotate(760deg); } }
-        .event-blackhole-core { position: absolute; top: 50%; left: 50%; width: min(30vmin, 240px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #02030a 0 44%, #25094a 49%, #a855f7 52%, rgba(168, 85, 247, 0.16) 58%, transparent 72%); box-shadow: 0 0 50px rgba(168, 85, 247, 0.58), 0 0 120px rgba(91, 33, 182, 0.36); transform: translate(-50%, -50%); animation: blackholePulse 2.2s ease-in-out infinite alternate; }
+        .event-blackhole-ring { position: absolute; top: 50%; left: 50%; width: 34vmin; aspect-ratio: 1; border: 1px solid rgba(216, 180, 254, 0.7); border-radius: 50%; box-shadow: 0 0 24px rgba(168, 85, 247, 0.42), inset 0 0 24px rgba(168, 85, 247, 0.22); transform: translate(-50%, -50%) rotateX(68deg); animation: blackholeOrbit 5s var(--ring-delay) linear infinite; }
+        @keyframes blackholeOrbit { to { transform: translate(-50%, -50%) rotateX(68deg) rotate(360deg); } }
+        .event-blackhole-core { position: absolute; top: 50%; left: 50%; width: min(42vmin, 320px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #02030a 0 44%, #25094a 49%, #a855f7 52%, rgba(168, 85, 247, 0.16) 58%, transparent 72%); box-shadow: 0 0 65px rgba(168, 85, 247, 0.72), 0 0 150px rgba(91, 33, 182, 0.48); transform: translate(-50%, -50%); animation: blackholePulse 2.2s ease-in-out infinite alternate; }
+        .event-blackhole-core::before, .event-blackhole-core::after { position: absolute; inset: -12%; border: 2px solid rgba(216, 180, 254, 0.54); border-radius: 50%; content: ''; transform: rotateX(68deg); animation: blackholeOrbit 8s linear infinite; }
+        .event-blackhole-core::after { inset: -24%; border-color: rgba(56, 189, 248, 0.38); animation-duration: 12s; animation-direction: reverse; }
         @keyframes blackholePulse { to { scale: 1.13; filter: brightness(1.4); } }
         .event-blackhole-mote { position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border-radius: 50%; background: #e9d5ff; box-shadow: 0 0 12px 4px rgba(168, 85, 247, 0.9); animation: blackholeSuck var(--mote-duration) var(--mote-delay) ease-in infinite; }
             .blackhole-finale-overlay { position: fixed; z-index: 30000; inset: 0; display: grid; place-items: center; overflow: hidden; pointer-events: none; }
             .blackhole-finale-core { width: 8vmin; min-width: 42px; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #02030a 0 43%, #22053c 52%, #8b5cf6 57%, #fff 61%, #a855f7 65%, transparent 76%); box-shadow: 0 0 55px rgba(168, 85, 247, 0.9), 0 0 130px rgba(147, 51, 234, 0.55); animation: blackholeFinalExpand 1.25s cubic-bezier(0.35, 0, 0.1, 1) forwards; }
             .blackhole-finale-flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
-            .blackhole-finale-overlay.is-flashing .blackhole-finale-flash { animation: blackholeWhiteFlash 5s linear forwards; }
+            .blackhole-finale-overlay.is-flashing .blackhole-finale-flash { animation: blackholeWhiteFlash 700ms ease-out forwards; }
             @keyframes blackholeFinalExpand { to { width: 220vmax; box-shadow: 0 0 0 40vmax #05020a; } }
-            @keyframes blackholeWhiteFlash { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
+            @keyframes blackholeWhiteFlash { 0% { opacity: 0; } 14% { opacity: 0.55; } 100% { opacity: 0; } }
             body.blackhole-finale #landing-page:not(.hidden), body.blackhole-finale #game-page:not(.hidden), body.blackhole-finale #admin-panel:not(.hidden), body.blackhole-finale .dimension-container:not(.hidden), body.blackhole-finale .forge-dimension:not(.hidden) { transform-origin: center; animation: blackholeUiPull 1.2s cubic-bezier(0.5, 0, 0.12, 1) forwards; }
             @keyframes blackholeUiPull { to { opacity: 0; filter: blur(7px); transform: scale(0.025) rotate(-6deg); } }
         @keyframes blackholeSuck { from { opacity: 0; transform: rotate(var(--mote-angle)) translateX(46vw) scale(0.4); } 25% { opacity: 1; } to { opacity: 0; transform: rotate(calc(var(--mote-angle) + 300deg)) translateX(3vmin) scale(1.1); } }
+        .event-visual-nuke { background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.16), rgba(127, 29, 29, 0.08) 25%, transparent 64%); }
+        .event-nuke-ring { position: absolute; top: 50%; left: 50%; width: 10vmin; aspect-ratio: 1; border: 2px solid rgba(254, 240, 138, 0.8); border-radius: 50%; box-shadow: 0 0 22px rgba(249, 115, 22, 0.78), inset 0 0 18px rgba(239, 68, 68, 0.34); transform: translate(-50%, -50%); animation: nukeShockwave 4.4s var(--ring-delay) ease-out infinite; }
+        @keyframes nukeShockwave { 0% { opacity: 0.95; scale: 0.45; } 80%, 100% { opacity: 0; scale: 13; } }
+        .event-nuke-spark { position: absolute; top: -8vh; left: var(--spark-left); width: 3px; height: 28px; background: linear-gradient(#fff7ae, #f97316, transparent); filter: drop-shadow(0 0 7px #fb923c); animation: nukeSparkFall var(--spark-duration) var(--spark-delay) linear infinite; }
+        @keyframes nukeSparkFall { to { transform: translate3d(12vw, 115vh, 0) rotate(35deg); opacity: 0; } }
+        .finn-event-arrival { position: fixed; z-index: 25000; inset: 0; display: grid; place-items: center; padding: 24px; pointer-events: none; animation: finnEventArrive 420ms ease-out both; }
+        .finn-event-arrival::before { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(5, 10, 23, 0.78), rgba(5, 10, 23, 0.3) 52%, transparent 78%); content: ''; }
+        .finn-event-arrival > * { position: relative; }
+        .finn-event-arrival { grid-template-columns: minmax(96px, 180px) minmax(0, 620px); gap: 28px; width: min(900px, calc(100vw - 32px)); height: max-content; margin: auto; }
+        .finn-event-arrival .finn-event-avatar { position: relative; width: min(180px, 24vw); justify-self: center; opacity: 1; transform: none; filter: saturate(1.2); }
+        .finn-event-copy { width: min(720px, calc(100vw - 36px)); padding: 34px 42px; border: 1px solid rgba(216, 180, 254, 0.48); border-radius: 8px; background: linear-gradient(120deg, rgba(8, 14, 30, 0.92), rgba(22, 18, 45, 0.84)); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48), 0 0 42px rgba(168, 85, 247, 0.25); text-align: center; }
+        .finn-event-name { color: #e9d5ff; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.14em; text-shadow: 0 0 14px rgba(192, 132, 252, 0.7); }
+        .finn-event-copy p { margin: 12px 0 0; color: #f8fafc; font-size: 1.55rem; font-weight: 700; line-height: 1.35; text-shadow: 0 2px 14px #020617; }
+        @keyframes finnEventArrive { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        @media (max-width: 620px) {
+            .finn-event-arrival { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 18px; }
+            .finn-event-arrival .finn-event-avatar { width: 132px; }
+            .finn-event-copy { width: 100%; padding: 22px 18px; }
+            .finn-event-copy p { font-size: 1.15rem; }
+        }
         .event-item.event-confetti { border-color: rgba(34, 211, 238, 0.42); background: radial-gradient(circle at 88% 5%, rgba(34, 211, 238, 0.16), transparent 40%), linear-gradient(145deg, #16363a, #111827); }
         .event-item.event-blackhole { border-color: rgba(192, 132, 252, 0.5); background: radial-gradient(circle at 50% -10%, rgba(147, 51, 234, 0.26), transparent 55%), linear-gradient(145deg, #21152f, #0d111d); }
+        .event-item.event-nuke { border-color: rgba(251, 146, 60, 0.62); background: radial-gradient(circle at 50% 0, rgba(239, 68, 68, 0.24), transparent 48%), linear-gradient(145deg, #3a2117, #111827); }
+        .event-item.event-nuke .event-kicker { color: #fdba74; }
         .event-visual-prismfall::after { position: absolute; inset: -20%; background: conic-gradient(from 25deg at 50% 35%, transparent 0 16%, rgba(255, 78, 195, 0.12) 19%, transparent 22% 43%, rgba(68, 220, 255, 0.12) 47%, transparent 51% 76%, rgba(255, 221, 110, 0.1) 80%, transparent 84%); content: ''; mix-blend-mode: screen; animation: prismRefraction 13s linear infinite; }
         @keyframes prismRefraction { to { transform: rotate(360deg) scale(0.9); } }
         .event-visual-gravity-well::after { position: absolute; top: 50%; left: 50%; width: 110vmax; height: 110vmax; border: 1px solid rgba(167, 139, 250, 0.18); border-radius: 50%; background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.16) 0 8%, transparent 8.5% 22%, rgba(129, 140, 248, 0.07) 22.5% 23%, transparent 24% 38%, rgba(192, 132, 252, 0.06) 38.5% 39%, transparent 40%); content: ''; transform: translate(-50%, -50%) scaleX(0.82); animation: gravityLensing 7s ease-in-out infinite alternate; }
@@ -6738,6 +6806,7 @@
                 <ul>
                     <li>Do not exploit glitches, abuse bugs, or use unintended game mechanics for an unfair advantage. Report issues instead.</li>
                     <li>Do not steal or attempt to steal accounts, coins, items, or other players’ property.</li>
+                    <li>Use one personal account. Do not share, sell, buy, or lend accounts or passwords, or use someone else’s account.</li>
                     <li>Do not hack, cheat, use unauthorized scripts, or interfere with the game or its services.</li>
                     <li>Do not bully, harass, threaten, discriminate against, or impersonate other players.</li>
                     <li>Keep chat respectful: no hate speech, explicit content, scams, spam, or sharing another person’s private information.</li>
@@ -6902,7 +6971,7 @@
             <section class="forge-activation">
                 <div><span class="forge-recipe-type">ACTIVATE DEVICE</span><h3>Event Controller</h3></div>
                 <label for="forge-event-select">Choose event</label>
-                <select id="forge-event-select"><option value="starlight-surge">Starlight Surge</option><option value="meteor-shower">Meteor Shower</option><option value="abyssal-resonance">Abyssal Resonance</option></select>
+                <select id="forge-event-select"><option value="starlight-surge">Starlight Surge</option><option value="meteor-shower">Meteor Shower</option><option value="abyssal-resonance">Abyssal Resonance</option><option value="confetti-party">Confetti Party</option></select>
                 <button class="btn" id="use-event-controller" type="button">Activate · 2:00</button>
             </section>
             <p class="forge-activation-note">You must craft an Event Controller before you can activate any event effect.</p>
@@ -7011,16 +7080,23 @@
                     <div class="event-item event-confetti">
                         <div class="event-kicker">COMMUNITY EVENT / CONFETTI</div>
                         <h3>Confetti Party</h3>
-                        <p>A colorful three-minute celebration with 2× coins.</p>
+                        <p>A four-minute burst of shifting confetti with 2× coins and +250 coins per roll.</p>
                         <div class="event-buttons"><button class="btn" id="activate-confetti-party" type="button">Start Confetti Party</button><button class="btn stop-btn" id="deactivate-confetti-party" type="button" hidden>End Party</button></div>
                         <div class="event-status" id="confetti-party-status">Ready · admin or owner</div>
                     </div>
                     <div class="event-item event-blackhole owner-only-event">
                         <div class="event-kicker">OWNER SIGNAL / SINGULARITY</div>
                         <h3>Blackhole</h3>
-                        <p>A ten-second collapse grants Light Essence to everyone online.</p>
+                        <p>A 45-second singularity bends luck. Players online at the close receive Light Essence and 1,000 coins.</p>
                         <div class="event-buttons"><button class="btn" id="activate-blackhole" type="button">Open Blackhole</button></div>
                         <div class="event-status" id="blackhole-status">Owner only · ready</div>
+                    </div>
+                    <div class="event-item event-nuke owner-only-event" id="nuke-event-card">
+                        <div class="event-kicker">OWNER SIGNAL / WORLD EVENT</div>
+                        <h3>Nuke</h3>
+                        <p>A 20-second shockwave grants 5× coins and +1,000 coins per roll.</p>
+                        <div class="event-buttons"><button class="btn" id="activate-nuke" type="button">Launch Nuke</button><button class="btn stop-btn" id="deactivate-nuke" type="button" hidden>End Nuke</button></div>
+                        <div class="event-status" id="nuke-status">Owner only · ready</div>
                     </div>
                 </div>
             </div>
