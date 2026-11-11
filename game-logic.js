@@ -73,6 +73,7 @@ const ROTATING_SHOP_ITEMS = [
 const TITLES = [
   { id: 'owner', name: '👑 Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
   { id: 'admin', name: '🛡️ Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks the Admin Panel' },
+  { id: 'birthday-boy', name: '🎂 Birthday Boy', color: '#f472b6', requirement: 'gift', description: 'Granted by Mr Fernanski' },
   { id: 'veteran', name: 'Veteran', color: '#2563eb', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
@@ -555,7 +556,7 @@ function renderTitles() {
       card.style.borderColor = title.color;
       card.style.animation = 'titleEntry 0.5s ease-out';
       card.innerHTML = `
-        <div class="title-name" style="color: ${title.color}; font-size: 1.1rem;">${renderTitleName(title)}</div>
+        <div class="title-name" style="color: ${title.color}; font-size: 1.15rem;">${renderTitleName(title)}</div>
         <div class="title-status" style="font-size: 0.85rem;">Unlocked</div>
         <div class="title-requirement">Requirement: ${escapeHtml(title.description)}</div>
         ${gameState.activeTitle === titleId ? '<button class="btn" style="font-size:0.8rem; padding:6px;" disabled>(Active)</button>' : '<button class="btn title-equip" style="font-size:0.8rem; padding:6px;">Equip</button>'}
@@ -1603,8 +1604,8 @@ function updateUI(user) {
   
   const usernameDisplay = document.getElementById('game-username');
   usernameDisplay.textContent = user.username;
-  usernameDisplay.classList.remove('title-owner', 'title-admin');
-  if (user.active_title === 'owner' || user.active_title === 'admin') {
+  usernameDisplay.classList.remove('title-owner', 'title-admin', 'title-birthday-boy');
+  if (['owner', 'admin', 'birthday-boy'].includes(user.active_title)) {
     usernameDisplay.classList.add(`title-${user.active_title}`);
   }
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
@@ -1622,6 +1623,7 @@ function updateUI(user) {
       adminBtn.classList.add('hidden');
     }
   }
+  document.getElementById('nuke-event-card')?.classList.toggle('hidden', !user.is_admin);
 
   document.getElementById('reward-display').textContent = `🪙 Reward: 0 coins`;
 
@@ -1730,9 +1732,10 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
     }
     const titleRequirement = titleDefinition?.description || '';
-    const prestigeTitle = titleDefinition && ['owner', 'admin', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
-    const wearerTitleClass = ['owner', 'admin'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
-    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
+    const prestigeTitle = titleDefinition && ['owner', 'admin', 'birthday-boy', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
+    const wearerTitleClass = ['owner', 'admin', 'birthday-boy'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
+    const birthdayTitleClass = titleDefinition?.id === 'birthday-boy' ? ' birthday-title-badge' : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}${birthdayTitleClass}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
@@ -1950,7 +1953,7 @@ async function loadAdminUsers() {
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
-        ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
+        ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form><form class="admin-birthday-title-form"><span>Birthday Boy title</span><button class="btn" type="submit">${(user.titles || []).includes('birthday-boy') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
         <form class="admin-forge-form"><span>Forge Realm</span><button class="btn" type="submit">${user.forge_realm_unlocked ? 'Revoke access' : 'Grant access'}</button></form>
               <form class="admin-password-form">
                 <label>Set new password<input name="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
@@ -2041,6 +2044,24 @@ async function loadAdminUsers() {
       }
       form.reset();
       showPopup(`Password changed for ${user.username}.`);
+      loadAdminAudit();
+    });
+    row.querySelector('.admin-birthday-title-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const grant = !(user.titles || []).includes('birthday-boy');
+      const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST', body: { type: 'title', titleId: 'birthday-boy', grant }
+      });
+      if (!result.success) {
+        showPopup(result.error || 'Unable to update title.', 'error');
+        return;
+      }
+      if (String(user.username).toLowerCase() === String(currentUser?.username || '').toLowerCase()) {
+        currentUser = result.user;
+        updateUI(currentUser);
+      }
+      showPopup(`${grant ? 'Granted' : 'Revoked'} the Birthday Boy title for ${user.username}.`);
+      loadAdminUsers();
       loadAdminAudit();
     });
     row.querySelectorAll('.admin-adjust-form').forEach(form => {
@@ -2425,12 +2446,21 @@ const LIVE_EVENT_PRESENTATION = {
   'prismfall': { className: 'prismfall-live', startId: 'activate-prismfall', stopId: 'deactivate-prismfall' },
   'gravity-well': { className: 'gravity-well-live', startId: 'activate-gravity-well', stopId: 'deactivate-gravity-well' },
   'confetti-party': { className: 'confetti-party-live', startId: 'activate-confetti-party', stopId: 'deactivate-confetti-party' },
-  blackhole: { className: 'blackhole-live', startId: 'activate-blackhole', stopId: null }
+  blackhole: { className: 'blackhole-live', startId: 'activate-blackhole', stopId: null },
+  nuke: { className: 'nuke-live', startId: 'activate-nuke', stopId: 'deactivate-nuke' }
 };
 
 let blackholeCountdownTimer = null;
 let blackholeFinaleStartTimer = null;
 let blackholeFinaleEndTimer = null;
+let finnEventAnnouncementTimer = null;
+let lastFinnEventAnnouncement = null;
+const FINN_EVENT_DIALOGUES = {
+  'starlight-surge': ['The stars are answering your call. Keep your eyes on the signal.', 'A bright current is crossing the sky. Make every roll count.', 'I have tuned the gateway to the stars. This surge will not last forever.'],
+  'meteor-shower': ['Meteor trails incoming. Stay sharp and let the sky do its work.', 'The upper atmosphere is singing. Each streak carries a little luck.', 'I opened a path through the meteor field. Do try not to blink.'],
+  'abyssal-resonance': ['Something ancient is humming beneath the waves.', 'The deep has heard us. Let the resonance guide your next roll.', 'Abyssal currents are rising. The Sea Realm will feel this one.'],
+  'confetti-party': ['A little color does wonders for morale. Let the celebration begin!', 'I borrowed a few stars and turned them into confetti. You are welcome.', 'The gateway is in a festive mood. Try to catch a lucky piece.']
+};
 
 function triggerCameraShake() {
   document.body.classList.remove('event-camera-shake');
@@ -2518,26 +2548,48 @@ function createAdminEventVisual(eventName) {
       layer.appendChild(mote);
     }
   } else if (eventName === 'confetti-party') {
-    for (let index = 0; index < 90; index += 1) {
+    for (let index = 0; index < 150; index += 1) {
       const piece = document.createElement('span');
-      piece.className = 'event-confetti-piece';
+      piece.className = `event-confetti-piece event-confetti-shape-${index % 3}`;
       piece.style.setProperty('--confetti-left', `${Math.random() * 100}%`);
-      piece.style.setProperty('--confetti-delay', `${Math.random() * -8}s`);
-      piece.style.setProperty('--confetti-duration', `${4 + Math.random() * 5}s`);
+      piece.style.setProperty('--confetti-delay', `${Math.random() * -10}s`);
+      piece.style.setProperty('--confetti-duration', `${3 + Math.random() * 5}s`);
       piece.style.setProperty('--confetti-hue', `${Math.random() * 360}deg`);
+      piece.style.setProperty('--confetti-size', `${5 + Math.random() * 8}px`);
       layer.appendChild(piece);
     }
   } else if (eventName === 'blackhole') {
+    for (let index = 0; index < 3; index += 1) {
+      const ring = document.createElement('span');
+      ring.className = 'event-blackhole-ring';
+      ring.style.setProperty('--ring-delay', `${index * -1.6}s`);
+      layer.appendChild(ring);
+    }
     const hole = document.createElement('span');
     hole.className = 'event-blackhole-core';
     layer.appendChild(hole);
-    for (let index = 0; index < 42; index += 1) {
+    for (let index = 0; index < 64; index += 1) {
       const mote = document.createElement('span');
       mote.className = 'event-blackhole-mote';
       mote.style.setProperty('--mote-angle', `${Math.random() * 360}deg`);
-      mote.style.setProperty('--mote-delay', `${Math.random() * -2}s`);
-      mote.style.setProperty('--mote-duration', `${1.2 + Math.random() * 1.8}s`);
+      mote.style.setProperty('--mote-delay', `${Math.random() * -3}s`);
+      mote.style.setProperty('--mote-duration', `${1.3 + Math.random() * 2.2}s`);
       layer.appendChild(mote);
+    }
+  } else if (eventName === 'nuke') {
+    for (let index = 0; index < 4; index += 1) {
+      const ring = document.createElement('span');
+      ring.className = 'event-nuke-ring';
+      ring.style.setProperty('--ring-delay', `${index * -1.1}s`);
+      layer.appendChild(ring);
+    }
+    for (let index = 0; index < 34; index += 1) {
+      const spark = document.createElement('span');
+      spark.className = 'event-nuke-spark';
+      spark.style.setProperty('--spark-left', `${Math.random() * 100}%`);
+      spark.style.setProperty('--spark-delay', `${Math.random() * -4}s`);
+      spark.style.setProperty('--spark-duration', `${2 + Math.random() * 3}s`);
+      layer.appendChild(spark);
     }
   } else if (eventName === 'starlight-surge') {
     for (let index = 0; index < 24; index += 1) {
@@ -2569,12 +2621,42 @@ function createAdminEventVisual(eventName) {
   }
 }
 
+function showFinnEventAnnouncement(event) {
+  if (event.source !== 'event-controller' || !event.active || lastFinnEventAnnouncement === event.startedAt) return;
+  lastFinnEventAnnouncement = event.startedAt;
+  clearTimeout(finnEventAnnouncementTimer);
+  document.querySelector('.finn-event-arrival')?.remove();
+  const lines = FINN_EVENT_DIALOGUES[event.eventName] || ['The Event Controller is humming. Let us see what this moment brings.'];
+  const arrival = document.createElement('aside');
+  arrival.className = 'finn-event-arrival';
+  arrival.setAttribute('role', 'status');
+  arrival.setAttribute('aria-live', 'polite');
+  const orb = document.createElement('div');
+  orb.className = 'finn-orb finn-orb-large finn-event-avatar';
+  orb.setAttribute('aria-hidden', 'true');
+  const energy = document.createElement('span');
+  energy.className = 'finn-energy';
+  orb.appendChild(energy);
+  const copy = document.createElement('div');
+  copy.className = 'finn-event-copy';
+  const name = document.createElement('span');
+  name.className = 'finn-event-name';
+  name.textContent = 'LORD FINN';
+  const dialogue = document.createElement('p');
+  dialogue.textContent = lines[Math.floor(Math.random() * lines.length)];
+  copy.append(name, dialogue);
+  arrival.append(orb, copy);
+  document.body.appendChild(arrival);
+  finnEventAnnouncementTimer = setTimeout(() => arrival.remove(), 8500);
+}
+
 function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const event = typeof eventData === 'string' ? { eventName: eventData, initiatedBy: legacyInitiatedBy } : eventData || {};
   const eventName = String(event.eventName || '').toLowerCase();
   const presentation = LIVE_EVENT_PRESENTATION[eventName];
   if (!presentation) return;
   const active = event.active !== false;
+  if (active) showFinnEventAnnouncement(event);
   const title = event.title || eventName.replaceAll('-', ' ');
   const description = event.description || 'Special rewards are active';
   const status = document.getElementById(`${eventName}-status`);
@@ -2588,6 +2670,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
     if (status) status.textContent = `LIVE · ${description}`;
   } else {
     clearEventVisuals();
+    document.body.classList.remove('nuke-live');
     if (eventName === 'blackhole') startBlackholeFinale();
     if (startButton) startButton.hidden = false;
     if (stopButton) stopButton.hidden = true;
