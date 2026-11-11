@@ -544,26 +544,10 @@
             animation: birthdayNameShine 2.8s linear infinite;
         }
         .username-text { display: inline-block; }
-        .username-text.title-birthday-boy::before,
-        .username-text.title-birthday-boy::after {
-            position: absolute;
-            top: 0.1em;
-            left: 48%;
-            width: 4px;
-            height: 7px;
-            border-radius: 1px;
-            background: #facc15;
-            box-shadow: -15px -4px #38bdf8, 14px -7px #fb7185, 23px 4px #4ade80, -24px 6px #c084fc, 7px 10px #fb923c;
-            content: '';
-            pointer-events: none;
-            animation: birthdayConfetti 1.5s ease-in-out infinite;
-        }
-        .username-text.title-birthday-boy::after { animation-delay: -0.75s; transform: rotate(45deg); }
 
         @keyframes ownerNameShine { to { background-position: -140% 50%; } }
         @keyframes adminNameShine { to { background-position: -140% 50%; } }
         @keyframes birthdayNameShine { to { background-position: -160% 50%; } }
-        @keyframes birthdayConfetti { 0%, 100% { opacity: 0; translate: 0 2px; rotate: 0deg; } 35%, 65% { opacity: 1; } 80% { opacity: 0; translate: 0 -7px; rotate: 35deg; } }
 
         .coins {
             font-size: 0.95rem;
@@ -4139,6 +4123,11 @@
             border-bottom: 1px solid rgba(239, 246, 255, 0.08);
             color: #eff6ff;
         }
+        .chat-message.birthday-chat-message {
+            border: 2px solid transparent;
+            background: linear-gradient(rgba(8, 20, 39, 0.96), rgba(8, 20, 39, 0.96)) padding-box, conic-gradient(#f87171, #facc15, #4ade80, #38bdf8, #a78bfa, #f472b6, #f87171) border-box;
+            box-shadow: 0 0 14px rgba(192, 132, 252, 0.16);
+        }
 
         .chat-title-badge {
             display: inline-flex;
@@ -4166,18 +4155,10 @@
             color: var(--title-color);
             text-shadow: none;
         }
-        .chat-title-badge.birthday-title-badge {
-            border: 2px solid transparent;
-            background: linear-gradient(rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.96)) padding-box, conic-gradient(#f87171, #facc15, #4ade80, #38bdf8, #a78bfa, #f472b6, #f87171) border-box;
-            animation: birthdayBadgeHue 3.5s linear infinite;
-        }
-        .chat-title-badge.birthday-title-badge .chat-title-name { color: #fff7ed; }
-        @keyframes birthdayBadgeHue { to { filter: hue-rotate(360deg); } }
         @media (prefers-reduced-motion: reduce) {
             .username.title-owner, .username.title-admin,
             .username-text.title-owner, .username-text.title-admin,
-            .username.title-birthday-boy, .username-text.title-birthday-boy,
-            .chat-title-badge.birthday-title-badge {
+            .username.title-birthday-boy, .username-text.title-birthday-boy {
                 animation: none;
                 background-position: center;
             }
