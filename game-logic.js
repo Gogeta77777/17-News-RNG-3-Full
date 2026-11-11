@@ -1724,6 +1724,9 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     `;
   } else {
     const titleDefinition = TITLES.find(titleOption => titleOption.id === title || titleOption.name === title);
+    if (titleDefinition?.id === 'birthday-boy' && !isGlobalDrop && !isAnnouncement) {
+      msgEl.classList.add('birthday-chat-message');
+    }
     let displayTitle = titleDefinition?.name || title;
     let displayColor = titleDefinition?.color || (/^#[0-9a-f]{6}$/i.test(titleColor || '') ? titleColor : '#7dd3fc');
     let textShadow = `0 0 8px ${displayColor}`;
@@ -1734,8 +1737,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     const titleRequirement = titleDefinition?.description || '';
     const prestigeTitle = titleDefinition && ['owner', 'admin', 'birthday-boy', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
     const wearerTitleClass = ['owner', 'admin', 'birthday-boy'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
-    const birthdayTitleClass = titleDefinition?.id === 'birthday-boy' ? ' birthday-title-badge' : '';
-    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}${birthdayTitleClass}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
+    const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
       : '';
