@@ -1775,7 +1775,13 @@ app.post('/api/redeem-code', async (req, res) => {
     'CRAFTINGISBACK': { coins: 100000, item: { key: 'empty_vial', amount: 1 }, rewardMessage: '1 Empty Vial and 100,000 coins' },
     'LORDFINNHASRETURNED': { coins: 100000, potion: { key: 'coin', amount: 3 }, rewardMessage: '100,000 coins and 3 Coin Potions' },
     'SORRYFORTHEDELAY': { potion: { key: 'coin-ii', amount: 1 }, rewardMessage: '1 Coin Potion II' },
-    'UPDATE5ISHERE': { coins: 500000, item: { key: 'fragments', amount: 5 }, rewardMessage: '500,000 coins and 5 Portal Fragments' }
+    'UPDATE5ISHERE': { coins: 500000, item: { key: 'fragments', amount: 5 }, rewardMessage: '500,000 coins and 5 Portal Fragments' },
+    'THEDARKESTKNIGHTRETURNS': {
+      coins: 1000000,
+      items: [{ key: 'light_essence', amount: 10 }],
+      potions: [{ key: 'coin-ii', amount: 2 }, { key: 'luck-v', amount: 2 }],
+      rewardMessage: '1,000,000 coins, 10 Light Essence, 2 Coin Potion II, and 2 Luck Potion V'
+    }
   };
 
   const reward = codeRewards[normalizedCode];
@@ -1799,7 +1805,21 @@ app.post('/api/redeem-code', async (req, res) => {
     redeemedCodes.push(normalizedCode);
     const updates = { redeemed_codes: JSON.stringify(redeemedCodes) };
     if (reward.title) updates.titles = JSON.stringify(titles);
-    if (reward.coins) updates.coins = (Number(user.coins) || 0) + reward.coins;
+    if (reward.coins) updates.coins = Math.min(2147483647, (Number(user.coins) || 0) + reward.coins);
+    if (reward.items?.length) {
+      const items = normalizeRecord(user.items);
+      reward.items.forEach(({ key, amount }) => {
+        items[key] = (Number(items[key]) || 0) + amount;
+      });
+      updates.items = JSON.stringify(items);
+    }
+    if (reward.potions?.length) {
+      const potions = normalizeRecord(user.potions);
+      reward.potions.forEach(({ key, amount }) => {
+        potions[key] = (Number(potions[key]) || 0) + amount;
+      });
+      updates.potions = JSON.stringify(potions);
+    }
     if (reward.item) {
       const items = normalizeRecord(user.items);
       items[reward.item.key] = (Number(items[reward.item.key]) || 0) + reward.item.amount;
