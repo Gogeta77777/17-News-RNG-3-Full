@@ -5006,6 +5006,37 @@
             background: #071225;
         }
 
+        .admin-welcome-banner { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 14px; min-height: 48px; padding: 9px clamp(18px, 3vw, 42px); border-bottom: 1px solid rgba(56, 189, 248, 0.18); background: linear-gradient(90deg, rgba(8, 47, 73, 0.82), rgba(11, 27, 52, 0.96) 64%, rgba(12, 32, 54, 0.86)); }
+        .admin-welcome-label { color: #7dd3fc; font-size: 0.65rem; font-weight: 900; letter-spacing: 0.12em; white-space: nowrap; }
+        .admin-welcome-message { min-width: 0; color: #f0f9ff; font-size: 0.94rem; font-weight: 700; }
+        .admin-welcome-message.is-typing::after { display: inline-block; width: 7px; height: 1em; margin-left: 4px; background: #67e8f9; content: ''; vertical-align: -2px; animation: adminWelcomeCursor 720ms steps(2, end) infinite; }
+        @keyframes adminWelcomeCursor { 50% { opacity: 0; } }
+        .admin-foldout { padding: 0; overflow: hidden; }
+        .admin-foldout > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 14px 20px; list-style: none; cursor: pointer; }
+        .admin-foldout > summary::-webkit-details-marker { display: none; }
+        .admin-foldout > summary::after { flex: 0 0 auto; color: #7dd3fc; content: '+'; font-size: 1.25rem; font-weight: 500; }
+        .admin-foldout[open] > summary::after { content: '−'; }
+        .admin-foldout[open] > summary { border-bottom: 1px solid rgba(148, 163, 184, 0.16); }
+        .admin-foldout-title { min-width: 0; color: #e2e8f0; font-size: 1rem; font-weight: 800; }
+        .admin-foldout-note { min-width: 0; margin-left: auto; color: #8ca6bb; font-size: 0.72rem; text-align: right; }
+        .admin-foldout > :not(summary) { margin-right: 20px; margin-left: 20px; }
+        .admin-foldout > :last-child { margin-bottom: 20px; }
+        .admin-foldout > .event-controls { margin-top: 18px; }
+        .admin-tool-dropdown { margin: 12px 0; border: 1px solid rgba(125, 211, 252, 0.18); background: rgba(4, 17, 33, 0.54); }
+        .admin-tool-dropdown > summary { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; color: #d7e8f4; font-size: 0.82rem; font-weight: 800; cursor: pointer; list-style: none; }
+        .admin-tool-dropdown > summary::-webkit-details-marker { display: none; }
+        .admin-tool-dropdown > summary::after { color: #67e8f9; content: '+'; font-size: 1rem; font-weight: 500; }
+        .admin-tool-dropdown[open] > summary::after { content: '−'; }
+        .admin-tool-dropdown > :not(summary) { margin: 0 12px 12px; }
+        .admin-panel.mini-admin .admin-welcome-banner { padding-right: 20px; padding-left: 20px; }
+        @media (max-width: 640px) {
+            .admin-welcome-banner { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+            .admin-welcome-label { font-size: 0.59rem; }
+            .admin-foldout > summary { padding: 12px 14px; }
+            .admin-foldout > :not(summary) { margin-right: 14px; margin-left: 14px; }
+            .admin-foldout > :last-child { margin-bottom: 14px; }
+        }
+
         .admin-header {
             border-color: rgba(239, 246, 255, 0.14);
             background: #0b1b34;
@@ -5492,8 +5523,9 @@
         .active-event-bar {
             display: flex;
             min-height: 34px;
+            flex-wrap: wrap;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 12px;
             padding: 5px 12px;
             border: 1px solid rgba(251, 191, 36, 0.34);
@@ -5504,7 +5536,7 @@
         .active-event-bar.hidden { display: none; }
         .active-event-kicker { color: #fcd34d; font-size: 0.66rem; font-weight: 900; white-space: nowrap; }
         .active-event-bar strong { color: #fff7ed; font-size: 0.86rem; }
-        #active-event-details { overflow-wrap: anywhere; }
+        #active-event-details { flex: 1 1 280px; min-width: 0; overflow-wrap: anywhere; }
         .game-header-main {
             display: grid;
             grid-template-columns: minmax(0, auto) minmax(180px, 1fr) auto;
@@ -7057,17 +7089,22 @@
             </div>
         </header>
 
+        <div class="admin-welcome-banner hidden" id="admin-welcome-banner" role="status" aria-live="polite">
+            <span class="admin-welcome-label" id="admin-welcome-label">CONTROL ROOM / READY</span>
+            <span class="admin-welcome-message" id="admin-welcome-message"></span>
+        </div>
+
         <div class="admin-content">
-            <div class="admin-section" id="owner-command-section">
-                <h2>Owner Commands</h2>
+            <details class="admin-section admin-foldout" id="owner-command-section">
+                <summary><span class="admin-foldout-title">Owner Commands</span><span class="admin-foldout-note">Maintenance and account controls</span></summary>
                 <div class="owner-command-grid">
                     <div class="owner-command-card"><strong>Clear all chat</strong><span>Remove messages from both Player Chat and Global Drops.</span><button class="btn danger-btn" type="button" data-owner-command="clear-chat">Clear chat history</button></div>
                     <div class="owner-command-card"><strong>End active event</strong><span>Stop the currently running game event.</span><button class="btn" type="button" data-owner-command="end-active-event">End active event</button></div>
                     <form class="owner-command-card owner-password-form" id="owner-password-form"><strong>Change owner password</strong><label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required></label><label>New password<input name="newPassword" type="password" minlength="8" autocomplete="new-password" required></label><button class="btn" type="submit">Update password</button><span id="owner-password-status" role="status"></span></form>
                 </div>
-            </div>
-            <div class="admin-section">
-                <h2>Moving Headline</h2>
+            </details>
+            <details class="admin-section admin-foldout">
+                <summary><span class="admin-foldout-title">Moving Headline</span><span class="admin-foldout-note">Message and ticker settings</span></summary>
                 <form class="headline-admin-form" id="admin-headline-form">
                     <label class="headline-enabled-control"><input type="checkbox" id="admin-headline-enabled"> Show headline to players</label>
                     <label for="admin-headline-label-input">Ticker label</label>
@@ -7082,15 +7119,15 @@
                     </div>
                     <div class="headline-admin-footer"><span id="admin-headline-status" role="status">Headline is off</span><button class="btn" type="submit">Save headline</button></div>
                 </form>
-            </div>
+            </details>
 
-            <div class="admin-section">
-                <h2>Live Game Events</h2>
+            <details class="admin-section admin-foldout" id="event-controls-section" open>
+                <summary><span class="admin-foldout-title">Live Game Events</span><span class="admin-foldout-note">Persistent until manually ended</span></summary>
                 <div class="event-controls">
                     <div class="event-item event-starlight">
                         <div class="event-kicker">MANUAL EVENT / STARFALL</div>
                         <h3>Starlight Surge</h3>
-                        <p>3× luck and 2.5× coins for five minutes beneath a radiant starfall.</p>
+                        <p>A radiant starfall grants 3× luck and 2.5× coins until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-starlight-surge">Launch Surge</button><button class="btn stop-btn" id="deactivate-starlight-surge" hidden>End Surge</button></div>
                         <div class="event-status" id="starlight-surge-status">Ready · manual event</div>
                     </div>
@@ -7098,7 +7135,7 @@
                     <div class="event-item event-meteor">
                         <div class="event-kicker">MANUAL EVENT / METEOR FIELD</div>
                         <h3>Meteor Shower</h3>
-                        <p>Three blazing meteor waves. Rolls grant 3.5× coins plus 400 bonus coins for five minutes.</p>
+                        <p>Three blazing meteor waves. Rolls grant 3.5× coins and 400 bonus coins until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-meteor-shower">Call Meteor Shower</button><button class="btn stop-btn" id="deactivate-meteor-shower" hidden>End Shower</button></div>
                         <div class="event-status" id="meteor-shower-status">Ready · manual event</div>
                     </div>
@@ -7106,7 +7143,7 @@
                     <div class="event-item event-abyssal">
                         <div class="event-kicker">MANUAL EVENT / DEEP SIGNAL</div>
                         <h3>Abyssal Resonance</h3>
-                        <p>A five-minute deep-sea pulse grants 4× luck, 2.5× coins, and 400 bonus coins per roll.</p>
+                        <p>A deep-sea pulse grants 4× luck, 2.5× coins, and 400 bonus coins per roll until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-abyssal-resonance">Call the Resonance</button><button class="btn stop-btn" id="deactivate-abyssal-resonance" hidden>Silence the Deep</button></div>
                         <div class="event-status" id="abyssal-resonance-status">Ready · manual event</div>
                     </div>
@@ -7114,7 +7151,7 @@
                     <div class="event-item event-prismfall owner-only-event">
                         <div class="event-kicker">OWNER SIGNAL / PRISM FIELD</div>
                         <h3>Prismfall</h3>
-                        <p>A five-minute prism storm grants 5× luck, 2× coins, and 350 bonus coins per roll.</p>
+                        <p>A prism storm grants 5× luck, 2× coins, and 350 bonus coins per roll until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-prismfall">Start Prismfall</button><button class="btn stop-btn" id="deactivate-prismfall" hidden>End Prismfall</button></div>
                         <div class="event-status" id="prismfall-status">Owner only · ready</div>
                     </div>
@@ -7122,44 +7159,47 @@
                     <div class="event-item event-gravity-well owner-only-event">
                         <div class="event-kicker">OWNER SIGNAL / GRAVITY FIELD</div>
                         <h3>Gravity Well</h3>
-                        <p>A five-minute gravity lens grants 5× coins and 500 bonus coins per roll.</p>
+                        <p>A gravity lens grants 5× coins and 500 bonus coins per roll until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-gravity-well">Open Gravity Well</button><button class="btn stop-btn" id="deactivate-gravity-well" hidden>Close Gravity Well</button></div>
                         <div class="event-status" id="gravity-well-status">Owner only · ready</div>
                     </div>
                     <div class="event-item event-confetti">
                         <div class="event-kicker">COMMUNITY EVENT / CONFETTI</div>
                         <h3>Confetti Party</h3>
-                        <p>A five-minute celebration with 2.5× coins and 400 bonus coins per roll.</p>
+                        <p>A celebration with 2.5× coins and 400 bonus coins per roll until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-confetti-party" type="button">Start Confetti Party</button><button class="btn stop-btn" id="deactivate-confetti-party" type="button" hidden>End Party</button></div>
                         <div class="event-status" id="confetti-party-status">Ready · admin or owner</div>
                     </div>
                     <div class="event-item event-blackhole owner-only-event">
                         <div class="event-kicker">OWNER SIGNAL / SINGULARITY</div>
                         <h3>Blackhole</h3>
-                        <p>For 60 seconds, earn 3× luck, 3× coins, and 500 bonus coins per roll. Players online at collapse receive Light Essence and 2,500 coins.</p>
+                        <p>Earn 3× luck, 3× coins, and 500 bonus coins per roll until ended. Players online at collapse receive Light Essence and 2,500 coins.</p>
                         <div class="event-buttons"><button class="btn" id="activate-blackhole" type="button">Open Blackhole</button></div>
                         <div class="event-status" id="blackhole-status">Owner only · ready</div>
                     </div>
                     <div class="event-item event-nuclear-fallout owner-only-event" id="nuclear-fallout-event-card">
                         <div class="event-kicker">OWNER SIGNAL / NUCLEAR FALLOUT</div>
                         <h3>Nuclear Fallout</h3>
-                        <p>A warhead falls into a towering mushroom cloud. Four seconds later, radioactive rain begins and 5× luck activates; earn 6× coins and 2,000 bonus per roll for 30 seconds.</p>
+                        <p>A warhead falls into a towering mushroom cloud. Four seconds later, radioactive rain begins and 5× luck activates; earn 6× coins and 2,000 bonus per roll until ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-nuclear-fallout" type="button">Deploy Warhead</button><button class="btn stop-btn" id="deactivate-nuclear-fallout" type="button" hidden>End Fallout</button></div>
                         <div class="event-status" id="nuclear-fallout-status">Owner only · ready</div>
                     </div>
                 </div>
-            </div>
+            </details>
 
             <div class="admin-section" id="mini-ops-section">
                 <h2>Admin Panel</h2>
                 <p class="admin-abuse-warning" role="note">Do not abuse, your activity is being monitored.</p>
-                <div class="mini-ops-events">
-                    <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
-                    <button class="btn" data-mini-event="meteor-shower" type="button">Call Meteor Shower</button>
-                    <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
-                    <button class="btn" data-mini-event="confetti-party" type="button">Start Confetti Party</button>
-                    <button class="btn stop-btn" data-mini-stop type="button">End My Event</button>
-                </div>
+                <details class="admin-tool-dropdown" open>
+                    <summary>Event controls<span>Manual start / stop</span></summary>
+                    <div class="mini-ops-events">
+                        <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
+                        <button class="btn" data-mini-event="meteor-shower" type="button">Call Meteor Shower</button>
+                        <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
+                        <button class="btn" data-mini-event="confetti-party" type="button">Start Confetti Party</button>
+                        <button class="btn stop-btn" data-mini-stop type="button">End My Event</button>
+                    </div>
+                </details>
                 <form class="mini-headline-form" id="mini-headline-form">
                     <h3>Moving headline</h3>
                     <label><input type="checkbox" name="active"> Show headline</label>
@@ -7172,27 +7212,33 @@
                     <label>Message<textarea name="content" maxlength="500" required></textarea></label>
                     <button class="btn" type="submit">Send Admin Announcement</button>
                 </form>
-                <p class="mini-ops-status" id="mini-ops-status" role="status">Loading player activity…</p>
-                <div class="mini-user-roster" id="mini-user-roster"></div>
+                <details class="admin-tool-dropdown" open>
+                    <summary>Player list<span>Online status and activity</span></summary>
+                    <p class="mini-ops-status" id="mini-ops-status" role="status">Loading player activity…</p>
+                    <div class="mini-user-roster" id="mini-user-roster"></div>
+                </details>
             </div>
 
-            <div class="admin-section" id="owner-audit-section">
-                <div class="owner-audit-heading"><div><h2>Admin Activity</h2><p>Recent moderation and operations actions.</p></div><button class="btn" id="refresh-admin-audit" type="button">Refresh log</button></div>
+            <details class="admin-section admin-foldout" id="owner-audit-section">
+                <summary><span class="admin-foldout-title">Admin Activity</span><span class="admin-foldout-note">Moderation and operations log</span></summary>
+                <div class="owner-audit-heading"><p>Recent moderation and operations actions.</p><button class="btn" id="refresh-admin-audit" type="button">Refresh log</button></div>
                 <div class="owner-audit-list" id="admin-audit-list" aria-live="polite"></div>
-            </div>
+            </details>
 
-            <div class="admin-section" id="owner-inbox-log-section">
-                <div class="owner-audit-heading"><div><h2>Inbox Activity</h2><p>Recent player messages and gifts, newest first.</p></div><button class="btn" id="refresh-inbox-log" type="button">Refresh log</button></div>
+            <details class="admin-section admin-foldout" id="owner-inbox-log-section">
+                <summary><span class="admin-foldout-title">Inbox Activity</span><span class="admin-foldout-note">Player messages and gifts</span></summary>
+                <div class="owner-audit-heading"><p>Recent player messages and gifts, newest first.</p><button class="btn" id="refresh-inbox-log" type="button">Refresh log</button></div>
                 <div class="owner-audit-list owner-inbox-log" id="owner-inbox-log" aria-live="polite"></div>
-            </div>
+            </details>
 
-            <div class="admin-section" id="rules-agreement-section">
-                <div class="owner-audit-heading"><div><h2>Rules Agreement Log</h2><p>Players who agreed and players still waiting to agree.</p></div><button class="btn" id="refresh-rules-agreements" type="button">Refresh log</button></div>
+            <details class="admin-section admin-foldout" id="rules-agreement-section">
+                <summary><span class="admin-foldout-title">Rules Agreement Log</span><span class="admin-foldout-note">Player agreement status</span></summary>
+                <div class="owner-audit-heading"><p>Players who agreed and players still waiting to agree.</p><button class="btn" id="refresh-rules-agreements" type="button">Refresh log</button></div>
                 <div class="owner-audit-list" id="rules-agreement-log" aria-live="polite"></div>
-            </div>
+            </details>
 
-            <div class="admin-section" id="global-drop-section">
-                <h2>Global Drop</h2>
+            <details class="admin-section admin-foldout" id="global-drop-section">
+                <summary><span class="admin-foldout-title">Global Drop</span><span class="admin-foldout-note">Grant a reward to every account</span></summary>
                 <p class="admin-section-copy">Grant rarity, potion, or item rewards to every account. Owner Panel drops are highlighted in gold in Global Drops chat.</p>
                 <div class="global-drop-preview" id="global-drop-preview" role="status"><strong>Global reward preview</strong><span>Select a reward to preview the grant.</span></div>
                 <form class="global-drop-form" id="global-drop-form">
@@ -7202,34 +7248,34 @@
                     <label class="global-drop-message-field">Inbox message<textarea name="message" maxlength="500" placeholder="Optional message included with the gift"></textarea></label>
                     <button class="btn" type="submit">Grant to everyone</button>
                 </form>
-            </div>
+            </details>
 
-            <div class="admin-section admin-system-controls">
-                <h2>Service Control</h2>
+            <details class="admin-section admin-foldout admin-system-controls">
+                <summary><span class="admin-foldout-title">Service Control</span><span class="admin-foldout-note">Maintenance and release controls</span></summary>
                 <div class="system-control-row">
                     <div><strong id="shutdown-status">All systems online</strong><span>Maintenance mode blocks rolls, chat, and game services for every player.</span></div>
                     <div class="system-control-actions"><button class="btn danger-btn" id="shutdown-toggle" type="button">Begin shutdown</button><button class="btn" id="update-shutdown-btn" type="button">Update, please refresh</button></div>
                 </div>
-            </div>
+            </details>
 
-            <div class="admin-section">
-                <h2>💬 Chat Management</h2>
+            <details class="admin-section admin-foldout">
+                <summary><span class="admin-foldout-title">Chat Management</span><span class="admin-foldout-note">Broadcast and clear chat</span></summary>
                 <div class="chat-controls">
                     <button class="btn" id="broadcast-btn">📢 Broadcast Message</button>
                     <button class="btn danger-btn" id="clear-chat-btn">🗑️ Clear Chat</button>
                 </div>
-            </div>
+            </details>
 
-            <div class="admin-section">
-                <h2>Player Details</h2>
+            <details class="admin-section admin-foldout" id="player-management-section">
+                <summary><span class="admin-foldout-title">Player List and Details</span><span class="admin-foldout-note">Select an account to manage</span></summary>
                 <label class="admin-player-selector" for="admin-player-select">Select a player
                     <select id="admin-player-select"><option value="">Loading players...</option></select>
                 </label>
                 <div class="user-list" id="user-list"></div>
-            </div>
+            </details>
 
-            <div class="admin-section">
-                <h2>📢 Announcements</h2>
+            <details class="admin-section admin-foldout">
+                <summary><span class="admin-foldout-title">Announcements</span><span class="admin-foldout-note">Send a message to players</span></summary>
                 <form class="announcement-form" id="announcement-form">
                     <div class="form-group">
                         <label>Title</label>
@@ -7241,7 +7287,7 @@
                     </div>
                     <button type="submit" class="btn">Send Announcement</button>
                 </form>
-            </div>
+            </details>
         </div>
     </div>
 
