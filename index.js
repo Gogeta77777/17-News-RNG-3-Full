@@ -767,65 +767,67 @@ async function ensureDatabase() {
 const GAME_EVENTS = {
     'confetti-party': {
       title: 'Confetti Party',
-      coinMultiplier: 2,
-      bonusCoins: 250,
-      durationSeconds: 240,
-      description: 'A four-minute confetti celebration with 2× coins and +250 coins per roll'
+      coinMultiplier: 2.5,
+      bonusCoins: 400,
+      durationSeconds: 300,
+      description: 'Five minutes of confetti, 2.5× coins, and +400 coins per roll'
     },
     blackhole: {
       title: 'Blackhole',
-      coinMultiplier: 2,
-      bonusCoins: 250,
-      luckMultiplier: 2,
-      durationSeconds: 45,
+      coinMultiplier: 3,
+      bonusCoins: 500,
+      luckMultiplier: 3,
+      durationSeconds: 60,
       ownerOnly: true,
-      description: 'A 45-second singularity bends luck and grants Light Essence plus 1,000 coins to players online at its close'
+      description: 'A 60-second singularity grants 3× luck, 3× coins, +500 per roll, and a closing reward of Light Essence plus 2,500 coins'
     },
-    nuke: {
-      title: 'Nuke',
-      coinMultiplier: 5,
-      bonusCoins: 1000,
-      durationSeconds: 20,
+    'nuclear-fallout': {
+      title: 'Nuclear Fallout',
+      coinMultiplier: 6,
+      bonusCoins: 2000,
+      durationSeconds: 30,
       ownerOnly: true,
-      description: 'A 20-second world-shaking blast grants 5× coins and +1,000 coins per roll'
+      description: 'A 30-second fallout event grants 6× coins and +2,000 coins per roll'
     },
   'starlight-surge': {
     title: 'Starlight Surge',
-    coinMultiplier: 2,
+    coinMultiplier: 2.5,
     bonusCoins: 0,
-    luckMultiplier: 2,
-    description: '2x coins and 2x luck'
+    luckMultiplier: 3,
+    durationSeconds: 300,
+    description: '3× luck and 2.5× coins for five minutes'
   },
   'meteor-shower': {
     title: 'Meteor Shower',
-    coinMultiplier: 3,
-    bonusCoins: 250,
-    durationSeconds: 240,
-    description: '3x coins and +250 bonus coins per roll during three meteor waves'
+    coinMultiplier: 3.5,
+    bonusCoins: 400,
+    durationSeconds: 300,
+    description: 'Three meteor waves, 3.5× coins, and +400 coins per roll for five minutes'
   },
   'abyssal-resonance': {
     title: 'Abyssal Resonance',
-    coinMultiplier: 2,
-    bonusCoins: 250,
-    luckMultiplier: 3,
-    description: '3x luck and +250 bonus coins, amplified in the Sea Realm'
+    coinMultiplier: 2.5,
+    bonusCoins: 400,
+    luckMultiplier: 4,
+    durationSeconds: 300,
+    description: '4× luck, 2.5× coins, and +400 coins per roll for five minutes'
   },
   'prismfall': {
     title: 'Prismfall',
-    coinMultiplier: 1.5,
-    bonusCoins: 200,
-    luckMultiplier: 4,
-    durationSeconds: 240,
+    coinMultiplier: 2,
+    bonusCoins: 350,
+    luckMultiplier: 5,
+    durationSeconds: 300,
     ownerOnly: true,
-    description: '4x luck and 1.5x coins +200 per roll as prism shards cross the signal field'
+    description: '5× luck, 2× coins, and +350 coins per roll for five minutes'
   },
   'gravity-well': {
     title: 'Gravity Well',
-    coinMultiplier: 4,
-    bonusCoins: 250,
-    durationSeconds: 240,
+    coinMultiplier: 5,
+    bonusCoins: 500,
+    durationSeconds: 300,
     ownerOnly: true,
-    description: '4x coins +250 per roll as the gravity field bends the star map'
+    description: '5× coins and +500 coins per roll for five minutes as gravity bends the star map'
   }
 };
 
@@ -908,7 +910,7 @@ async function grantBlackholeRewards() {
     if (!user) continue;
     const items = normalizeRecord(user.items);
     items.light_essence = (Number(items.light_essence) || 0) + 1;
-    const coins = Math.min(2147483647, (Number(user.coins) || 0) + 1000);
+    const coins = Math.min(2147483647, (Number(user.coins) || 0) + 2500);
     await updateUser(username, { items: JSON.stringify(items), coins });
     const updatedUser = await findUser(username);
     io.to(`user:${normalizeUsername(username)}`).emit('blackhole-reward', { item: 'Light Essence', amount: 1, user: sanitizeUser(updatedUser) });
