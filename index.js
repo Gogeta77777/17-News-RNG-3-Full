@@ -368,7 +368,10 @@ function getActiveEffectMultiplier(username, effectType) {
 }
 
 function getLuckMultiplier(username, dimension = null) {
-  const eventLuckMultiplier = getActiveGameEvent()?.luckMultiplier || 1;
+  const activeEvent = getActiveGameEvent();
+  const eventLuckMultiplier = activeEvent?.luckStartsAt && Date.now() < activeEvent.luckStartsAt
+    ? 1
+    : activeEvent?.luckMultiplier || 1;
   return Math.min(MAX_TOTAL_LUCK_MULTIPLIER, getActiveEffectMultiplier(username, 'luck')
     * getActiveEffectMultiplier(username, 'deep-luck')
     * (dimension === 'deep-sea' ? 4 : 1)
@@ -785,9 +788,11 @@ const GAME_EVENTS = {
       title: 'Nuclear Fallout',
       coinMultiplier: 6,
       bonusCoins: 2000,
+      luckMultiplier: 5,
+      luckStartsAfterSeconds: 4,
       durationSeconds: 30,
       ownerOnly: true,
-      description: 'A 30-second fallout event grants 6× coins and +2,000 coins per roll'
+      description: '6× coins and +2,000 per roll; 5× luck begins when radioactive rain starts'
     },
   'starlight-surge': {
     title: 'Starlight Surge',
@@ -931,18 +936,22 @@ function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null, 
   const durationSeconds = Number.isFinite(Number(durationOverrideSeconds)) && Number(durationOverrideSeconds) > 0
     ? Math.min(1800, Math.floor(Number(durationOverrideSeconds)))
     : config.durationSeconds;
+  const startedAt = Date.now();
   activeGameEvent = {
     eventName,
     title: config.title,
     initiatedBy,
     source,
     durationSeconds,
+    luckStartsAt: config.luckMultiplier
+      ? startedAt + (Number(config.luckStartsAfterSeconds) || 0) * 1000
+      : null,
     coinMultiplier: config.coinMultiplier,
     bonusCoins: config.bonusCoins,
     luckMultiplier: config.luckMultiplier || 1,
     description: config.description,
-    startedAt: new Date().toISOString(),
-    expiresAt: durationSeconds ? Date.now() + durationSeconds * 1000 : null
+    startedAt: new Date(startedAt).toISOString(),
+    expiresAt: durationSeconds ? startedAt + durationSeconds * 1000 : null
   };
   io.emit('theme-event', { ...activeGameEvent, active: true });
   if (durationSeconds) {
