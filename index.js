@@ -773,7 +773,8 @@ const GAME_EVENTS = {
       coinMultiplier: 2.5,
       bonusCoins: 400,
       durationSeconds: 300,
-      description: 'Five minutes of confetti, 2.5× coins, and +400 coins per roll'
+      rewardSummary: '2.5× coins · +400 coins per roll',
+      description: 'Confetti celebration, 2.5× coins, and +400 coins per roll while active'
     },
     blackhole: {
       title: 'Blackhole',
@@ -782,7 +783,8 @@ const GAME_EVENTS = {
       luckMultiplier: 3,
       durationSeconds: 60,
       ownerOnly: true,
-      description: 'A 60-second singularity grants 3× luck, 3× coins, +500 per roll, and a closing reward of Light Essence plus 2,500 coins'
+      rewardSummary: '3× luck · 3× coins · +500 coins per roll · 1 Light Essence + 2,500 coins at close',
+      description: 'A singularity grants 3× luck, 3× coins, +500 per roll, and a closing reward of Light Essence plus 2,500 coins'
     },
     'nuclear-fallout': {
       title: 'Nuclear Fallout',
@@ -792,7 +794,8 @@ const GAME_EVENTS = {
       luckStartsAfterSeconds: 4,
       durationSeconds: 30,
       ownerOnly: true,
-      description: '6× coins and +2,000 per roll; 5× luck begins when radioactive rain starts'
+      rewardSummary: '6× coins · +2,000 coins per roll · 5× luck after radioactive rain begins',
+      description: 'Nuclear Fallout grants 6× coins and +2,000 per roll; 5× luck begins when radioactive rain starts'
     },
   'starlight-surge': {
     title: 'Starlight Surge',
@@ -800,14 +803,16 @@ const GAME_EVENTS = {
     bonusCoins: 0,
     luckMultiplier: 3,
     durationSeconds: 300,
-    description: '3× luck and 2.5× coins for five minutes'
+    rewardSummary: '3× luck · 2.5× coins',
+    description: '3× luck and 2.5× coins while active'
   },
   'meteor-shower': {
     title: 'Meteor Shower',
     coinMultiplier: 3.5,
     bonusCoins: 400,
     durationSeconds: 300,
-    description: 'Three meteor waves, 3.5× coins, and +400 coins per roll for five minutes'
+    rewardSummary: '3.5× coins · +400 coins per roll',
+    description: 'Three meteor waves, 3.5× coins, and +400 coins per roll while active'
   },
   'abyssal-resonance': {
     title: 'Abyssal Resonance',
@@ -815,7 +820,8 @@ const GAME_EVENTS = {
     bonusCoins: 400,
     luckMultiplier: 4,
     durationSeconds: 300,
-    description: '4× luck, 2.5× coins, and +400 coins per roll for five minutes'
+    rewardSummary: '4× luck · 2.5× coins · +400 coins per roll',
+    description: '4× luck, 2.5× coins, and +400 coins per roll while active'
   },
   'prismfall': {
     title: 'Prismfall',
@@ -824,7 +830,8 @@ const GAME_EVENTS = {
     luckMultiplier: 5,
     durationSeconds: 300,
     ownerOnly: true,
-    description: '5× luck, 2× coins, and +350 coins per roll for five minutes'
+    rewardSummary: '5× luck · 2× coins · +350 coins per roll',
+    description: '5× luck, 2× coins, and +350 coins per roll while active'
   },
   'gravity-well': {
     title: 'Gravity Well',
@@ -832,7 +839,8 @@ const GAME_EVENTS = {
     bonusCoins: 500,
     durationSeconds: 300,
     ownerOnly: true,
-    description: '5× coins and +500 coins per roll for five minutes as gravity bends the star map'
+    rewardSummary: '5× coins · +500 coins per roll',
+    description: '5× coins and +500 coins per roll as gravity bends the star map'
   }
 };
 
@@ -933,9 +941,11 @@ function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null, 
   const config = GAME_EVENTS[eventName];
   if (!config) return null;
   endActiveGameEvent();
-  const durationSeconds = Number.isFinite(Number(durationOverrideSeconds)) && Number(durationOverrideSeconds) > 0
-    ? Math.min(1800, Math.floor(Number(durationOverrideSeconds)))
-    : config.durationSeconds;
+  const durationSeconds = source === 'panel'
+    ? null
+    : Number.isFinite(Number(durationOverrideSeconds)) && Number(durationOverrideSeconds) > 0
+      ? Math.min(1800, Math.floor(Number(durationOverrideSeconds)))
+      : config.durationSeconds;
   const startedAt = Date.now();
   activeGameEvent = {
     eventName,
@@ -949,6 +959,7 @@ function startGameEvent(eventName, initiatedBy, durationOverrideSeconds = null, 
     coinMultiplier: config.coinMultiplier,
     bonusCoins: config.bonusCoins,
     luckMultiplier: config.luckMultiplier || 1,
+    rewardSummary: config.rewardSummary,
     description: config.description,
     startedAt: new Date(startedAt).toISOString(),
     expiresAt: durationSeconds ? startedAt + durationSeconds * 1000 : null
