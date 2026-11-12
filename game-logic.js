@@ -1623,7 +1623,7 @@ function updateUI(user) {
       adminBtn.classList.add('hidden');
     }
   }
-  document.getElementById('nuke-event-card')?.classList.toggle('hidden', !user.is_admin);
+  document.querySelectorAll('.owner-only-event').forEach(card => card.classList.toggle('hidden', !user.is_admin));
 
   document.getElementById('reward-display').textContent = `🪙 Reward: 0 coins`;
 
@@ -2449,7 +2449,7 @@ const LIVE_EVENT_PRESENTATION = {
   'gravity-well': { className: 'gravity-well-live', startId: 'activate-gravity-well', stopId: 'deactivate-gravity-well' },
   'confetti-party': { className: 'confetti-party-live', startId: 'activate-confetti-party', stopId: 'deactivate-confetti-party' },
   blackhole: { className: 'blackhole-live', startId: 'activate-blackhole', stopId: null },
-  nuke: { className: 'nuke-live', startId: 'activate-nuke', stopId: 'deactivate-nuke' }
+  'nuclear-fallout': { className: 'nuclear-fallout-live', startId: 'activate-nuclear-fallout', stopId: 'deactivate-nuclear-fallout' }
 };
 
 let blackholeCountdownTimer = null;
@@ -2578,20 +2578,32 @@ function createAdminEventVisual(eventName) {
       mote.style.setProperty('--mote-duration', `${1.3 + Math.random() * 2.2}s`);
       layer.appendChild(mote);
     }
-  } else if (eventName === 'nuke') {
-    for (let index = 0; index < 4; index += 1) {
+  } else if (eventName === 'nuclear-fallout') {
+    const warhead = document.createElement('span');
+    warhead.className = 'event-nuclear-warhead';
+    const warheadTrail = document.createElement('span');
+    warheadTrail.className = 'event-nuclear-warhead-trail';
+    warhead.appendChild(warheadTrail);
+    const impact = document.createElement('span');
+    impact.className = 'event-nuclear-impact';
+    const cloud = document.createElement('span');
+    cloud.className = 'event-nuclear-cloud';
+    const cloudStem = document.createElement('span');
+    cloudStem.className = 'event-nuclear-cloud-stem';
+    const cloudCap = document.createElement('span');
+    cloudCap.className = 'event-nuclear-cloud-cap';
+    cloud.append(cloudStem, cloudCap);
+    const radiation = document.createElement('span');
+    radiation.className = 'event-nuclear-radiation-symbol';
+    radiation.textContent = '☢';
+    const fallout = document.createElement('span');
+    fallout.className = 'event-nuclear-fallout-haze';
+    layer.append(warhead, impact, cloud, radiation, fallout);
+    for (let index = 0; index < 3; index += 1) {
       const ring = document.createElement('span');
-      ring.className = 'event-nuke-ring';
-      ring.style.setProperty('--ring-delay', `${index * -1.1}s`);
+      ring.className = 'event-nuclear-shockwave';
+      ring.style.setProperty('--wave-delay', `${2.2 + index * 0.8}s`);
       layer.appendChild(ring);
-    }
-    for (let index = 0; index < 34; index += 1) {
-      const spark = document.createElement('span');
-      spark.className = 'event-nuke-spark';
-      spark.style.setProperty('--spark-left', `${Math.random() * 100}%`);
-      spark.style.setProperty('--spark-delay', `${Math.random() * -4}s`);
-      spark.style.setProperty('--spark-duration', `${2 + Math.random() * 3}s`);
-      layer.appendChild(spark);
     }
   } else if (eventName === 'starlight-surge') {
     for (let index = 0; index < 24; index += 1) {
@@ -2672,7 +2684,6 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
     if (status) status.textContent = `LIVE · ${description}`;
   } else {
     clearEventVisuals();
-    document.body.classList.remove('nuke-live');
     if (eventName === 'blackhole') startBlackholeFinale();
     if (startButton) startButton.hidden = false;
     if (stopButton) stopButton.hidden = true;
@@ -2686,11 +2697,16 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   if (eventDetails) eventDetails.textContent = active ? description : '';
   clearInterval(blackholeCountdownTimer);
   blackholeCountdownTimer = null;
-  if (active && eventName === 'blackhole') {
-    const expiresAt = Number(event.expiresAt) || Date.now() + 10000;
+  if (active && Number(event.expiresAt)) {
+    const expiresAt = Number(event.expiresAt);
+    const countdownLabel = eventName === 'blackhole'
+      ? 'Collapsing in'
+      : eventName === 'nuclear-fallout'
+        ? 'Containment in'
+        : 'Ends in';
     const updateCountdown = () => {
       const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
-      if (eventDetails) eventDetails.textContent = `Collapsing in ${remaining}s`;
+      if (eventDetails) eventDetails.textContent = `${countdownLabel} ${remaining}s`;
       if (remaining <= 0) {
         clearInterval(blackholeCountdownTimer);
         blackholeCountdownTimer = null;
