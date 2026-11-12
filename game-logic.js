@@ -2443,18 +2443,19 @@ async function loadAdminHeadline() {
 
 const LIVE_EVENT_PRESENTATION = {
   'starlight-surge': { className: 'starlight-surge', startId: 'activate-starlight-surge', stopId: 'deactivate-starlight-surge' },
-  'meteor-shower': { className: 'meteor-shower-live', startId: 'activate-meteor-shower', stopId: 'deactivate-meteor-shower' },
+  'meteor-shower': { className: 'meteor-shower-live', startId: 'activate-meteor-shower', stopId: 'deactivate-meteor-shower', shakeEveryMs: 11000, shakeAfterMs: [2100, 6200] },
   'abyssal-resonance': { className: 'abyssal-resonance-live', startId: 'activate-abyssal-resonance', stopId: 'deactivate-abyssal-resonance', shakeEveryMs: 26000 },
   'prismfall': { className: 'prismfall-live', startId: 'activate-prismfall', stopId: 'deactivate-prismfall' },
   'gravity-well': { className: 'gravity-well-live', startId: 'activate-gravity-well', stopId: 'deactivate-gravity-well' },
   'confetti-party': { className: 'confetti-party-live', startId: 'activate-confetti-party', stopId: 'deactivate-confetti-party' },
-  blackhole: { className: 'blackhole-live', startId: 'activate-blackhole', stopId: null },
-  'nuclear-fallout': { className: 'nuclear-fallout-live', startId: 'activate-nuclear-fallout', stopId: 'deactivate-nuclear-fallout' }
+  blackhole: { className: 'blackhole-live', startId: 'activate-blackhole', stopId: null, shakeEveryMs: 12000 },
+  'nuclear-fallout': { className: 'nuclear-fallout-live', startId: 'activate-nuclear-fallout', stopId: 'deactivate-nuclear-fallout', shakeAfterMs: [1950] }
 };
 
 let blackholeCountdownTimer = null;
 let blackholeFinaleStartTimer = null;
 let blackholeFinaleEndTimer = null;
+let eventCameraShakeTimers = [];
 let finnEventAnnouncementTimer = null;
 let lastFinnEventAnnouncement = null;
 const FINN_EVENT_DIALOGUES = {
@@ -2479,6 +2480,8 @@ function clearEventVisuals() {
   clearTimeout(cameraShakeEndTimer);
   cameraShakeTimer = null;
   cameraShakeEndTimer = null;
+  eventCameraShakeTimers.forEach(timer => clearTimeout(timer));
+  eventCameraShakeTimers = [];
   document.body.classList.remove('event-camera-shake');
   Object.values(LIVE_EVENT_PRESENTATION).forEach(event => document.body.classList.remove(event.className));
   clearTimeout(blackholeFinaleStartTimer);
@@ -2502,10 +2505,10 @@ function startBlackholeFinale() {
   blackholeFinaleEndTimer = setTimeout(() => {
     overlay.remove();
     document.body.classList.remove('blackhole-finale');
-  }, 6250);
+  }, 2600);
 }
 
-function createAdminEventVisual(eventName) {
+function createAdminEventVisual(eventName, eventData = {}) {
   clearEventVisuals();
   const presentation = LIVE_EVENT_PRESENTATION[eventName];
   if (!presentation) return;
@@ -2513,15 +2516,20 @@ function createAdminEventVisual(eventName) {
   const layer = document.createElement('div');
   layer.className = `event-visual-layer event-visual-${eventName}`;
   layer.setAttribute('aria-hidden', 'true');
+  if (eventName === 'nuclear-fallout') {
+    const radiationDelay = Math.max(0, (Number(eventData.luckStartsAt) - Date.now()) / 1000);
+    layer.style.setProperty('--radiation-delay', `${radiationDelay}s`);
+  }
   if (eventName === 'meteor-shower') {
-    for (let index = 0; index < 30; index += 1) {
+    for (let index = 0; index < 24; index += 1) {
       const meteor = document.createElement('span');
       meteor.className = `event-meteor-streak event-meteor-wave-${index % 3}`;
-      meteor.style.setProperty('--meteor-left', `${Math.random() * 120 - 10}%`);
-      meteor.style.setProperty('--meteor-delay', `${Math.random() * -7}s`);
-      meteor.style.setProperty('--meteor-duration', `${1.2 + Math.random() * 1.2}s`);
+      meteor.style.setProperty('--meteor-left', `${8 + Math.random() * 104}%`);
+      meteor.style.setProperty('--meteor-delay', `${Math.floor(index / 3) * 0.42}s`);
+      meteor.style.setProperty('--meteor-duration', `${2.8 + Math.random() * 1.6}s`);
       meteor.style.setProperty('--meteor-size', `${16 + Math.random() * 24}px`);
-      meteor.style.setProperty('--meteor-angle', `${-3 + Math.random() * 6}deg`);
+      meteor.style.setProperty('--meteor-angle', `${22 + Math.random() * 30}deg`);
+      meteor.style.setProperty('--meteor-drift-x', `${-24 + Math.random() * 48}vw`);
       layer.appendChild(meteor);
     }
   } else if (eventName === 'prismfall') {
@@ -2561,21 +2569,30 @@ function createAdminEventVisual(eventName) {
       layer.appendChild(piece);
     }
   } else if (eventName === 'blackhole') {
-    for (let index = 0; index < 3; index += 1) {
+    const lens = document.createElement('span');
+    lens.className = 'event-blackhole-lens';
+    const flash = document.createElement('span');
+    flash.className = 'event-blackhole-flash';
+    const disk = document.createElement('span');
+    disk.className = 'event-blackhole-disk';
+    const jet = document.createElement('span');
+    jet.className = 'event-blackhole-jet';
+    layer.append(lens, flash, disk, jet);
+    for (let index = 0; index < 2; index += 1) {
       const ring = document.createElement('span');
       ring.className = 'event-blackhole-ring';
-      ring.style.setProperty('--ring-delay', `${index * -1.6}s`);
+      ring.style.setProperty('--ring-delay', `${index * -2.4}s`);
       layer.appendChild(ring);
     }
     const hole = document.createElement('span');
     hole.className = 'event-blackhole-core';
     layer.appendChild(hole);
-    for (let index = 0; index < 64; index += 1) {
+    for (let index = 0; index < 40; index += 1) {
       const mote = document.createElement('span');
       mote.className = 'event-blackhole-mote';
       mote.style.setProperty('--mote-angle', `${Math.random() * 360}deg`);
-      mote.style.setProperty('--mote-delay', `${Math.random() * -3}s`);
-      mote.style.setProperty('--mote-duration', `${1.3 + Math.random() * 2.2}s`);
+      mote.style.setProperty('--mote-delay', `${Math.random() * -2.5}s`);
+      mote.style.setProperty('--mote-duration', `${2 + Math.random() * 2.4}s`);
       layer.appendChild(mote);
     }
   } else if (eventName === 'nuclear-fallout') {
@@ -2583,7 +2600,15 @@ function createAdminEventVisual(eventName) {
     warhead.className = 'event-nuclear-warhead';
     const warheadTrail = document.createElement('span');
     warheadTrail.className = 'event-nuclear-warhead-trail';
-    warhead.appendChild(warheadTrail);
+    const warheadBody = document.createElement('span');
+    warheadBody.className = 'event-nuclear-warhead-body';
+    const warheadNose = document.createElement('span');
+    warheadNose.className = 'event-nuclear-warhead-nose';
+    const warheadFinLeft = document.createElement('span');
+    warheadFinLeft.className = 'event-nuclear-warhead-fin event-nuclear-warhead-fin-left';
+    const warheadFinRight = document.createElement('span');
+    warheadFinRight.className = 'event-nuclear-warhead-fin event-nuclear-warhead-fin-right';
+    warhead.append(warheadTrail, warheadBody, warheadNose, warheadFinLeft, warheadFinRight);
     const impact = document.createElement('span');
     impact.className = 'event-nuclear-impact';
     const cloud = document.createElement('span');
@@ -2598,7 +2623,20 @@ function createAdminEventVisual(eventName) {
     radiation.textContent = '☢';
     const fallout = document.createElement('span');
     fallout.className = 'event-nuclear-fallout-haze';
-    layer.append(warhead, impact, cloud, radiation, fallout);
+    const whiteout = document.createElement('span');
+    whiteout.className = 'event-nuclear-whiteout';
+    const rain = document.createElement('span');
+    rain.className = 'event-nuclear-rain';
+    layer.append(warhead, impact, cloud, radiation, fallout, whiteout, rain);
+    for (let index = 0; index < 54; index += 1) {
+      const drop = document.createElement('span');
+      drop.className = 'event-nuclear-rain-drop';
+      drop.style.setProperty('--drop-left', `${Math.random() * 100}%`);
+      drop.style.setProperty('--drop-delay', `${Math.random() * 1.6}s`);
+      drop.style.setProperty('--drop-duration', `${1.8 + Math.random() * 1.8}s`);
+      drop.style.setProperty('--drop-angle', `${8 + Math.random() * 16}deg`);
+      rain.appendChild(drop);
+    }
     for (let index = 0; index < 3; index += 1) {
       const ring = document.createElement('span');
       ring.className = 'event-nuclear-shockwave';
@@ -2629,6 +2667,9 @@ function createAdminEventVisual(eventName) {
   }
   document.body.appendChild(layer);
   eventVisualLayer = layer;
+  presentation.shakeAfterMs?.forEach(delay => {
+    eventCameraShakeTimers.push(setTimeout(triggerCameraShake, delay));
+  });
   if (presentation.shakeEveryMs) {
     triggerCameraShake();
     cameraShakeTimer = setInterval(triggerCameraShake, presentation.shakeEveryMs);
@@ -2678,7 +2719,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const stopButton = document.getElementById(presentation.stopId);
 
   if (active) {
-    createAdminEventVisual(eventName);
+    createAdminEventVisual(eventName, event);
     if (startButton) startButton.hidden = true;
     if (stopButton) stopButton.hidden = false;
     if (status) status.textContent = `LIVE · ${description}`;
