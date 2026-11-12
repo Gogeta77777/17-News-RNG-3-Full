@@ -2271,6 +2271,60 @@ async function loadAdminRulesAgreements() {
   }));
 }
 
+let adminWelcomeTypingTimer = null;
+let adminWelcomeTypingRun = 0;
+const ADMIN_PANEL_DIALOGUES = {
+  owner: [
+    'Welcome, Owner {username}. Every system is standing by.',
+    'Welcome back, {username}. The control room is yours.',
+    'Time to steer the whole operation, {username}.',
+    'Good to see you again, Owner. The network is quiet.',
+    'All stations are yours, {username}. What shall we launch?',
+    'Welcome back, {username}. Your command deck is ready.',
+    'Owner access confirmed. Take the helm, {username}.',
+    'Your world is waiting, {username}. Let us make it a good shift.'
+  ],
+  admin: [
+    'Welcome, Administrator {username}. Your moderation desk is ready.',
+    'Welcome back, {username}. Time for moderating.',
+    'Good to see you again, Administrator {username}.',
+    'Reports, events, and player tools are ready, {username}.',
+    'Welcome in, {username}. Keep the community running smoothly.',
+    'Fresh shift, {username}. Let us keep things fair and tidy.',
+    'Your tools are standing by, Administrator {username}.',
+    'Welcome back, {username}. The activity queue is ready.'
+  ]
+};
+
+function showAdminPanelWelcome(user) {
+  const banner = document.getElementById('admin-welcome-banner');
+  const label = document.getElementById('admin-welcome-label');
+  const message = document.getElementById('admin-welcome-message');
+  if (!banner || !label || !message) return;
+  const isOwner = Boolean(user?.is_admin);
+  const username = String(user?.username || 'Administrator');
+  const dialogues = ADMIN_PANEL_DIALOGUES[isOwner ? 'owner' : 'admin'];
+  const dialogue = dialogues[Math.floor(Math.random() * dialogues.length)].replaceAll('{username}', username);
+  const run = ++adminWelcomeTypingRun;
+  clearTimeout(adminWelcomeTypingTimer);
+  label.textContent = isOwner ? 'OWNER CONTROL / AUTHORIZED' : 'ADMIN OPERATIONS / AUTHORIZED';
+  message.textContent = '';
+  message.classList.add('is-typing');
+  banner.classList.remove('hidden');
+  let position = 0;
+  const typeNext = () => {
+    if (run !== adminWelcomeTypingRun) return;
+    message.textContent = dialogue.slice(0, position + 1);
+    position += 1;
+    if (position < dialogue.length) {
+      adminWelcomeTypingTimer = setTimeout(typeNext, 27);
+    } else {
+      message.classList.remove('is-typing');
+    }
+  };
+  typeNext();
+}
+
 function setAdminPanelMinimized(minimized) {
   const panel = document.getElementById('admin-panel');
   const button = document.getElementById('minimize-admin-panel');
@@ -2714,6 +2768,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   if (active) showFinnEventAnnouncement(event);
   const title = event.title || eventName.replaceAll('-', ' ');
   const description = event.description || 'Special rewards are active';
+  const rewardDetails = event.rewardSummary ? `Rewards: ${event.rewardSummary}` : description;
   const status = document.getElementById(`${eventName}-status`);
   const startButton = document.getElementById(presentation.startId);
   const stopButton = document.getElementById(presentation.stopId);
@@ -2722,7 +2777,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
     createAdminEventVisual(eventName, event);
     if (startButton) startButton.hidden = true;
     if (stopButton) stopButton.hidden = false;
-    if (status) status.textContent = `LIVE · ${description}`;
+    if (status) status.textContent = Number(event.expiresAt) ? 'LIVE · Timed event' : 'LIVE · No time limit';
   } else {
     clearEventVisuals();
     if (eventName === 'blackhole') startBlackholeFinale();
@@ -2735,7 +2790,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const eventTitle = document.getElementById('active-event-title');
   const eventDetails = document.getElementById('active-event-details');
   if (eventTitle) eventTitle.textContent = title;
-  if (eventDetails) eventDetails.textContent = active ? description : '';
+  if (eventDetails) eventDetails.textContent = active ? rewardDetails : '';
   clearInterval(blackholeCountdownTimer);
   blackholeCountdownTimer = null;
   if (active && Number(event.expiresAt)) {
@@ -2747,7 +2802,7 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
         : 'Ends in';
     const updateCountdown = () => {
       const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
-      if (eventDetails) eventDetails.textContent = `${countdownLabel} ${remaining}s`;
+      if (eventDetails) eventDetails.textContent = `${rewardDetails} · ${countdownLabel} ${remaining}s`;
       if (remaining <= 0) {
         clearInterval(blackholeCountdownTimer);
         blackholeCountdownTimer = null;
@@ -3539,6 +3594,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const heading = panel?.querySelector('.admin-header h1');
       if (heading) heading.textContent = isMini ? 'Admin Panel' : 'Owner Panel';
       document.getElementById('refresh-admin-users')?.classList.toggle('hidden', isMini);
+      showAdminPanelWelcome(currentUser);
       showPage('admin-panel');
       if (currentUser.is_admin) {
         loadAdminUsers();
