@@ -94,10 +94,11 @@ const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_STACKED_EFFECT_MULTIPLIER = 5;
 const MAX_LUCK_EFFECT_MULTIPLIER = 25;
 const MAX_TOTAL_LUCK_MULTIPLIER = 100;
+const MAX_PROGRESSION_VALUE = Number.MAX_SAFE_INTEGER;
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
-  { key: '17-news', name: '17 News', chance: 32.85, reward: 150, color: '#0f172a' },
+  { key: '17-news', name: '17 News', chance: 19.35, reward: 150, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', chance: 20, reward: 300, color: '#38bdf8' },
   { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', chance: 2.5, reward: 2000, color: '#a16207' },
   { key: 'daniel-poole', name: 'Daniel Poole', chance: 4, reward: 1600, color: '#166534' },
@@ -112,6 +113,8 @@ const CORE_RARITIES = [
   { key: 'baxter-walter', name: 'Baxter Walter', chance: 0.2, reward: 6000, color: '#facc15' },
   { key: 'pod-1', name: 'Pod 1', chance: 10, reward: 800, color: '#38bdf8' },
   { key: 'pod-2', name: 'Pod 2', chance: 10, reward: 800, color: '#22c55e' },
+  { key: 'year-7', name: 'Year 7', chance: 7.5, reward: 900, color: '#005f73' },
+  { key: 'year-8', name: 'Year 8', chance: 6, reward: 1200, color: '#6d597a' },
   { key: 'william-marks', name: 'William marks', chance: 5, reward: 1400, color: '#f97316' },
   { key: 'miharu-sato', name: 'Miharu Sato', chance: 5.5, reward: 1200, color: '#e879f9' },
   { key: 'mr-fermanski', name: 'Mr Fernanski', chance: 0.15, reward: 7000, isGlobal: true, color: '#f59e0b', glowColor: '#ef4444' },
@@ -122,7 +125,10 @@ const CORE_RARITIES = [
   { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', chance: 0.01, reward: 20000, isGlobal: true, color: '#d946ef', glowColor: '#f0abfc' },
   { key: 'mr-vaughan', name: 'Mr Vaughan', chance: 0.08, reward: 9500, isGlobal: true, color: '#0ea5e9', glowColor: '#bae6fd' },
   { key: 'mrs-bradley', name: 'Mrs Bradley', chance: 0.08, reward: 9500, isGlobal: true, color: '#db2777', glowColor: '#fbcfe8' },
-  { key: 'mrs-croft', name: 'Mrs Croft', chance: 0.08, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#bbf7d0' }
+  { key: 'mrs-croft', name: 'Mrs Croft', chance: 0.08, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#bbf7d0' },
+  { key: 'lord-finn', name: 'Lord Finn', chance: 0.02, reward: 30000, isGlobal: true, color: '#ff5fd2', glowColor: '#ffc2f1' },
+  { key: 'king-baxter', name: 'King Baxter', chance: 0.125, reward: 14000, isGlobal: true, color: '#b7f34a', glowColor: '#edffb1' },
+  { key: 'lazar-kiwi-games', name: 'Lazar Kiwi Games', chance: 0.125, reward: 14000, isGlobal: true, color: '#ff8c42', glowColor: '#ffd6b0' }
 ];
 const HALLOWEEN_RARITIES = [
   { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 8500, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
@@ -192,6 +198,7 @@ const POTION_CATALOG = {
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effectKey: 'luck', effect: 'luck', craftOnly: true },
   coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effectKey: 'coin', effect: 'coins' },
   'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, maxMultiplier: 9, duration: 120, effectKey: 'coin', effect: 'coins', craftOnly: true },
+  'finn-potion': { name: 'Finn Potion', cost: 0, multiplier: 10, luckMultiplier: 100, duration: 120, effectKey: 'finn-potion', effect: 'coins and luck', craftOnly: true, rewardOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effectKey: 'speed', effect: 'speed' },
 };
 const activeDiveSessions = new Map();
@@ -225,6 +232,10 @@ const TITLE_CATALOG = {
   owner: { name: '👑 Owner', color: '#fbbf24' },
   admin: { name: '🛡️ Admin', color: '#fb7185' },
   'birthday-boy': { name: '🎂 Birthday Boy', color: '#f472b6' },
+  senior: { name: 'Senior', color: '#14b8a6' },
+  'the-beginning': { name: 'The Beginning', color: '#d8b4fe' },
+  'to-the-stars': { name: 'To the stars', color: '#e2e8f0' },
+  'worlds-richest': { name: "World's Richest", color: '#cbd5e1' },
   veteran: { name: 'Veteran', color: '#2563eb' },
   millionaire: { name: 'Millionaire', color: '#4ade80' },
   portalmancer: { name: 'Portalmancer', color: '#a78bfa' },
@@ -241,7 +252,6 @@ const TITLE_CATALOG = {
   'this-is-my-year': { name: 'This is my year!', color: '#c084fc' },
   billionaire: { name: 'Billionaire', color: '#4f46e5' },
   'teachers-pet': { name: 'Teachers pet', color: '#facc15' },
-  'helping-hand': { name: 'Helping hand', color: '#38bdf8' }
 };
 
 function isAdministratorUser(user) {
@@ -289,11 +299,15 @@ function getUnlockedTitles(user) {
   if ((Number(user?.coins) || 0) >= 1000000) titles.add('millionaire');
   if ((Number(user?.coins) || 0) > 10000000) titles.add('multi-millionaire');
   if ((Number(user?.coins) || 0) >= 1000000000) titles.add('billionaire');
+  if ((Number(user?.coins) || 0) >= 1000000000000) titles.add('worlds-richest');
   if (user?.portal_unlocked) titles.add('portalmancer');
   if (spins >= 1000) titles.add('locked-in');
   if (spins >= 5000) titles.add('endless-frequency');
   if (spins > 10000) titles.add('willpower');
   if (spins >= 26000) titles.add('this-is-my-year');
+  if (spins >= 1000000) titles.add('to-the-stars');
+  if ((Number(rarities['year-7']) || 0) >= 50 && (Number(rarities['year-8']) || 0) >= 50) titles.add('senior');
+  if ((Number(rarities['lord-finn']) || 0) >= 3) titles.add('the-beginning');
   if ((Number(items.old_potato_sticker) || 0) >= 1) titles.add('potato');
   if (rarityTotal >= 10) titles.add('collector');
   if (hasGlobalDrop) titles.add('global-headliner');
@@ -301,8 +315,6 @@ function getUnlockedTitles(user) {
   if (user?.forge_realm_unlocked) titles.add('blacksmith');
   if (hasHalloweenDrop) titles.add('halloween-2026');
   if (['mrs-joseph-mcglashan', 'mr-vaughan', 'mrs-bradley', 'mrs-croft'].every(key => Number(rarities[key]) > 0)) titles.add('teachers-pet');
-  if (normalizeList(user?.achievements).includes('finn-quest-3')) titles.add('helping-hand');
-
   return [...titles].filter(title => Object.prototype.hasOwnProperty.call(TITLE_CATALOG, title));
 }
 
@@ -323,6 +335,15 @@ const activeEffectsStore = {};
 
 function normalizeUsername(username) {
   return username ? username.trim().toLowerCase() : '';
+}
+
+function normalizeProgressionValue(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.min(MAX_PROGRESSION_VALUE, Math.max(0, Math.floor(numeric))) : 0;
+}
+
+function addProgressionValue(currentValue, amount) {
+  return normalizeProgressionValue(normalizeProgressionValue(currentValue) + Math.max(0, Math.floor(Number(amount) || 0)));
 }
 
 function removeExpiredEffects(username) {
@@ -368,6 +389,7 @@ function getActiveEffectMultiplier(username, effectType) {
 }
 
 function getLuckMultiplier(username, dimension = null) {
+  if (getActiveEffectMultiplier(username, 'finn-luck') > 1) return 100;
   const activeEvent = getActiveGameEvent();
   const eventLuckMultiplier = activeEvent?.luckStartsAt && Date.now() < activeEvent.luckStartsAt
     ? 1
@@ -473,8 +495,8 @@ async function findUser(username) {
     return {
       username: user.username,
       password: user.password,
-      coins: user.coins,
-      spins: user.spins,
+      coins: Number(user.coins) || 0,
+      spins: Number(user.spins) || 0,
       playtime_seconds: Number(user.playtime_seconds) || 0,
       inventory,
       achievements: normalizeList(user.achievements),
@@ -644,8 +666,8 @@ async function ensureDatabase() {
     CREATE TABLE IF NOT EXISTS users (
       username TEXT PRIMARY KEY,
       password TEXT NOT NULL,
-      coins INTEGER NOT NULL DEFAULT 0,
-      spins INTEGER NOT NULL DEFAULT 0,
+      coins BIGINT NOT NULL DEFAULT 0,
+      spins BIGINT NOT NULL DEFAULT 0,
       inventory JSONB NOT NULL DEFAULT '{}'::jsonb,
       achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       is_admin BOOLEAN NOT NULL DEFAULT false,
@@ -689,13 +711,14 @@ async function ensureDatabase() {
       message TEXT NOT NULL DEFAULT '',
       gift_type TEXT,
       gift_key TEXT,
-      gift_amount INTEGER NOT NULL DEFAULT 0,
+      gift_amount BIGINT NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       read_at TIMESTAMPTZ,
       claimed_at TIMESTAMPTZ
     )
   `);
   await executeQuery('ALTER TABLE inbox_messages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ');
+  await executeQuery('ALTER TABLE inbox_messages ALTER COLUMN gift_amount TYPE BIGINT USING gift_amount::BIGINT');
   await executeQuery('CREATE INDEX IF NOT EXISTS inbox_messages_recipient_idx ON inbox_messages (recipient, created_at DESC)');
   await executeQuery(`
     CREATE TABLE IF NOT EXISTS limited_code_redemptions (
@@ -731,8 +754,8 @@ async function ensureDatabase() {
   await executeQuery('CREATE INDEX IF NOT EXISTS admin_audit_log_created_at_idx ON admin_audit_log (created_at DESC)');
   await executeQuery(`
     ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS coins INTEGER NOT NULL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS spins INTEGER NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS coins BIGINT NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS spins BIGINT NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{"rarities":{}}'::jsonb,
       ADD COLUMN IF NOT EXISTS achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false,
@@ -750,6 +773,11 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS playtime_seconds BIGINT NOT NULL DEFAULT 0,
       ADD COLUMN IF NOT EXISTS rules_agreed_at TIMESTAMPTZ
+  `);
+  await executeQuery(`
+    ALTER TABLE users
+      ALTER COLUMN coins TYPE BIGINT USING coins::BIGINT,
+      ALTER COLUMN spins TYPE BIGINT USING spins::BIGINT
   `);
   await executeQuery(`
     ALTER TABLE chat_messages
@@ -923,11 +951,90 @@ async function grantBlackholeRewards() {
     if (!user) continue;
     const items = normalizeRecord(user.items);
     items.light_essence = (Number(items.light_essence) || 0) + 1;
-    const coins = Math.min(2147483647, (Number(user.coins) || 0) + 2500);
+    const coins = addProgressionValue(user.coins, 2500);
     await updateUser(username, { items: JSON.stringify(items), coins });
     const updatedUser = await findUser(username);
     io.to(`user:${normalizeUsername(username)}`).emit('blackhole-reward', { item: 'Light Essence', amount: 1, user: sanitizeUser(updatedUser) });
   }
+}
+
+const FINN_HOURLY_REWARDS = [
+  { kind: 'coins', name: 'Coins', min: 50000, max: 250000 },
+  { kind: 'item', key: 'fragments', name: 'Portal Fragments', min: 2, max: 6 },
+  { kind: 'item', key: 'light_essence', name: 'Light Essence', min: 1, max: 2 },
+  { kind: 'item', key: 'event_controller', name: 'Event Controller', min: 1, max: 2 },
+  { kind: 'potion', key: 'coin-ii', name: 'Coin Potion II', min: 1, max: 2 },
+  { kind: 'potion', key: 'luck-v', name: 'Luck Potion V', min: 1, max: 2 },
+  { kind: 'potion', key: 'finn-potion', name: 'Finn Potion', min: 1, max: 1 },
+  { kind: 'rarity', key: 'lord-finn', name: 'Lord Finn', min: 1, max: 1 }
+];
+
+async function runFinnHourlyEvent() {
+  const startedAt = new Date().toISOString();
+  io.emit('finn-hourly-event', {
+    startedAt,
+    dialogue: [
+      'A tear opens behind the gateway. Lord Finn steps through, carrying gifts before the darkness can follow.',
+      'The third realm flickers. Finn appears for one hour, placing a reward in each traveler’s hands.',
+      'A violet signal floods the portal. Lord Finn arrives with a gift and a warning: the thing is getting closer.'
+    ][Math.floor(Math.random() * 3)]
+  });
+
+  const sockets = await io.fetchSockets();
+  const onlineUsers = new Map();
+  sockets.forEach(socket => {
+    const username = socket.request?.session?.username;
+    if (username) onlineUsers.set(normalizeUsername(username), username);
+  });
+
+  for (const username of onlineUsers.values()) {
+    try {
+      const user = await findUser(username);
+      if (!user) continue;
+      const choice = FINN_HOURLY_REWARDS[Math.floor(Math.random() * FINN_HOURLY_REWARDS.length)];
+      const amount = choice.min + Math.floor(Math.random() * (choice.max - choice.min + 1));
+      const reward = { kind: choice.kind, key: choice.key || null, name: choice.name, amount };
+      const updates = {};
+      if (choice.kind === 'coins') {
+        updates.coins = addProgressionValue(user.coins, amount);
+        reward.amount = updates.coins - normalizeProgressionValue(user.coins);
+      } else if (choice.kind === 'item') {
+        const items = normalizeRecord(user.items);
+        items[choice.key] = (Number(items[choice.key]) || 0) + amount;
+        updates.items = JSON.stringify(items);
+      } else if (choice.kind === 'potion') {
+        const potions = normalizeRecord(user.potions);
+        potions[choice.key] = (Number(potions[choice.key]) || 0) + amount;
+        updates.potions = JSON.stringify(potions);
+      } else if (choice.kind === 'rarity') {
+        const inventory = normalizeInventory(user.inventory);
+        inventory.rarities[choice.key] = (Number(inventory.rarities[choice.key]) || 0) + amount;
+        updates.inventory = JSON.stringify(inventory);
+      }
+      await updateUser(username, updates);
+      const updatedUser = await findUser(username);
+      io.to(`user:${normalizeUsername(username)}`).emit('finn-hourly-reward', {
+        startedAt,
+        reward,
+        user: sanitizeUser(updatedUser)
+      });
+    } catch (error) {
+      console.error(`Hourly Lord Finn reward failed for ${username}:`, error.message || error);
+    }
+  }
+}
+
+function scheduleFinnHourlyEvent() {
+  const remaining = 60 * 60 * 1000 - (Date.now() % (60 * 60 * 1000));
+  const timer = setTimeout(async () => {
+    try {
+      await runFinnHourlyEvent();
+    } catch (error) {
+      console.error('Hourly Lord Finn event error:', error.message || error);
+    }
+    scheduleFinnHourlyEvent();
+  }, remaining);
+  timer.unref?.();
 }
 
 function getActiveGameEvent() {
@@ -1147,7 +1254,7 @@ function prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, amount)
     const senderCoins = Number(sender.coins) || 0;
     const recipientCoins = Number(recipient.coins) || 0;
     if (senderCoins < amount) return { error: 'You do not have enough coins to send that gift.' };
-    if (recipientCoins + amount > 2147483647) return { error: 'The recipient cannot hold that many coins.' };
+    if (recipientCoins + amount > MAX_PROGRESSION_VALUE) return { error: 'The recipient cannot hold that many coins.' };
     return { senderUpdates: { coins: senderCoins - amount }, recipientUpdates: { coins: recipientCoins + amount } };
   }
 
@@ -1187,7 +1294,7 @@ function prepareInboxGiftTransfers(sender, recipient, giftType, giftKey, amount)
 function prepareInboxGiftClaim(recipient, giftType, giftKey, amount) {
   if (giftType === 'coins') {
     const coins = Number(recipient.coins) || 0;
-    if (coins + amount > 2147483647) return { error: 'You cannot hold any more coins.' };
+    if (coins + amount > MAX_PROGRESSION_VALUE) return { error: 'You cannot hold any more coins.' };
     return { updates: { coins: coins + amount } };
   }
   if (giftType === 'item' && INBOX_ITEM_GIFTS.has(giftKey)) {
@@ -1419,8 +1526,8 @@ function sanitizeUser(user) {
   
   return {
     username: user.username,
-    coins: user.coins,
-    spins: user.spins,
+    coins: normalizeProgressionValue(user.coins),
+    spins: normalizeProgressionValue(user.spins),
     playtime_seconds: Number(user.playtime_seconds) || 0,
     rules_agreed_at: user.rules_agreed_at || null,
     inventory,
@@ -1701,8 +1808,8 @@ app.post('/api/spin', async (req, res) => {
   const eventBonus = event?.bonusCoins || 0;
   const finalReward = Math.round((Math.round(rawReward * multiplier) + eventBonus) * getActiveEffectMultiplier(req.session.username, 'coin'));
 
-  const newSpins = (Number(user.spins) || 0) + 1;
-  const newCoins = (Number(user.coins) || 0) + finalReward;
+  const newSpins = addProgressionValue(user.spins, 1);
+  const newCoins = addProgressionValue(user.coins, finalReward);
   let currentTitles = user.titles;
   if (typeof currentTitles === 'string') {
     try {
@@ -1827,7 +1934,7 @@ app.post('/api/redeem-code', async (req, res) => {
     redeemedCodes.push(normalizedCode);
     const updates = { redeemed_codes: JSON.stringify(redeemedCodes) };
     if (reward.title) updates.titles = JSON.stringify(titles);
-    if (reward.coins) updates.coins = Math.min(2147483647, (Number(user.coins) || 0) + reward.coins);
+    if (reward.coins) updates.coins = addProgressionValue(user.coins, reward.coins);
     if (reward.items?.length) {
       const items = normalizeRecord(user.items);
       reward.items.forEach(({ key, amount }) => {
@@ -1989,18 +2096,32 @@ app.post('/api/use-potion', async (req, res) => {
     }
 
     potions[potionType] -= 1;
-    setUserActiveEffect(req.session.username, potion.effectKey, {
-      multiplier: potion.multiplier,
-      maxMultiplier: potion.maxMultiplier,
-      endTime: Date.now() + potion.duration * 1000
-    });
+    const potionEndTime = Date.now() + potion.duration * 1000;
+    if (potionType === 'finn-potion') {
+      setUserActiveEffect(req.session.username, 'coin', {
+        multiplier: 10,
+        maxMultiplier: 10,
+        endTime: potionEndTime
+      });
+      setUserActiveEffect(req.session.username, 'finn-luck', {
+        multiplier: 100,
+        maxMultiplier: 100,
+        endTime: potionEndTime
+      });
+    } else {
+      setUserActiveEffect(req.session.username, potion.effectKey, {
+        multiplier: potion.multiplier,
+        maxMultiplier: potion.maxMultiplier,
+        endTime: potionEndTime
+      });
+    }
 
     await updateUser(req.session.username, {
       potions: JSON.stringify(potions)
     });
 
     const updated = await findUser(req.session.username);
-    res.json({ success: true, user: sanitizeUser(updated), effect: { multiplier: potion.multiplier, duration: potion.duration, effect: potion.effect } });
+    res.json({ success: true, user: sanitizeUser(updated), effect: { multiplier: potion.multiplier, luckMultiplier: potion.luckMultiplier || null, duration: potion.duration, effect: potion.effect } });
   } catch (error) {
     console.error('Use potion error:', error);
     res.status(500).json({ success: false, error: 'Unable to use potion.' });
@@ -2148,66 +2269,6 @@ app.post('/api/forge/craft', async (req, res) => {
   }
 });
 
-const FINN_QUESTS = [
-  { title: 'First signal', description: 'Complete 100 rolls.', kind: 'spins', target: 100, reward: { coins: 10000, fragments: 3 } },
-  { title: 'Steady hands', description: 'Collect 5 Clover Leaves.', kind: 'clovers', target: 5, reward: { coins: 30000, vials: 1 } },
-  { title: 'Through the fracture', description: 'Collect 10 Portal Fragments.', kind: 'fragments', target: 10, reward: { coins: 100000, fragments: 5 } }
-];
-const finnQuestClaimsInFlight = new Set();
-
-function getFinnQuestState(user) {
-  const achievements = normalizeList(user?.achievements);
-  const completed = FINN_QUESTS.filter((_, index) => achievements.includes(`finn-quest-${index + 1}`)).length;
-  const quest = FINN_QUESTS[completed] || null;
-  const items = normalizeRecord(user?.items);
-  const progress = !quest ? 0 : quest.kind === 'spins'
-    ? Number(user?.spins) || 0
-    : Number(items[quest.kind]) || 0;
-  return { completed, quest: quest ? { ...quest, progress: Math.min(progress, quest.target), ready: progress >= quest.target } : null };
-}
-
-app.get('/api/finn/quests', async (req, res) => {
-  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  const user = await findUser(req.session.username);
-  if (!user) return res.status(404).json({ success: false, error: 'Player not found.' });
-  res.json({ success: true, ...getFinnQuestState(user), user: sanitizeUser(user) });
-});
-
-app.post('/api/finn/quests/claim', async (req, res) => {
-  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
-  const claimKey = normalizeUsername(req.session.username);
-  if (finnQuestClaimsInFlight.has(claimKey)) return res.status(409).json({ success: false, error: 'Quest reward is already being claimed.' });
-  finnQuestClaimsInFlight.add(claimKey);
-  try {
-    const user = await findUser(req.session.username);
-    if (!user) return res.status(404).json({ success: false, error: 'Player not found.' });
-    const state = getFinnQuestState(user);
-    if (!state.quest) return res.status(409).json({ success: false, error: 'All of Lord Finn’s quests are complete.' });
-    if (!state.quest.ready) return res.status(409).json({ success: false, error: 'Quest requirements are not complete yet.' });
-    const stage = state.completed + 1;
-    const achievements = normalizeList(user.achievements);
-    achievements.push(`finn-quest-${stage}`);
-    const items = normalizeRecord(user.items);
-    items.fragments = (Number(items.fragments) || 0) + (Number(state.quest.reward.fragments) || 0);
-    items.empty_vial = (Number(items.empty_vial) || 0) + (Number(state.quest.reward.vials) || 0);
-    const coins = (Number(user.coins) || 0) + state.quest.reward.coins;
-    const updatedTitles = getUnlockedTitles({ ...user, coins, items, achievements });
-    await updateUser(user.username, {
-      achievements: JSON.stringify(achievements),
-      items: JSON.stringify(items),
-      coins,
-      titles: JSON.stringify(updatedTitles)
-    });
-    const updatedUser = await findUser(user.username);
-    res.json({ success: true, completed: stage, ...getFinnQuestState(updatedUser), reward: state.quest.reward, user: sanitizeUser(updatedUser) });
-  } catch (error) {
-    console.error('Finn quest claim error:', error.message || error);
-    res.status(503).json({ success: false, error: 'Unable to claim this quest right now.' });
-  } finally {
-    finnQuestClaimsInFlight.delete(claimKey);
-  }
-});
-
 app.post('/api/forge/use-event-controller', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   try {
@@ -2290,7 +2351,7 @@ app.post('/api/sea/dive/collect', async (req, res) => {
   result.serialNumber = await assignHalloweenSerial(result.key, inventory);
   const event = getActiveGameEvent();
   const reward = Math.round((Math.round((Number(result.reward) || 0) * (event?.coinMultiplier || 1)) + (event?.bonusCoins || 0)) * getActiveEffectMultiplier(username, 'coin'));
-  const coins = Number(user.coins || 0) + reward;
+  const coins = addProgressionValue(user.coins, reward);
   result.reward = reward;
   const titles = getUnlockedTitles({ ...user, inventory, items, coins });
   await updateUser(username, {
@@ -2602,10 +2663,15 @@ app.post('/api/admin/users/:username', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Enter a valid whole-number amount.' });
       }
       if (type === 'coins') {
-        if (quantity > 2147483647) {
+        if (quantity > MAX_PROGRESSION_VALUE) {
           return res.status(400).json({ success: false, error: 'Coin balance is too large.' });
         }
         updates = { coins: quantity };
+      } else if (type === 'spins') {
+        if (quantity > MAX_PROGRESSION_VALUE) {
+          return res.status(400).json({ success: false, error: 'Roll count is too large.' });
+        }
+        updates = { spins: quantity };
       } else if (type === 'potion' && Object.prototype.hasOwnProperty.call(POTION_CATALOG, potion) && quantity >= 1 && quantity <= 99) {
         const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
         potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
@@ -3159,7 +3225,7 @@ app.post('/api/inbox', async (req, res) => {
   if (giftType && !['coins', 'item', 'potion'].includes(giftType)) {
     return res.status(400).json({ success: false, error: 'Choose coins, an item, or a potion as the gift.' });
   }
-  const maxGiftAmount = giftType === 'coins' ? 1000000000 : 99;
+  const maxGiftAmount = giftType === 'coins' ? MAX_PROGRESSION_VALUE : 99;
   if (giftType && (!Number.isSafeInteger(giftAmount) || giftAmount < 1 || giftAmount > maxGiftAmount)) {
     return res.status(400).json({ success: false, error: `Gift quantity must be from 1 to ${maxGiftAmount.toLocaleString()}.` });
   }
@@ -3643,6 +3709,7 @@ async function startServer() {
     await ensureDatabase();
     await loadAdminHeadline();
     server.listen(PORT, () => {
+      scheduleFinnHourlyEvent();
       console.log(`🚀 RNG 3 Server running on port ${PORT}`);
       console.log(`📅 Version: 3.0.0 - The Next Generation`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
