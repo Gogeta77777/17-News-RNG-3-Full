@@ -12,7 +12,7 @@ let taglineTimer = null;
 let taglineRun = 0;
 
 const rarityOptions = [
-  { key: '17-news', name: '17 News', reward: 150, chance: 32.85, color: '#0f172a' },
+  { key: '17-news', name: '17 News', reward: 150, chance: 19.35, color: '#0f172a' },
   { key: '17-news-reborn', name: '17 News Reborn', reward: 300, chance: 20, color: '#38bdf8' },
   { key: 'the-daily-ellerslilian', name: 'The Daily Ellerslilian', reward: 2000, chance: 2.5, color: '#a16207' },
   { key: 'daniel-poole', name: 'Daniel Poole', reward: 1600, chance: 4, color: '#166534' },
@@ -27,6 +27,8 @@ const rarityOptions = [
   { key: 'baxter-walter', name: 'Baxter Walter', reward: 6000, chance: 0.2, color: '#facc15' },
   { key: 'pod-1', name: 'Pod 1', reward: 800, chance: 10, color: '#38bdf8' },
   { key: 'pod-2', name: 'Pod 2', reward: 800, chance: 10, color: '#22c55e' },
+  { key: 'year-7', name: 'Year 7', reward: 900, chance: 7.5, color: '#005f73' },
+  { key: 'year-8', name: 'Year 8', reward: 1200, chance: 6, color: '#6d597a' },
   { key: 'william-marks', name: 'William marks', reward: 1400, chance: 5, color: '#f97316' },
   { key: 'miharu-sato', name: 'Miharu Sato', reward: 1200, chance: 5.5, color: '#e879f9' }
 ];
@@ -45,7 +47,10 @@ const globalOptions = [
   { key: 'mr-butler', name: 'Mr Butler', glitchName: 'The Principal', reward: 20000, chance: 0.01, color: '#d946ef', glowColor: '#f0abfc', isGlobal: true },
   { key: 'mr-vaughan', name: 'Mr Vaughan', reward: 9500, chance: 0.08, color: '#0ea5e9', glowColor: '#bae6fd', isGlobal: true },
   { key: 'mrs-bradley', name: 'Mrs Bradley', reward: 9500, chance: 0.08, color: '#db2777', glowColor: '#fbcfe8', isGlobal: true },
-  { key: 'mrs-croft', name: 'Mrs Croft', reward: 9500, chance: 0.08, color: '#16a34a', glowColor: '#bbf7d0', isGlobal: true }
+  { key: 'mrs-croft', name: 'Mrs Croft', reward: 9500, chance: 0.08, color: '#16a34a', glowColor: '#bbf7d0', isGlobal: true },
+  { key: 'lord-finn', name: 'Lord Finn', reward: 30000, chance: 0.02, color: '#ff5fd2', glowColor: '#ffc2f1', isGlobal: true },
+  { key: 'king-baxter', name: 'King Baxter', reward: 14000, chance: 0.125, color: '#b7f34a', glowColor: '#edffb1', isGlobal: true },
+  { key: 'lazar-kiwi-games', name: 'Lazar Kiwi Games', reward: 14000, chance: 0.125, color: '#ff8c42', glowColor: '#ffd6b0', isGlobal: true }
 ];
 
 const diveGlobalOptions = [
@@ -59,6 +64,7 @@ const POTIONS = {
   'luck-v': { name: 'Luck Potion V', cost: 0, multiplier: 5, duration: 120, effect: 'luck', effectKey: 'luck', craftOnly: true },
   coin: { name: 'Coin Potion', cost: 10000, multiplier: 2, duration: 120, effect: 'coins', effectKey: 'coin' },
   'coin-ii': { name: 'Coin Potion II', cost: 0, multiplier: 4, maxMultiplier: 9, duration: 120, effect: 'coins', effectKey: 'coin', craftOnly: true },
+  'finn-potion': { name: 'Finn Potion', cost: 0, multiplier: 10, luckMultiplier: 100, duration: 120, effect: 'coins and luck', effectKey: 'finn-potion', craftOnly: true },
   speed: { name: 'Speed Potion I', cost: 3500, multiplier: 2, duration: 90, effect: 'speed', effectKey: 'speed' },
 };
 
@@ -74,6 +80,10 @@ const TITLES = [
   { id: 'owner', name: '👑 Owner', color: '#fbbf24', requirement: 'admin', description: 'Administrator' },
   { id: 'admin', name: '🛡️ Admin', color: '#fb7185', requirement: 'gift', description: 'Granted by Mr Fernanski; unlocks the Admin Panel' },
   { id: 'birthday-boy', name: '🎂 Birthday Boy', color: '#f472b6', requirement: 'gift', description: 'Granted by Mr Fernanski' },
+  { id: 'senior', name: 'Senior', color: '#14b8a6', requirement: 'rarities:year-7:50,year-8:50', description: 'Collect 50 Year 7 and 50 Year 8 rarities' },
+  { id: 'the-beginning', name: 'The Beginning', color: '#d8b4fe', requirement: 'rarities:lord-finn:3', description: 'Collect 3 Lord Finn rarities' },
+  { id: 'to-the-stars', name: 'To the stars', color: '#e2e8f0', requirement: 'spins:1000000', description: 'Complete 1,000,000 rolls' },
+  { id: 'worlds-richest', name: "World's Richest", color: '#cbd5e1', requirement: 'coins:1000000000000', description: 'Reach 1,000,000,000,000 coins' },
   { id: 'veteran', name: 'Veteran', color: '#2563eb', requirement: 'code:THETHREEQUEL', description: 'Redeem THETHREEQUEL' },
   { id: 'millionaire', name: 'Millionaire', color: '#4ade80', requirement: 'coins:1000000', description: 'Reach 1,000,000 coins' },
   { id: 'portalmancer', name: 'Portalmancer', color: '#a78bfa', requirement: 'portal', description: 'Open the portal gateway' },
@@ -90,8 +100,9 @@ const TITLES = [
   { id: 'this-is-my-year', name: 'This is my year!', color: '#c084fc', requirement: 'spins:26000', description: 'Complete 26,000 rolls' },
   { id: 'billionaire', name: 'Billionaire', color: '#4f46e5', requirement: 'coins:1000000000', description: 'Reach 1,000,000,000 coins' },
   { id: 'teachers-pet', name: 'Teachers pet', color: '#facc15', requirement: 'teacher-rarities', description: 'Obtain Mrs Joseph Mcglashan, Mr Vaughan, Mrs Bradley, and Mrs Croft' },
-  { id: 'helping-hand', name: 'Helping hand', color: '#38bdf8', requirement: 'finn-quests', description: 'Complete all three of Lord Finn’s quests' }
 ];
+
+const SILVER_SHINE_TITLE_IDS = new Set(['to-the-stars', 'worlds-richest', 'billionaire', 'this-is-my-year']);
 
 const CODE_REWARDS = {
   'THETHREEQUEL': { title: 'veteran', coins: 0 }
@@ -128,7 +139,7 @@ let gameState = {
   autoRollEnabled: false,
   userTitles: [],
   activeTitle: null,
-  potionInventory: { luck: 0, 'luck-ii': 0, coin: 0, 'coin-ii': 0, speed: 0 },
+  potionInventory: { luck: 0, 'luck-ii': 0, coin: 0, 'coin-ii': 0, 'finn-potion': 0, speed: 0 },
   itemInventory: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 }
 };
 
@@ -274,7 +285,7 @@ function updatePotionDisplay() {
     }
     const div = document.createElement('div');
     div.className = 'potion-effect-chip';
-    const effectName = type === 'luck' ? 'Luck' : type === 'deep-luck' ? 'Deep Luck' : type === 'coin' ? 'Coins' : type === 'speed' ? 'Speed' : type;
+    const effectName = type === 'finn-luck' ? 'Finn Luck' : type === 'luck' ? 'Luck' : type === 'deep-luck' ? 'Deep Luck' : type === 'coin' ? 'Coins' : type === 'speed' ? 'Speed' : type;
     const multiplier = Math.max(1, Number(effect.multiplier) || 1);
     const name = document.createElement('strong');
     name.textContent = effectName;
@@ -657,7 +668,7 @@ function renderInboxGiftOptions(giftType) {
       : [];
   keySelect.innerHTML = options.map(([key, name]) => `<option value="${escapeHtml(key)}">${escapeHtml(name)}</option>`).join('');
   keySelect.disabled = giftType === 'coins' || giftType === 'none';
-  amountInput.max = giftType === 'coins' ? '1000000000' : '99';
+  amountInput.max = giftType === 'coins' ? String(Number.MAX_SAFE_INTEGER) : '99';
   amountInput.value = '1';
 }
 
@@ -811,6 +822,7 @@ function checkTitleUnlocks(user) {
   }
   if (user.coins > 10000000) existing.add('multi-millionaire');
   if (user.coins >= 1000000000) existing.add('billionaire');
+  if (Number(user.coins) >= 1000000000000) existing.add('worlds-richest');
   if (user.portal_unlocked) {
     existing.add('portalmancer');
   }
@@ -820,6 +832,9 @@ function checkTitleUnlocks(user) {
   if ((Number(user.spins) || 0) >= 5000) existing.add('endless-frequency');
   if ((Number(user.spins) || 0) > 10000) existing.add('willpower');
   if ((Number(user.spins) || 0) >= 26000) existing.add('this-is-my-year');
+  if ((Number(user.spins) || 0) >= 1000000) existing.add('to-the-stars');
+  if ((Number(rarities['year-7']) || 0) >= 50 && (Number(rarities['year-8']) || 0) >= 50) existing.add('senior');
+  if ((Number(rarities['lord-finn']) || 0) >= 3) existing.add('the-beginning');
   if (rarityTotal >= 10) existing.add('collector');
   if ([...globalOptions, ...diveGlobalOptions, ...halloweenRarities].some(rarity => Number(rarities[rarity.key]) > 0)) existing.add('global-headliner');
   if (['mrs-joseph-mcglashan', 'mr-vaughan', 'mrs-bradley', 'mrs-croft'].every(key => Number(rarities[key]) > 0)) existing.add('teachers-pet');
@@ -1486,7 +1501,7 @@ function renderInventory(user) {
           <div class="potion-inventory-copy">
             <h4>${emoji} ${potion.name}</h4>
             <span>x${count} available</span>
-            ${key === 'coin-ii' ? '<small>4× coins · stack cap up to 9×</small>' : ''}
+            ${key === 'coin-ii' ? '<small>4× coins · stack cap up to 9×</small>' : key === 'finn-potion' ? '<small>10× coins · 100× luck · overrides normal caps</small>' : ''}
           </div>
           <button class="btn potion-use" type="button">Use Now</button>
         `;
@@ -1604,10 +1619,11 @@ function updateUI(user) {
   
   const usernameDisplay = document.getElementById('game-username');
   usernameDisplay.textContent = user.username;
-  usernameDisplay.classList.remove('title-owner', 'title-admin', 'title-birthday-boy');
-  if (['owner', 'admin', 'birthday-boy'].includes(user.active_title)) {
+  usernameDisplay.classList.remove('title-owner', 'title-admin', 'title-birthday-boy', 'title-to-the-stars', 'title-worlds-richest', 'title-billionaire', 'title-this-is-my-year', 'title-silver-shine');
+  if (['owner', 'admin', 'birthday-boy', 'to-the-stars', 'worlds-richest', 'billionaire', 'this-is-my-year'].includes(user.active_title)) {
     usernameDisplay.classList.add(`title-${user.active_title}`);
   }
+  if (SILVER_SHINE_TITLE_IDS.has(user.active_title)) usernameDisplay.classList.add('title-silver-shine');
   document.getElementById('game-coins').textContent = `🪙 ${formatCoins(user.coins)} coins`;
   const totalRolls = document.getElementById('settings-total-rolls');
   if (totalRolls) totalRolls.textContent = formatCoins(user.spins || 0);
@@ -1735,8 +1751,9 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       textShadow = '0 0 16px rgba(255, 255, 255, 0.85)';
     }
     const titleRequirement = titleDefinition?.description || '';
-    const prestigeTitle = titleDefinition && ['owner', 'admin', 'birthday-boy', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire'].includes(titleDefinition.id);
-    const wearerTitleClass = ['owner', 'admin', 'birthday-boy'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
+    const prestigeTitle = titleDefinition && ['owner', 'admin', 'birthday-boy', 'global-headliner', 'halloween-2026', 'multi-millionaire', 'willpower', 'this-is-my-year', 'billionaire', 'senior', 'the-beginning', 'to-the-stars', 'worlds-richest'].includes(titleDefinition.id);
+    const wearerTitleClass = ['owner', 'admin', 'birthday-boy', 'to-the-stars', 'worlds-richest', 'billionaire', 'this-is-my-year'].includes(titleDefinition?.id) ? ` title-${titleDefinition.id}` : '';
+    const silverShineClass = SILVER_SHINE_TITLE_IDS.has(titleDefinition?.id) ? ' title-silver-shine' : '';
     const titleLabel = displayTitle ? `<span class="chat-title-badge${prestigeTitle ? ' prestige-title' : ''}" title="${escapeHtml(titleRequirement)}" style="--title-color:${displayColor};"><span class="chat-title-name">${titleDefinition ? renderTitleName(titleDefinition) : escapeHtml(displayTitle)}</span></span>` : '';
     const replyContext = replyTo?.username && replyTo?.message
       ? `<div class="chat-reply-context"><strong>Replying to ${escapeHtml(replyTo.username)}</strong><span>${escapeHtml(replyTo.message)}</span></div>`
@@ -1748,7 +1765,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
       ${replyContext}
       ${isAnnouncement ? '<span class="global-drop-kicker">ADMIN EVENT</span>' : ''}
       ${isGlobalDrop ? '<span class="global-drop-kicker">GLOBAL DROP</span>' : ''}
-      <span class="username" style="font-weight: bold;">${titleLabel}<span class="username-text${wearerTitleClass}">${escapeHtml(username)}</span>:</span>
+      <span class="username" style="font-weight: bold;">${titleLabel}<span class="username-text${wearerTitleClass}${silverShineClass}">${escapeHtml(username)}</span>:</span>
       <span>${escapeHtml(message)}</span>
       ${replyButton}
       <br><small style="opacity: 0.7;">${time}</small>
@@ -1942,8 +1959,12 @@ async function loadAdminUsers() {
       </div>
       <div class="admin-user-tools">
         <form class="admin-adjust-form" data-adjustment="coins">
-          <label>Set coins<input name="amount" type="number" min="0" max="2147483647" step="1" value="${Number(user.coins) || 0}" required></label>
+          <label>Set coins<input name="amount" type="number" min="0" max="9007199254740991" step="1" value="${Number(user.coins) || 0}" required></label>
           <button class="btn" type="submit">Save balance</button>
+        </form>
+        <form class="admin-adjust-form" data-adjustment="spins">
+          <label>Set rolls<input name="amount" type="number" min="0" max="9007199254740991" step="1" value="${Number(user.spins) || 0}" required></label>
+          <button class="btn" type="submit">Save rolls</button>
         </form>
         <form class="admin-adjust-form" data-adjustment="potion">
           <label>Grant potion<select name="potion">${Object.entries(POTIONS).map(([key, potion]) => `<option value="${key}">${escapeHtml(potion.name)}</option>`).join('')}</select></label>
@@ -2512,6 +2533,7 @@ let blackholeFinaleEndTimer = null;
 let eventCameraShakeTimers = [];
 let finnEventAnnouncementTimer = null;
 let lastFinnEventAnnouncement = null;
+let finnHourlyAnnouncementTimer = null;
 const FINN_EVENT_DIALOGUES = {
   'starlight-surge': ['The stars are answering your call. Keep your eyes on the signal.', 'A bright current is crossing the sky. Make every roll count.', 'I have tuned the gateway to the stars. This surge will not last forever.'],
   'meteor-shower': ['Meteor trails incoming. Stay sharp and let the sky do its work.', 'The upper atmosphere is singing. Each streak carries a little luck.', 'I opened a path through the meteor field. Do try not to blink.'],
@@ -2758,6 +2780,53 @@ function showFinnEventAnnouncement(event) {
   document.body.appendChild(arrival);
   finnEventAnnouncementTimer = setTimeout(() => arrival.remove(), 8500);
 }
+
+function showFinnHourlyEvent(event) {
+  clearTimeout(finnHourlyAnnouncementTimer);
+  document.querySelector('.finn-hourly-arrival')?.remove();
+  const arrival = document.createElement('aside');
+  arrival.className = 'finn-event-arrival finn-hourly-arrival';
+  arrival.setAttribute('role', 'status');
+  arrival.setAttribute('aria-live', 'polite');
+  const orb = document.createElement('div');
+  orb.className = 'finn-orb finn-orb-large finn-event-avatar';
+  orb.setAttribute('aria-hidden', 'true');
+  const energy = document.createElement('span');
+  energy.className = 'finn-energy';
+  orb.appendChild(energy);
+  const copy = document.createElement('div');
+  copy.className = 'finn-event-copy finn-hourly-copy';
+  const name = document.createElement('span');
+  name.className = 'finn-event-name';
+  name.textContent = 'LORD FINN · HOURLY VISIT';
+  const dialogue = document.createElement('p');
+  dialogue.textContent = event?.dialogue || 'The gateway held long enough. Take this, and stay away from the third realm.';
+  const reward = document.createElement('strong');
+  reward.className = 'finn-hourly-reward';
+  reward.textContent = 'Choosing your reward…';
+  copy.append(name, dialogue, reward);
+  arrival.append(orb, copy);
+  document.body.appendChild(arrival);
+  finnHourlyAnnouncementTimer = setTimeout(() => arrival.remove(), 16000);
+}
+
+function showFinnHourlyReward(data) {
+  if (data?.user) {
+    currentUser = data.user;
+    updateUI(currentUser);
+  }
+  const reward = data?.reward;
+  if (!reward) return;
+  const rewardLabel = reward.kind === 'coins'
+    ? `${formatCoins(reward.amount)} coins`
+    : `${Number(reward.amount) === 1 ? '' : `${reward.amount} × `}${reward.name}`;
+  const rewardLine = document.querySelector('.finn-hourly-reward');
+  if (rewardLine) rewardLine.textContent = `Your hourly gift: ${rewardLabel}`;
+  showPopup(`Lord Finn gave you ${rewardLabel}.`, '#7c3aed');
+}
+
+window.showFinnHourlyEvent = showFinnHourlyEvent;
+window.showFinnHourlyReward = showFinnHourlyReward;
 
 function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
   const event = typeof eventData === 'string' ? { eventName: eventData, initiatedBy: legacyInitiatedBy } : eventData || {};
@@ -3213,12 +3282,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finnReplies = {
-    flicker: 'The gateway signal is unstable. Each pulse briefly reveals a different star chart.',
-    beyond: 'A new route branches past the known realms. Its endpoint will not stay in one place.',
-    signal: 'Three pulses, a pause, then three more. The pattern repeats after I answer.',
-    origin: 'Every chart points to the same blank space. That space moves whenever the gateway opens.',
-    response: 'Yes. The return pulse matches our rhythm, but it arrives before I send mine.',
-    warning: 'Watch the edge of the gateway. If the spiral turns inward, step back and wait for the pulse to pass.'
+    flicker: 'That is not a flicker. Something is moving behind the realm, and it knows when I am looking.',
+    beyond: 'There is a third route, but it is not a place. It is a wound in the map. Please do not open it.',
+    signal: 'It repeats my words before I say them. I hear my own voice coming from the other side.',
+    origin: 'The charts used to be clear. Now the blank space is spreading through them, line by line.',
+    response: 'It answered before I called. I felt it reach through the gateway and touch my thoughts.',
+    warning: 'I am trying to hold it back, but it is changing me. If my voice turns strange, close the gateway and run.'
   };
   const finnChat = document.getElementById('finn-chat');
   const finnChoices = document.getElementById('finn-choices');
@@ -3258,14 +3327,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const portalIsOpen = portalContainer.classList.contains('portal-open');
       finnWatchPortal.classList.toggle('portal-open', portalIsOpen);
       const fragments = Number(gameState.itemInventory.fragments) || 0;
-      const coherence = portalIsOpen ? 100 : Math.min(99, Math.round(fragments / 10 * 100));
+      const corruption = Math.min(99, Math.round(18 + (portalIsOpen ? 48 : fragments / 10 * 24)));
       if (finnWatchStatus) finnWatchStatus.textContent = portalIsOpen
-        ? `Gateway open · Sea ${gameState.seaRealmUnlocked ? 'online' : 'locked'} · Forge ${gameState.forgeRealmUnlocked ? 'online' : 'locked'}`
-        : `${fragments}/10 fragments · gateway locked`;
+        ? `Gateway open · Realm 03 trace ${corruption}% · signal unstable`
+        : `${fragments}/10 fragments · Realm 03 trace ${corruption}%`;
       const meter = finnWatchView?.querySelector('.finn-watch-meter');
       if (meter) {
-        meter.style.setProperty('--signal-coherence', `${coherence}%`);
-        meter.firstChild.textContent = `SIGNAL COHERENCE · ${coherence}%`;
+        meter.style.setProperty('--signal-corruption', `${corruption}%`);
+        meter.firstChild.textContent = `REALM 03 CORRUPTION · ${corruption}%`;
       }
       if (sourcePortalLock && watchPortalLock) {
         watchPortalLock.style.display = sourcePortalLock.style.display;
@@ -3319,58 +3388,32 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const renderFinnQuestionPage = () => {
     if (!finnChoices || !finnReset || !finnNextPage || !finnPageLabel) return [];
-    finnReset.textContent = 'Close';
-      finnReset.classList.add('visible');
-    finnPageLabel.textContent = 'LORD FINN · QUEST BOARD';
+    const questions = finnQuestionOptions.filter(option => option.page === finnDialoguePage);
+    finnPageLabel.textContent = `QUESTIONS · ${finnDialoguePage + 1} OF 2`;
+    finnNextPage.textContent = 'Continue';
     finnNextPage.classList.add('hidden');
-    finnChoices.replaceChildren(finnPageLabel, finnNextPage, finnReset);
-    return [];
+    finnReset.textContent = 'Close';
+    finnReset.classList.remove('visible');
+    finnChoices.replaceChildren(finnPageLabel);
+    const buttons = questions.map(option => {
+      const button = document.createElement('button');
+      button.className = 'finn-choice';
+      button.type = 'button';
+      button.dataset.finnQuestion = option.key;
+      button.textContent = option.prompt;
+      finnChoices.appendChild(button);
+      return button;
+    });
+    finnChoices.append(finnNextPage, finnReset);
+    return buttons;
   };
 
   const resetFinnConversation = () => {
     if (!finnChat) return;
+    finnDialoguePage = 0;
     finnChat.replaceChildren();
-    appendFinnLine('Lord Finn', 'Three tasks stand between us and the next realm. Complete each one to earn a reward.');
+    appendFinnLine('Lord Finn', 'You came back. Good. Something is behind the third realm. It is inside my thoughts now. I am trying to keep it out. Please, ask quickly.');
     renderFinnQuestionPage();
-    loadFinnQuestState();
-  };
-
-  const loadFinnQuestState = async () => {
-    const response = await handleAPI('/api/finn/quests');
-    if (!response.success || !finnChoices) {
-      appendFinnLine('Lord Finn', response.error || 'I cannot read the gateway signal right now.');
-      return;
-    }
-    finnChoices.querySelector('[data-finn-quest]')?.remove();
-    if (!response.quest) {
-      appendFinnLine('Lord Finn', 'Thank you for helping me hold the gateway steady. The third realm is beginning to appear beyond the fractures. I will tell you more when it opens.');
-      return;
-    }
-    const quest = response.quest;
-    const detail = document.createElement('p');
-    detail.className = 'finn-quest-detail';
-    detail.dataset.finnQuest = 'true';
-    detail.textContent = `${quest.title} · ${quest.description} · ${quest.progress}/${quest.target}`;
-    const claim = document.createElement('button');
-    claim.type = 'button';
-    claim.className = 'finn-choice finn-quest-claim';
-    claim.dataset.finnClaim = 'true';
-    claim.textContent = quest.ready ? 'Claim quest reward' : 'Quest in progress';
-    claim.disabled = !quest.ready;
-    finnChoices.insertBefore(detail, finnReset);
-    finnChoices.insertBefore(claim, finnReset);
-  };
-
-  const claimFinnQuest = async () => {
-    const response = await handleAPI('/api/finn/quests/claim', { method: 'POST' });
-    if (!response.success) {
-      showPopup(response.error || 'Unable to claim this quest.', 'error');
-      return;
-    }
-    currentUser = response.user;
-    updateUI(currentUser);
-    appendFinnLine('Lord Finn', `Task complete. Your reward has been delivered: ${formatCoins(response.reward.coins)} coins${response.reward.fragments ? ` and ${response.reward.fragments} Portal Fragments` : ''}${response.reward.vials ? ` and ${response.reward.vials} Empty Vial` : ''}.`);
-    await loadFinnQuestState();
   };
 
   const closeFinnDialog = () => {
@@ -3440,10 +3483,6 @@ document.addEventListener('DOMContentLoaded', () => {
   finnChoices?.addEventListener('click', event => {
     const button = event.target.closest('button');
     if (!button) return;
-    if (button.dataset.finnClaim) {
-      claimFinnQuest();
-      return;
-    }
     if (button === finnReset) {
       closeFinnDialog();
       return;
