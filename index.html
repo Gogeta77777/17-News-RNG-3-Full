@@ -10,20 +10,20 @@
 
     <style>
         :root {
-            --primary-blue: #1e40af;
-            --secondary-blue: #3b82f6;
-            --accent-blue: #60a5fa;
-            --light-blue: #93c5fd;
-            --dark-blue: #1e3a8a;
+            --primary-blue: #5b21b6;
+            --secondary-blue: #7c3aed;
+            --accent-blue: #a78bfa;
+            --light-blue: #ddd6fe;
+            --dark-blue: #312e81;
             --darker-blue: #0f172a;
             --text-light: #f1f5f9;
             --text-dark: #0f172a;
             --success: #10b981;
             --warning: #f59e0b;
             --error: #ef4444;
-            --glow-blue: #3b82f6;
-            --particle-blue: #60a5fa;
-            --wave-blue: #1e40af;
+            --glow-blue: #8b5cf6;
+            --particle-blue: #c084fc;
+            --wave-blue: #5b21b6;
             --z-base: 1;
             --z-background: 10;
             --z-content: 100;
@@ -68,7 +68,7 @@
 
         body {
             font-family: 'Rajdhani', 'Orbitron', monospace;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+            background: linear-gradient(135deg, #100c24 0%, #25134d 48%, #25336c 100%);
             min-height: 100vh;
             color: var(--text-light);
             overflow-x: hidden;
@@ -543,11 +543,21 @@
             -webkit-text-fill-color: transparent;
             animation: birthdayNameShine 2.8s linear infinite;
         }
+        .username.title-silver-shine,
+        .username-text.title-silver-shine {
+            color: transparent;
+            background-image: linear-gradient(110deg, #64748b 0%, #f8fafc 18%, #cbd5e1 34%, #fff 49%, #94a3b8 67%, #f8fafc 83%, #64748b 100%);
+            background-size: 250% 100%;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: silverTitleShine 2.6s linear infinite;
+        }
         .username-text { display: inline-block; }
 
         @keyframes ownerNameShine { to { background-position: -140% 50%; } }
         @keyframes adminNameShine { to { background-position: -140% 50%; } }
         @keyframes birthdayNameShine { to { background-position: -160% 50%; } }
+        @keyframes silverTitleShine { to { background-position: -150% 50%; } }
 
         .coins {
             font-size: 0.95rem;
@@ -4158,7 +4168,8 @@
         @media (prefers-reduced-motion: reduce) {
             .username.title-owner, .username.title-admin,
             .username-text.title-owner, .username-text.title-admin,
-            .username.title-birthday-boy, .username-text.title-birthday-boy {
+            .username.title-birthday-boy, .username-text.title-birthday-boy,
+            .username.title-silver-shine, .username-text.title-silver-shine {
                 animation: none;
                 background-position: center;
             }
@@ -4730,8 +4741,7 @@
         .finn-watch-readout p { margin: 0; color: #b6b0d1; font-size: 0.74rem; line-height: 1.45; }
         .finn-watch-meter { display: grid; gap: 4px; color: #a7a1c8; font-size: 0.62rem; }
         .finn-watch-meter i { display: block; height: 4px; overflow: hidden; background: rgba(214, 196, 255, 0.12); }
-        .finn-watch-meter i::after { display: block; width: 74%; height: 100%; background: linear-gradient(90deg, #8652e8, #e4a9ff); content: ''; animation: watchMeter 2.5s ease-in-out infinite alternate; }
-        @keyframes watchMeter { to { width: 92%; } }
+        .finn-watch-meter i::after { display: block; width: var(--signal-corruption, 24%); height: 100%; background: linear-gradient(90deg, #7c3aed, #ec4899, #f0abfc); content: ''; transition: width 400ms ease; box-shadow: 0 0 10px rgba(217, 70, 239, 0.62); }
 
         .finn-exit-flash { position: fixed; z-index: 1500; inset: 0; background: radial-gradient(circle, rgba(255, 255, 255, 0.96), rgba(221, 193, 255, 0.72) 28%, rgba(157, 111, 255, 0.18) 68%, transparent 100%); opacity: 0; pointer-events: none; }
         .finn-exit-flash.active { animation: finnExitFlash 520ms ease-out forwards; }
@@ -6151,7 +6161,7 @@
         @media (max-width: 560px) {
         }
         .chat-status { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-            .finn-watch-meter i::after { width: var(--signal-coherence, 74%); animation: none; transition: width 400ms ease; }
+            .finn-watch-meter i::after { width: var(--signal-corruption, 24%); animation: none; transition: width 400ms ease; }
             .shop-item-chance { display: block; margin: -4px 0 8px; color: #a7f3d0; font-size: 0.72rem; }
             .potion-effects { display: flex; flex-wrap: wrap; gap: 6px; }
                 .potion-effects { align-items: stretch; justify-content: center; min-height: 0; margin-top: 10px; padding: 0; border: 0; background: transparent; box-shadow: none; animation: none; }
@@ -6402,6 +6412,39 @@
             .leaderboard-list th, .leaderboard-list td { padding: 8px 6px; font-size: 0.72rem; }
             .chat-status { gap: 6px; }
         }
+        .portal-container { border: 1px solid rgba(244, 114, 182, 0.28); background: radial-gradient(ellipse at 18% 0, rgba(217, 70, 239, 0.14), transparent 42%), linear-gradient(135deg, rgba(76, 29, 88, 0.48), rgba(15, 23, 42, 0.9)); }
+        .portal-base { background: radial-gradient(circle at center, rgba(244, 114, 182, 0.34), rgba(126, 34, 206, 0.15) 48%, transparent 76%); }
+        .portal-base::before { border-color: rgba(249, 168, 212, 0.64); box-shadow: 0 0 26px rgba(236, 72, 153, 0.28), inset 0 0 32px rgba(244, 114, 182, 0.2); }
+        .portal-base::after { border-color: rgba(232, 121, 249, 0.36); box-shadow: inset 0 0 22px rgba(217, 70, 239, 0.22), 0 0 26px rgba(217, 70, 239, 0.16); }
+        .portal-ring { border-color: rgba(249, 168, 212, 0.76); box-shadow: 0 0 18px rgba(236, 72, 153, 0.24); }
+        .portal-ring-outer { border-bottom-color: rgba(192, 132, 252, 0.48); }
+        .portal-ring-inner { border-color: rgba(232, 121, 249, 0.58); }
+        .portal-spiral { background: conic-gradient(from 20deg, transparent 0 15%, rgba(244, 114, 182, 0.1) 22%, #f9a8d4 38%, rgba(217, 70, 239, 0.18) 48% 70%, #c084fc 83%, transparent 92%); box-shadow: 0 0 14px rgba(236, 72, 153, 0.42); }
+        .portal-orb { background: radial-gradient(ellipse at 50% 44%, #fff1f7 0 2%, rgba(249, 168, 212, 0.92) 9%, rgba(192, 132, 252, 0.72) 35%, rgba(36, 16, 67, 0.96) 72%), #160b2b; box-shadow: 0 0 32px rgba(244, 114, 182, 0.88), inset 0 0 26px rgba(255, 228, 242, 0.42), 0 0 40px rgba(192, 132, 252, 0.28); }
+        .portal-core { background: #fff1f7; box-shadow: 0 0 18px #f9a8d4, 0 0 42px rgba(217, 70, 239, 0.92); }
+        .portal-lightning { background: conic-gradient(from 25deg, transparent 0 7%, #fff1f7 8%, transparent 10% 27%, #f472b6 28%, transparent 30% 54%, #f5d0fe 55%, transparent 58% 76%, #c084fc 77%, transparent 80%); filter: drop-shadow(0 0 6px #ec4899); }
+        .realm-corrupted .realm-art-unknown { background-color: #120a24; background-image: repeating-conic-gradient(from 8deg at 52% 46%, transparent 0 12deg, rgba(192, 132, 252, 0.1) 13deg 14deg, transparent 15deg 27deg), radial-gradient(ellipse at center, rgba(126, 34, 206, 0.28), #10091d 72%); }
+        .realm-corrupted .realm-art-unknown::before { position: absolute; inset: 9% 29%; border: 2px solid rgba(232, 121, 249, 0.5); border-radius: 48% 52% 44% 56%; background: repeating-radial-gradient(ellipse at 50% 50%, transparent 0 8px, rgba(216, 180, 254, 0.18) 9px 10px, transparent 11px 18px); box-shadow: 0 0 38px rgba(168, 85, 247, 0.5), inset 0 0 32px rgba(217, 70, 239, 0.22); content: ''; animation: corruptedRealmPulse 4s ease-in-out infinite alternate; }
+        .realm-corrupted .realm-art-unknown::after { position: absolute; inset: 0; background: linear-gradient(102deg, transparent 34%, rgba(232, 121, 249, 0.12) 48%, transparent 56%), radial-gradient(ellipse at 50% 50%, transparent 18%, rgba(8, 4, 20, 0.56) 80%); content: ''; mix-blend-mode: screen; animation: corruptedRealmGlitch 5.2s steps(1, end) infinite; }
+        .realm-corrupted .realm-fracture path { stroke: #e879f9; filter: drop-shadow(0 0 5px rgba(217, 70, 239, 0.9)); }
+        .realm-corrupted .realm-question-logo { width: 76px; height: 76px; border-color: rgba(232, 121, 249, 0.7); border-radius: 42% 58% 34% 66%; background: rgba(26, 10, 43, 0.92); color: #f0abfc; box-shadow: 0 0 34px rgba(217, 70, 239, 0.46); animation: corruptedMark 7s ease-in-out infinite; }
+        @keyframes corruptedRealmPulse { to { transform: scaleX(0.82) rotate(7deg); opacity: 0.72; } }
+        @keyframes corruptedRealmGlitch { 0%, 88%, 100% { opacity: 0.2; } 89% { opacity: 0.85; transform: translateX(3px); } 91% { opacity: 0.12; transform: translateX(-4px); } }
+        @keyframes corruptedMark { 0%, 90%, 100% { rotate: 0deg; } 92% { rotate: 12deg; } 94% { rotate: -9deg; } }
+        .chat-container { border: 1px solid rgba(167, 139, 250, 0.2); background: rgba(9, 8, 28, 0.88); box-shadow: 0 18px 48px rgba(14, 8, 36, 0.28); }
+        .chat-header { background: linear-gradient(100deg, rgba(50, 25, 82, 0.72), rgba(11, 27, 52, 0.7)); }
+        .chat-view-tabs { background: rgba(23, 14, 43, 0.76); border-color: rgba(192, 132, 252, 0.2); }
+        .chat-view-tab { border-color: rgba(192, 132, 252, 0.24); background: rgba(27, 18, 49, 0.76); }
+        .chat-view-tab.active { border-color: #c084fc; background: linear-gradient(110deg, rgba(126, 34, 206, 0.36), rgba(79, 70, 229, 0.22)); color: #f3e8ff; box-shadow: inset 0 -2px #c084fc, 0 0 18px rgba(168, 85, 247, 0.12); }
+        #player-chat-view .chat-messages { background: linear-gradient(180deg, rgba(19, 13, 38, 0.98), rgba(7, 18, 37, 0.98)); }
+        #global-chat-view .chat-messages { background: radial-gradient(ellipse at top, rgba(126, 34, 206, 0.12), transparent 42%), #0b0b1c; }
+        #global-chat-view .global-drop-message { border-color: rgba(192, 132, 252, 0.5) !important; border-left-color: #c084fc !important; background: linear-gradient(100deg, rgba(91, 33, 182, 0.28), rgba(15, 13, 34, 0.94)) !important; box-shadow: inset 0 0 24px rgba(192, 132, 252, 0.1); }
+        #global-chat-view .global-drop-kicker { color: #d8b4fe; }
+        #admin-chat-view .chat-messages { background: linear-gradient(180deg, rgba(22, 14, 42, 0.98), rgba(7, 12, 27, 0.98)); }
+        #admin-chat-view .chat-message { border-left: 2px solid rgba(167, 139, 250, 0.52); background: rgba(76, 29, 149, 0.09); }
+        #admin-chat-view .chat-input-area { border-color: rgba(167, 139, 250, 0.34); background: rgba(30, 18, 54, 0.88); }
+        .finn-hourly-copy { border-color: rgba(249, 168, 212, 0.64); background: linear-gradient(120deg, rgba(39, 12, 52, 0.96), rgba(25, 18, 52, 0.94)); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.54), 0 0 48px rgba(217, 70, 239, 0.28); }
+        .finn-hourly-reward { display: block; margin-top: 16px; padding: 10px 12px; border: 1px solid rgba(249, 168, 212, 0.42); background: rgba(126, 34, 206, 0.22); color: #f5d0fe; font-size: 0.86rem; }
     </style>
 </head>
 <body>
@@ -6486,13 +6529,13 @@
 
             <!-- Update Log -->
             <div class="update-log">
-                <h3>Latest Updates <span class="update-version">Update 5</span></h3>
+                <h3>Latest Updates <span class="update-version">Update 6</span></h3>
                 <div class="log-entry">
-                    <div class="date">9 Nov 2026 / Update 5 · Expansion Update</div>
-                    <p><strong>New faces, quests, events, and tools for the next realm.</strong></p>
-                    <p>✦ Mr Vaughan, Mrs Bradley, and Mrs Croft join the global pool; Pod 1, Pod 2, William marks, and Miharu Sato join normal rolls.</p>
-                    <p>✦ Collect the four teacher rarities for Teachers pet, and complete Lord Finn’s three quests for Helping hand.</p>
-                    <p>✦ Forge Coin Potion II, follow live player status, use mentions across realms, and meet the Confetti Party and Blackhole events.</p>
+                    <div class="date">15 Nov 2026 / Update 6 · Beginning of the End</div>
+                    <p><strong>The gateway is changing. Lord Finn says something is waiting behind Realm Three.</strong></p>
+                    <p>✦ Year 7 and Year 8 join normal rolls; Lord Finn, King Baxter, and Lazar Kiwi Games join the global pool.</p>
+                    <p>✦ Added Senior, The Beginning, To the stars, and World's Richest, with silver shine for four prestige titles.</p>
+                    <p>✦ Lord Finn watches Realm Three corruption, returns hourly with gifts, and has a new Finn Potion.</p>
                 </div>
                 <details class="update-archive">
                     <summary>Previous updates <span>4 releases</span></summary>
@@ -6929,15 +6972,15 @@
             <section class="finn-watch-view hidden" id="finn-watch-view" aria-label="Gateway Watch live monitor">
                 <div class="finn-watch-hud">
                     <strong>GATEWAY SURFACE / LIVE FEED</strong>
-                    <span class="finn-watch-live">SIGNAL ACTIVE</span>
+                    <span class="finn-watch-live">CORRUPTION SPIKE</span>
                 </div>
                 <div class="finn-watch-screen">
                     <div class="finn-watch-portal portal-open" id="finn-watch-portal" aria-hidden="true"></div>
                     <div class="finn-watch-readout">
                         <span class="finn-watch-live">SIGNAL TRACE · LIVE</span>
                         <strong id="finn-watch-status">Portal locked</strong>
-                        <p>Two pulses overlap, then the surface folds inward. The signal comes from a route missing from every realm chart.</p>
-                        <label class="finn-watch-meter">SIGNAL COHERENCE<i></i></label>
+                        <p>Something is pushing through the uncharted third route. The violet trace is spreading through Finn’s signal.</p>
+                        <label class="finn-watch-meter">REALM 03 CORRUPTION<i></i></label>
                     </div>
                 </div>
             </section>
@@ -6959,17 +7002,17 @@
                     <div class="realm-art realm-art-forge" aria-hidden="true"></div>
                     <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Forge Realm</h3><p>Craft potions and event tools with collected items.</p><span class="realm-status" id="forge-realm-status"></span><button class="btn" id="forge-realm-action" type="button">UNLOCK · 1 ORE + 30 ROCK</button></div>
                 </article>
-                <article class="realm-card realm-coming" aria-disabled="true">
-                    <div class="realm-art realm-art-unknown" aria-label="Unknown realm with one violet fracture" role="img">
+                <article class="realm-card realm-coming realm-corrupted" aria-disabled="true">
+                    <div class="realm-art realm-art-unknown" aria-label="A corrupted violet signal behind the sealed third realm" role="img">
                         <svg class="realm-fracture" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true">
                             <defs><linearGradient id="realm-fracture-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d2ff"/><stop offset=".45" stop-color="#b969ff"/><stop offset="1" stop-color="#7045c4"/></linearGradient></defs>
                             <path d="M283 2 274 18 281 29 260 42 268 53 247 66 255 78 235 91 243 104 221 116 229 128 206 140 212 151 191 166 M260 42 279 47 286 60 M247 66 229 59 222 47 M243 104 264 110 271 121 M221 116 203 107 195 94"/>
                             <path d="M102 0 111 15 101 27 119 39 112 52 128 64 122 76"/>
                             <path d="M40 14 53 28 45 39 65 54 57 66 74 79 66 94 M355 12 342 27 351 40 332 55 341 69 322 83 330 96 M305 112 291 124 302 135 285 148 293 162 279 178 M151 106 164 117 155 129 174 141 167 155"/>
                         </svg>
-                        <span class="realm-question-logo">?</span>
+                        <span class="realm-question-logo">∅</span>
                     </div>
-                    <div class="realm-copy"><span class="realm-kicker">UNRELEASED</span><h3>Unknown</h3><p>This destination has not been revealed.</p><span class="realm-soon">COMING SOON</span></div>
+                    <div class="realm-copy"><span class="realm-kicker">SIGNAL CORRUPTED</span><h3>Realm Three</h3><p>A presence is pressing through the gateway. Lord Finn says it is changing him.</p><span class="realm-soon">DO NOT OPEN</span></div>
                 </article>
             </div>
         </section>
