@@ -367,6 +367,9 @@ function initMultiplayer() {
     showPopup(`${message.username} replied to your message.`);
   });
 
+  socket.on('finn-hourly-event', event => window.showFinnHourlyEvent?.(event));
+  socket.on('finn-hourly-reward', reward => window.showFinnHourlyReward?.(reward));
+
   socket.on('blackhole-reward', reward => {
     window.updateGameUser?.(reward?.user);
     showPopup(`Blackhole reward: ${reward.amount} ${reward.item}`);
