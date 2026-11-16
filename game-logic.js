@@ -103,15 +103,6 @@ const TITLES = [
 ];
 
 const SILVER_SHINE_TITLE_IDS = new Set(['to-the-stars', 'worlds-richest', 'billionaire', 'this-is-my-year']);
-const PLAYER_FONT_FAMILIES = {
-  rajdhani: "'Rajdhani', 'Orbitron', monospace",
-  orbitron: "'Orbitron', 'Rajdhani', monospace",
-  system: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  serif: "Georgia, 'Times New Roman', serif"
-};
-const PLAYER_PREFERENCES_KEY = 'rng3-player-preferences';
-const DEFAULT_PLAYER_PREFERENCES = { font: 'rajdhani', rollDelayMs: 42, reducedMotion: false };
-let playerPreferences = { ...DEFAULT_PLAYER_PREFERENCES };
 
 const CODE_REWARDS = {
   'THETHREEQUEL': { title: 'veteran', coins: 0 }
@@ -1730,45 +1721,25 @@ function formatChatTimestamp(timestamp) {
   return `${day} · ${time}`;
 }
 
-const GLOBAL_DROP_RARITY_CHANCES = new Map(
-  [...rarityOptions, ...globalOptions, ...diveGlobalOptions, ...halloweenRarities]
-    .map(rarity => [rarity.name.toLocaleLowerCase(), Number(rarity.chance)])
-);
-
-function sortGlobalChatMessages(container) {
-  const messages = Array.from(container.children, (element, index) => ({ element, index }));
-  messages.sort((left, right) => {
-    const leftChance = Number(left.element.dataset.rarityChance);
-    const rightChance = Number(right.element.dataset.rarityChance);
-    if (leftChance < rightChance) return -1;
-    if (leftChance > rightChance) return 1;
-    const newestFirst = Number(right.element.dataset.timestamp) - Number(left.element.dataset.timestamp);
-    return newestFirst || left.index - right.index;
-  });
-  messages.forEach(({ element }) => container.appendChild(element));
-}
-
 function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null, messageId = null, attachment = null, containerId = null) {
   const chatMessages = document.getElementById(containerId || (isGlobalDrop ? 'global-chat-messages' : 'chat-messages'));
   if (!chatMessages) return;
   
   const msgEl = document.createElement('div');
-  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isSystem ? 'chat-message system-message' : 'chat-message';
+  const isBroadcast = isSystem && title === 'Broadcast';
+  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isBroadcast ? 'chat-message broadcast-message' : isSystem ? 'chat-message system-message' : 'chat-message';
   if (isGlobalDrop && title === 'OWNER PANEL DROP') msgEl.classList.add('owner-global-drop-message');
   msgEl.dataset.messageId = String(messageId || timestamp);
-  if (isGlobalDrop) {
-    msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
-    msgEl.dataset.rarityChance = String(GLOBAL_DROP_RARITY_CHANCES.get(String(title || '').toLocaleLowerCase()) ?? Infinity);
-    msgEl.dataset.timestamp = String(new Date(timestamp).getTime() || 0);
-  }
+  if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
   
   const time = formatChatTimestamp(timestamp);
   
   if (isSystem && !isGlobalDrop) {
-    msgEl.innerHTML = `
-      <span style="font-weight: bold; color: #FF0000;">⚡ ${escapeHtml(message)}</span>
-      <br><small style="opacity: 0.7;">${time}</small>
-    `;
+    if (isBroadcast) {
+      msgEl.innerHTML = `<span class="broadcast-label">📢 BROADCAST</span><span class="broadcast-message-copy">${escapeHtml(message)}</span><small>${time}</small>`;
+    } else {
+      msgEl.innerHTML = `<span class="system-message-icon" aria-hidden="true">⚡</span><span class="system-message-copy">${escapeHtml(message)}</span><small>${time}</small>`;
+    }
   } else {
     const titleDefinition = TITLES.find(titleOption => titleOption.id === title || titleOption.name === title);
     if (titleDefinition?.id === 'birthday-boy' && !isGlobalDrop && !isAnnouncement) {
@@ -1836,12 +1807,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   }
   
   chatMessages.appendChild(msgEl);
-  if (isGlobalDrop) {
-    sortGlobalChatMessages(chatMessages);
-    chatMessages.scrollTop = 0;
-  } else {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
+  chatMessages.scrollTop = chatMessages.scrollHeight;
   if (isGlobalDrop && announceGlobalDrop) showGlobalDropBanner(username, title, message, titleColor);
 }
 
@@ -1856,9 +1822,19 @@ function renderGlobalRarityCounts(rarities = []) {
   const container = document.getElementById('global-rarity-counts');
   if (!container) return;
   const total = rarities.reduce((sum, rarity) => sum + (Number(rarity.obtained) || 0), 0);
+  const rarestFirst = rarities
+    .map((rarity, index) => ({ rarity, index }))
+    .sort((left, right) => {
+      const leftChance = Number(left.rarity.chance);
+      const rightChance = Number(right.rarity.chance);
+      const chanceDifference = (Number.isFinite(leftChance) ? leftChance : Infinity)
+        - (Number.isFinite(rightChance) ? rightChance : Infinity);
+      return chanceDifference || left.index - right.index;
+    })
+    .map(({ rarity }) => rarity);
   container.innerHTML = `
     <div class="global-rarity-summary"><strong>${total.toLocaleString()}</strong><span>global rarities found across all accounts</span></div>
-    <div class="global-rarity-grid">${rarities.map(rarity => {
+    <div class="global-rarity-grid">${rarestFirst.map(rarity => {
       const color = /^#[0-9a-f]{6}$/i.test(rarity.color || '') ? rarity.color : '#7dd3fc';
       return `<article class="global-rarity-stat" style="--rarity-color:${color}"><strong>${escapeHtml(rarity.name)}</strong><span>${(Number(rarity.obtained) || 0).toLocaleString()} found</span></article>`;
     }).join('')}</div>
@@ -2398,7 +2374,7 @@ function animateAdminPanelTransition(panel, phase, duration, onComplete = null) 
   panel.classList.remove('is-connecting', 'is-disconnecting');
   const label = panel.querySelector('.admin-connection-label');
   if (label) label.textContent = phase === 'is-disconnecting' ? 'CLOSING SECURE LINK' : 'ESTABLISHING SECURE LINK';
-  if (playerPreferences.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
     adminPanelTransitionTimer = null;
     onComplete?.();
     return;
@@ -3250,7 +3226,7 @@ async function animateRarityRoll(rollDisplay, result) {
     rollDisplay.classList.remove('rarity-slot-tick');
     void rollDisplay.offsetWidth;
     rollDisplay.classList.add('rarity-slot-tick');
-    await new Promise(resolve => setTimeout(resolve, (playerPreferences.rollDelayMs + step * 7) / speedMultiplier));
+    await new Promise(resolve => setTimeout(resolve, (42 + step * 7) / speedMultiplier));
   }
 
   rollDisplay.classList.remove('global-anticipation');
@@ -3345,84 +3321,7 @@ function setupRollButton() {
 }
 
 // ==================== INITIALIZATION ====================
-function loadPlayerPreferences() {
-  try {
-    const stored = localStorage.getItem(PLAYER_PREFERENCES_KEY);
-    if (!stored) return { ...DEFAULT_PLAYER_PREFERENCES };
-    const parsed = JSON.parse(stored);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new TypeError('Stored game preferences must be an object.');
-    }
-    const font = Object.prototype.hasOwnProperty.call(PLAYER_FONT_FAMILIES, parsed.font)
-      ? parsed.font
-      : DEFAULT_PLAYER_PREFERENCES.font;
-    const rollDelayMs = Number(parsed.rollDelayMs);
-    return {
-      font,
-      rollDelayMs: Number.isInteger(rollDelayMs) ? Math.min(90, Math.max(20, rollDelayMs)) : DEFAULT_PLAYER_PREFERENCES.rollDelayMs,
-      reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULT_PLAYER_PREFERENCES.reducedMotion
-    };
-  } catch (error) {
-    console.warn('Unable to load saved game preferences:', error.message || error);
-    const status = document.getElementById('player-preferences-status');
-    if (status) status.textContent = 'Could not load saved preferences; defaults are active.';
-    return { ...DEFAULT_PLAYER_PREFERENCES };
-  }
-}
-
-function applyPlayerPreferences() {
-  const gamePage = document.getElementById('game-page');
-  gamePage?.style.setProperty('--player-font-family', PLAYER_FONT_FAMILIES[playerPreferences.font]);
-  gamePage?.style.setProperty('--player-roll-delay', `${playerPreferences.rollDelayMs}ms`);
-  gamePage?.classList.toggle('personalized-font', playerPreferences.font !== DEFAULT_PLAYER_PREFERENCES.font);
-  gamePage?.classList.toggle('player-reduced-motion', playerPreferences.reducedMotion);
-  const fontInput = document.getElementById('game-font-preference');
-  const delayInput = document.getElementById('roll-delay-preference');
-  const delayValue = document.getElementById('roll-delay-value');
-  const motionInput = document.getElementById('reduced-motion-preference');
-  if (fontInput) fontInput.value = playerPreferences.font;
-  if (delayInput) delayInput.value = String(playerPreferences.rollDelayMs);
-  if (delayValue) delayValue.textContent = `${playerPreferences.rollDelayMs} ms`;
-  if (motionInput) motionInput.checked = playerPreferences.reducedMotion;
-}
-
-function setupPlayerPreferences() {
-  playerPreferences = loadPlayerPreferences();
-  applyPlayerPreferences();
-  const status = document.getElementById('player-preferences-status');
-  const save = () => {
-    playerPreferences = {
-      font: document.getElementById('game-font-preference')?.value || DEFAULT_PLAYER_PREFERENCES.font,
-      rollDelayMs: Number(document.getElementById('roll-delay-preference')?.value) || DEFAULT_PLAYER_PREFERENCES.rollDelayMs,
-      reducedMotion: Boolean(document.getElementById('reduced-motion-preference')?.checked)
-    };
-    applyPlayerPreferences();
-    try {
-      localStorage.setItem(PLAYER_PREFERENCES_KEY, JSON.stringify(playerPreferences));
-      if (status) status.textContent = 'Preferences saved on this device.';
-    } catch (error) {
-      console.error('Unable to save game preferences:', error.message || error);
-      if (status) status.textContent = 'Could not save preferences in this browser.';
-    }
-  };
-  document.getElementById('game-font-preference')?.addEventListener('change', save);
-  document.getElementById('roll-delay-preference')?.addEventListener('input', save);
-  document.getElementById('reduced-motion-preference')?.addEventListener('change', save);
-  document.getElementById('reset-player-preferences')?.addEventListener('click', () => {
-    playerPreferences = { ...DEFAULT_PLAYER_PREFERENCES };
-    applyPlayerPreferences();
-    try {
-      localStorage.removeItem(PLAYER_PREFERENCES_KEY);
-      if (status) status.textContent = 'Preferences restored to defaults.';
-    } catch (error) {
-      console.error('Unable to reset game preferences:', error.message || error);
-      if (status) status.textContent = 'Could not reset saved preferences in this browser.';
-    }
-  });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  setupPlayerPreferences();
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
   document.getElementById('register-form')?.addEventListener('submit', handleRegister);
   document.getElementById('login-btn')?.addEventListener('click', () => showPage('login'));
@@ -3938,21 +3837,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById(presentation.stopId)?.addEventListener('click', () => triggerAdminEvent(eventName, 'stop'));
   });
   
-  // Broadcast button
-  document.getElementById('broadcast-btn')?.addEventListener('click', () => {
-    const msg = prompt('Enter broadcast message:');
-    if (msg && msg.trim()) {
-      handleAPI('/api/broadcast', {
-        method: 'POST',
-        body: { message: msg.trim() }
-      }).then(response => {
-        if (response.success) {
-          showPopup('📢 Message broadcast to all players!', '#FFD700');
-        } else {
-          showPopup(response.error || 'Broadcast failed', 'error');
-        }
-      });
+  document.getElementById('broadcast-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const messageInput = form.querySelector('#broadcast-message');
+    const status = document.getElementById('broadcast-status');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const message = messageInput?.value.trim();
+    if (!message) {
+      if (status) status.textContent = 'Enter a message before sending.';
+      messageInput?.focus();
+      return;
     }
+
+    if (submitButton) submitButton.disabled = true;
+    if (status) status.textContent = 'Sending broadcast...';
+    const response = await handleAPI('/api/broadcast', { method: 'POST', body: { message } });
+    if (response.success) {
+      form.reset();
+      if (status) status.textContent = 'Broadcast sent to everyone.';
+      showPopup('📢 Message broadcast to all players!', '#FFD700');
+    } else {
+      if (status) status.textContent = response.error || 'Broadcast failed.';
+      showPopup(response.error || 'Broadcast failed.', 'error');
+    }
+    if (submitButton) submitButton.disabled = false;
   });
   
   // Clear chat button
