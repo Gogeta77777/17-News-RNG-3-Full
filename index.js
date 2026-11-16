@@ -3093,7 +3093,6 @@ app.post('/api/broadcast', async (req, res) => {
   const text = String(message).trim().slice(0, 500);
   const chatRecord = await saveChatMessage('BROADCAST', text, 'Broadcast', '#ffd700', true);
   io.emit('chat-message', chatRecord);
-  io.emit('system-message', { username: 'System', message: `Broadcast sent by ${req.session.username}`, timestamp: new Date().toISOString(), system: true });
   res.json({ success: true });
 });
 
