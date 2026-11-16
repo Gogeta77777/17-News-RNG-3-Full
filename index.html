@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-    <meta name="theme-color" content="#1e3a8a">
+    <meta name="theme-color" content="#151238">
     <title>17 News RNG 3 - The Next Generation</title>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -6443,6 +6443,120 @@
         #admin-chat-view .chat-messages { background: linear-gradient(180deg, rgba(22, 14, 42, 0.98), rgba(7, 12, 27, 0.98)); }
         #admin-chat-view .chat-message { border-left: 2px solid rgba(167, 139, 250, 0.52); background: rgba(76, 29, 149, 0.09); }
         #admin-chat-view .chat-input-area { border-color: rgba(167, 139, 250, 0.34); background: rgba(30, 18, 54, 0.88); }
+        #game-page {
+            --game-purple: #c4b5fd;
+            --game-purple-border: rgba(167, 139, 250, 0.34);
+            --game-blue: #7dd3fc;
+            --game-blue-border: rgba(96, 165, 250, 0.3);
+        }
+        #game-page::before {
+            background-image: linear-gradient(rgba(167, 139, 250, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.1) 1px, transparent 1px);
+        }
+        #game-page .game-header {
+            border-bottom-color: rgba(167, 139, 250, 0.28);
+            background: linear-gradient(100deg, rgba(22, 15, 48, 0.98), rgba(10, 23, 52, 0.97));
+        }
+        #game-page .game-title { color: #e9e4ff; text-shadow: 0 0 22px rgba(167, 139, 250, 0.2); }
+        #game-page .user-info .username { color: var(--game-purple); }
+        #game-page .user-info .coins,
+        #game-page .header-inbox-button {
+            border-color: var(--game-purple-border);
+            background-color: rgba(38, 28, 75, 0.62);
+        }
+        #game-page .header-inbox-button:hover,
+        #game-page .header-inbox-button:focus-visible {
+            border-color: var(--game-blue);
+            background-color: rgba(30, 58, 110, 0.72);
+        }
+        #game-page .admin-btn {
+            border-color: var(--game-purple-border);
+            background: linear-gradient(110deg, #5b3ca8, #1d4ed8);
+        }
+        #game-page .roll-panel {
+            border-color: var(--game-purple-border);
+            border-left-color: var(--game-blue);
+            background:
+                radial-gradient(circle at 8% 0, rgba(167, 139, 250, 0.17), transparent 44%),
+                radial-gradient(circle at 100% 100%, rgba(96, 165, 250, 0.14), transparent 48%),
+                linear-gradient(145deg, #191737, #09162d);
+        }
+        #game-page .roll-label,
+        #game-page .roll-odds span { color: var(--game-blue); }
+        #game-page .roll-state {
+            border-color: var(--game-blue-border);
+            color: #dbeafe;
+        }
+        #game-page .roll-state::before {
+            background: var(--game-purple);
+            box-shadow: 0 0 10px rgba(167, 139, 250, 0.72);
+        }
+        #game-page .roll-machine {
+            border-color: rgba(167, 139, 250, 0.22);
+            background:
+                linear-gradient(90deg, transparent 49.8%, rgba(167, 139, 250, 0.08) 50%, transparent 50.2%),
+                repeating-linear-gradient(0deg, rgba(191, 219, 254, 0.025) 0 1px, transparent 1px 4px),
+                #0a1028;
+            box-shadow: inset 0 0 38px rgba(99, 102, 241, 0.14);
+        }
+        #game-page .roll-machine-mark { color: var(--game-blue); }
+        #game-page .roll-meter i:nth-child(2) {
+            background: var(--game-purple);
+            box-shadow: 0 0 9px rgba(167, 139, 250, 0.58);
+        }
+        #game-page .roll-btn {
+            background: linear-gradient(110deg, #6d4bd1, #2563eb);
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.24);
+        }
+        #game-page .roll-btn:hover { background: linear-gradient(110deg, #7c5ce0, #3b82f6); }
+        #game-page .roll-btn.loading { background: #3730a3; }
+        #game-page .auto-roll-btn {
+            border-color: var(--game-blue-border);
+            background: linear-gradient(120deg, rgba(49, 39, 101, 0.72), rgba(20, 43, 82, 0.76));
+            color: #dbeafe;
+        }
+        #game-page .auto-roll-btn:hover:not(:disabled) {
+            border-color: var(--game-purple);
+            background: linear-gradient(120deg, rgba(76, 55, 144, 0.76), rgba(30, 64, 110, 0.82));
+        }
+        #game-page .content-tabs {
+            border-color: var(--game-purple-border);
+            background: linear-gradient(110deg, rgba(28, 21, 59, 0.96), rgba(10, 27, 58, 0.96));
+        }
+        #game-page .content-tab { color: #c7d2fe; }
+        #game-page .content-tab:hover { background: rgba(96, 165, 250, 0.12); color: #eff6ff; }
+        #game-page .content-tab.active {
+            background: linear-gradient(110deg, #7250d4, #2563eb);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(79, 70, 229, 0.22);
+        }
+        #game-page .tab-content,
+        #game-page .settings-section,
+        #game-page .rotating-shop,
+        #game-page .potion-shop,
+        #game-page .titles-container {
+            border-color: rgba(167, 139, 250, 0.22);
+            background: linear-gradient(145deg, rgba(19, 20, 49, 0.97), rgba(9, 24, 50, 0.97));
+        }
+        #game-page .inventory-subtabs { border-bottom-color: rgba(167, 139, 250, 0.22); }
+        #game-page .inv-subtab { color: #c7d2fe; }
+        #game-page .inv-subtab.active {
+            border-color: var(--game-purple);
+            color: var(--game-purple);
+        }
+        #game-page .inventory-item,
+        #game-page .shop-item,
+        #game-page .potion-card,
+        #game-page .title-card {
+            border-color: rgba(125, 160, 250, 0.22);
+            background-color: rgba(23, 27, 58, 0.72);
+        }
+        #game-page .inventory-item:hover,
+        #game-page .shop-item:hover,
+        #game-page .title-card:hover {
+            border-color: rgba(167, 139, 250, 0.52);
+            box-shadow: 0 12px 26px rgba(20, 18, 60, 0.34), 0 0 18px rgba(96, 165, 250, 0.1);
+        }
+        #game-page .roll-chance { border-color: var(--game-purple-border); }
         .finn-hourly-copy { border-color: rgba(249, 168, 212, 0.64); background: linear-gradient(120deg, rgba(39, 12, 52, 0.96), rgba(25, 18, 52, 0.94)); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.54), 0 0 48px rgba(217, 70, 239, 0.28); }
         .finn-hourly-reward { display: block; margin-top: 16px; padding: 10px 12px; border: 1px solid rgba(249, 168, 212, 0.42); background: rgba(126, 34, 206, 0.22); color: #f5d0fe; font-size: 0.86rem; }
     </style>
@@ -7191,20 +7305,20 @@
                         <div class="event-status" id="abyssal-resonance-status">Ready · manual event</div>
                     </div>
 
-                    <div class="event-item event-prismfall owner-only-event">
-                        <div class="event-kicker">OWNER SIGNAL / PRISM FIELD</div>
+                    <div class="event-item event-prismfall">
+                        <div class="event-kicker">ADMIN EVENT / PRISM FIELD</div>
                         <h3>Prismfall</h3>
                         <p>A prism storm grants 5× luck, 2× coins, and 350 bonus coins per roll until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-prismfall">Start Prismfall</button><button class="btn stop-btn" id="deactivate-prismfall" hidden>End Prismfall</button></div>
-                        <div class="event-status" id="prismfall-status">Owner only · ready</div>
+                        <div class="event-status" id="prismfall-status">Ready · admin or owner</div>
                     </div>
 
-                    <div class="event-item event-gravity-well owner-only-event">
-                        <div class="event-kicker">OWNER SIGNAL / GRAVITY FIELD</div>
+                    <div class="event-item event-gravity-well">
+                        <div class="event-kicker">ADMIN EVENT / GRAVITY FIELD</div>
                         <h3>Gravity Well</h3>
                         <p>A gravity lens grants 5× coins and 500 bonus coins per roll until manually ended.</p>
                         <div class="event-buttons"><button class="btn" id="activate-gravity-well">Open Gravity Well</button><button class="btn stop-btn" id="deactivate-gravity-well" hidden>Close Gravity Well</button></div>
-                        <div class="event-status" id="gravity-well-status">Owner only · ready</div>
+                        <div class="event-status" id="gravity-well-status">Ready · admin or owner</div>
                     </div>
                     <div class="event-item event-confetti">
                         <div class="event-kicker">COMMUNITY EVENT / CONFETTI</div>
