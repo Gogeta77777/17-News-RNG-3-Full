@@ -1727,7 +1727,8 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   
   const msgEl = document.createElement('div');
   const isBroadcast = isSystem && title === 'Broadcast';
-  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isBroadcast ? 'chat-message broadcast-message' : isSystem ? 'chat-message system-message' : 'chat-message';
+  const isWelcomeMessage = isSystem && username === 'System' && message === 'Welcome to RNG 3 chat. Be kind and enjoy the roll!';
+  msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isBroadcast ? 'chat-message broadcast-message' : isWelcomeMessage ? 'chat-message system-message welcome-message' : isSystem ? 'chat-message system-message' : 'chat-message';
   if (isGlobalDrop && title === 'OWNER PANEL DROP') msgEl.classList.add('owner-global-drop-message');
   msgEl.dataset.messageId = String(messageId || timestamp);
   if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
@@ -1737,6 +1738,8 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   if (isSystem && !isGlobalDrop) {
     if (isBroadcast) {
       msgEl.innerHTML = `<span class="broadcast-label">📢 BROADCAST</span><span class="broadcast-message-copy">${escapeHtml(message)}</span><small>${time}</small>`;
+    } else if (isWelcomeMessage) {
+      msgEl.innerHTML = `<span class="welcome-message-label">✦ CHAT WELCOME</span><span class="welcome-message-copy">${escapeHtml(message)}</span><small>${time}</small>`;
     } else {
       msgEl.innerHTML = `<span class="system-message-icon" aria-hidden="true">⚡</span><span class="system-message-copy">${escapeHtml(message)}</span><small>${time}</small>`;
     }
