@@ -2862,7 +2862,7 @@ app.post('/api/mini-admin/event', async (req, res) => {
     }
     const eventName = String(req.body?.eventName || '');
     const action = req.body?.action === 'stop' ? 'stop' : 'start';
-    if (!['starlight-surge', 'meteor-shower', 'abyssal-resonance', 'confetti-party'].includes(eventName)) {
+    if (!['starlight-surge', 'meteor-shower', 'abyssal-resonance', 'prismfall', 'gravity-well', 'confetti-party'].includes(eventName)) {
       return res.status(400).json({ success: false, error: 'This event is not available in the Admin Panel.' });
     }
     if (gameShutdown) return res.status(503).json({ success: false, error: 'Events are unavailable during shutdown.' });
