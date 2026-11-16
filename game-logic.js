@@ -1796,6 +1796,7 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
     window.setChatReplyTarget?.({ username, message });
   });
   if (messageId && (currentUser?.is_admin || currentUser?.titles?.includes('admin') || currentUser?.titles?.includes('owner'))) {
+    msgEl.classList.add('has-delete-button');
     const deleteButton = document.createElement('button');
     deleteButton.className = 'chat-delete-button';
     deleteButton.type = 'button';
