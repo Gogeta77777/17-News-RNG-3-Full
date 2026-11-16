@@ -103,6 +103,15 @@ const TITLES = [
 ];
 
 const SILVER_SHINE_TITLE_IDS = new Set(['to-the-stars', 'worlds-richest', 'billionaire', 'this-is-my-year']);
+const PLAYER_FONT_FAMILIES = {
+  rajdhani: "'Rajdhani', 'Orbitron', monospace",
+  orbitron: "'Orbitron', 'Rajdhani', monospace",
+  system: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  serif: "Georgia, 'Times New Roman', serif"
+};
+const PLAYER_PREFERENCES_KEY = 'rng3-player-preferences';
+const DEFAULT_PLAYER_PREFERENCES = { font: 'rajdhani', rollDelayMs: 42, reducedMotion: false };
+let playerPreferences = { ...DEFAULT_PLAYER_PREFERENCES };
 
 const CODE_REWARDS = {
   'THETHREEQUEL': { title: 'veteran', coins: 0 }
@@ -1721,6 +1730,24 @@ function formatChatTimestamp(timestamp) {
   return `${day} · ${time}`;
 }
 
+const GLOBAL_DROP_RARITY_CHANCES = new Map(
+  [...rarityOptions, ...globalOptions, ...diveGlobalOptions, ...halloweenRarities]
+    .map(rarity => [rarity.name.toLocaleLowerCase(), Number(rarity.chance)])
+);
+
+function sortGlobalChatMessages(container) {
+  const messages = Array.from(container.children, (element, index) => ({ element, index }));
+  messages.sort((left, right) => {
+    const leftChance = Number(left.element.dataset.rarityChance);
+    const rightChance = Number(right.element.dataset.rarityChance);
+    if (leftChance < rightChance) return -1;
+    if (leftChance > rightChance) return 1;
+    const newestFirst = Number(right.element.dataset.timestamp) - Number(left.element.dataset.timestamp);
+    return newestFirst || left.index - right.index;
+  });
+  messages.forEach(({ element }) => container.appendChild(element));
+}
+
 function addChatMessage(username, message, timestamp, isSystem = false, title = null, titleColor = '#7dd3fc', isGlobalDrop = false, announceGlobalDrop = false, isAnnouncement = false, replyTo = null, messageId = null, attachment = null, containerId = null) {
   const chatMessages = document.getElementById(containerId || (isGlobalDrop ? 'global-chat-messages' : 'chat-messages'));
   if (!chatMessages) return;
@@ -1729,7 +1756,11 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   msgEl.className = isAnnouncement ? 'chat-message admin-announcement-message' : isGlobalDrop ? 'chat-message global-drop-message' : isSystem ? 'chat-message system-message' : 'chat-message';
   if (isGlobalDrop && title === 'OWNER PANEL DROP') msgEl.classList.add('owner-global-drop-message');
   msgEl.dataset.messageId = String(messageId || timestamp);
-  if (isGlobalDrop) msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
+  if (isGlobalDrop) {
+    msgEl.style.setProperty('--drop-glow', titleColor || '#38bdf8');
+    msgEl.dataset.rarityChance = String(GLOBAL_DROP_RARITY_CHANCES.get(String(title || '').toLocaleLowerCase()) ?? Infinity);
+    msgEl.dataset.timestamp = String(new Date(timestamp).getTime() || 0);
+  }
   
   const time = formatChatTimestamp(timestamp);
   
@@ -1805,7 +1836,12 @@ function addChatMessage(username, message, timestamp, isSystem = false, title = 
   }
   
   chatMessages.appendChild(msgEl);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (isGlobalDrop) {
+    sortGlobalChatMessages(chatMessages);
+    chatMessages.scrollTop = 0;
+  } else {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
   if (isGlobalDrop && announceGlobalDrop) showGlobalDropBanner(username, title, message, titleColor);
 }
 
@@ -2355,6 +2391,27 @@ function setAdminPanelMinimized(minimized) {
   button.setAttribute('aria-expanded', String(!minimized));
 }
 
+let adminPanelTransitionTimer = null;
+function animateAdminPanelTransition(panel, phase, duration, onComplete = null) {
+  if (!panel) return;
+  clearTimeout(adminPanelTransitionTimer);
+  panel.classList.remove('is-connecting', 'is-disconnecting');
+  const label = panel.querySelector('.admin-connection-label');
+  if (label) label.textContent = phase === 'is-disconnecting' ? 'CLOSING SECURE LINK' : 'ESTABLISHING SECURE LINK';
+  if (playerPreferences.reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    adminPanelTransitionTimer = null;
+    onComplete?.();
+    return;
+  }
+  void panel.offsetWidth;
+  panel.classList.add(phase);
+  adminPanelTransitionTimer = setTimeout(() => {
+    panel.classList.remove(phase);
+    adminPanelTransitionTimer = null;
+    onComplete?.();
+  }, duration);
+}
+
 function updateGlobalDropPreview() {
   const preview = document.getElementById('global-drop-preview');
   const type = document.getElementById('global-drop-type')?.value;
@@ -2471,20 +2528,57 @@ async function loadShutdownState() {
   if (button) button.textContent = response.active ? 'Resume game' : 'Begin shutdown';
 }
 
+function updateHeadlineFormPreview(form) {
+  const preview = form.querySelector('[data-headline-preview]');
+  if (!preview) return;
+  const enabled = form.querySelector('[name="active"]')?.checked;
+  const label = form.querySelector('[name="label"]')?.value.trim() || 'NOTICE';
+  const text = form.querySelector('[name="text"]')?.value.trim() || '';
+  const detail = form.querySelector('[name="detail"]')?.value.trim() || '';
+  const requestedColor = form.querySelector('[name="color"]')?.value || '#7dd3fc';
+  const color = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor : '#7dd3fc';
+  const labelDisplay = preview.querySelector('[data-headline-preview-label]');
+  const textDisplay = preview.querySelector('[data-headline-preview-text]');
+  if (labelDisplay) labelDisplay.textContent = label;
+  if (textDisplay) textDisplay.textContent = text ? `${text}${detail ? ` · ${detail}` : ''}` : 'Headline preview';
+  preview.style.setProperty('--headline-preview-color', color);
+  preview.classList.toggle('is-off', !enabled);
+}
+
+async function saveAdminHeadlineForm(form) {
+  const fields = new FormData(form);
+  const active = fields.get('active') === 'on';
+  const text = String(fields.get('text') || '').trim();
+  if (active && !text) {
+    showPopup('Enter headline text before enabling it.', 'error');
+    return;
+  }
+  const response = await handleAPI('/api/admin/headline', {
+    method: 'POST',
+    body: {
+      active,
+      text,
+      label: fields.get('label'),
+      detail: fields.get('detail'),
+      color: fields.get('color'),
+      speed: Number(fields.get('speed'))
+    }
+  });
+  if (!response.success) {
+    showPopup(response.error || 'Unable to save headline.', 'error');
+    return;
+  }
+  applyAdminHeadline(response.headline);
+  loadAdminAudit();
+  showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
+}
+
 function applyAdminHeadline(headline = {}) {
-    currentHeadlineConfig = { ...currentHeadlineConfig, ...headline };
+  currentHeadlineConfig = { ...currentHeadlineConfig, ...headline };
   const active = Boolean(headline.active && String(headline.text || '').trim());
   const ticker = document.getElementById('admin-headline');
   const display = document.getElementById('admin-headline-text-display');
   const tickerLabel = document.getElementById('admin-headline-label-display');
-  const enabled = document.getElementById('admin-headline-enabled');
-  const input = document.getElementById('admin-headline-text');
-  const labelInput = document.getElementById('admin-headline-label-input');
-  const detailInput = document.getElementById('admin-headline-detail');
-  const colorInput = document.getElementById('admin-headline-color');
-  const speedInput = document.getElementById('admin-headline-speed');
-  const speedValue = document.getElementById('admin-headline-speed-value');
-  const status = document.getElementById('admin-headline-status');
   const color = /^#[0-9a-f]{6}$/i.test(headline.color || '') ? headline.color : '#eff6ff';
   const speed = Math.min(36, Math.max(10, Number(headline.speed) || 18));
   if (display) display.textContent = active ? `${headline.text}${headline.detail ? ` · ${headline.detail}` : ''}` : '';
@@ -2493,20 +2587,26 @@ function applyAdminHeadline(headline = {}) {
   ticker?.style.setProperty('--headline-speed', `${speed}s`);
   ticker?.classList.toggle('hidden', !active);
   if (currentUser?.is_admin || (currentUser?.titles || []).includes('admin')) {
-    if (enabled) enabled.checked = active;
-    if (input) input.value = headline.text || '';
-    if (labelInput) labelInput.value = headline.label || '';
-    if (detailInput) detailInput.value = headline.detail || '';
-    if (colorInput) colorInput.value = color;
-    if (speedInput) speedInput.value = String(speed);
-    if (speedValue) speedValue.textContent = `${speed} seconds`;
-    if (status) status.textContent = active ? 'Headline is live for all players' : 'Headline is off';
-    const miniForm = document.getElementById('mini-headline-form');
-    if (miniForm) {
-      miniForm.elements.active.checked = active;
-      miniForm.elements.text.value = headline.text || '';
-      document.getElementById('mini-headline-status').textContent = active ? 'Headline is live' : 'Headline is off';
-    }
+    document.querySelectorAll('#admin-headline-form, #mini-headline-form').forEach(form => {
+      const setField = (name, value) => {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (field) {
+          if (field.type === 'checkbox') field.checked = Boolean(value);
+          else field.value = String(value ?? '');
+        }
+      };
+      setField('active', active);
+      setField('text', headline.text || '');
+      setField('label', headline.label || 'NOTICE');
+      setField('detail', headline.detail || '');
+      setField('color', color);
+      setField('speed', speed);
+      const speedValue = form.querySelector('#admin-headline-speed-value, [data-headline-speed-value]');
+      if (speedValue) speedValue.textContent = `${speed} seconds`;
+      const status = form.querySelector('#admin-headline-status, #mini-headline-status');
+      if (status) status.textContent = active ? 'Headline is live for all players' : 'Headline is off';
+      updateHeadlineFormPreview(form);
+    });
   }
 }
 
@@ -3150,7 +3250,7 @@ async function animateRarityRoll(rollDisplay, result) {
     rollDisplay.classList.remove('rarity-slot-tick');
     void rollDisplay.offsetWidth;
     rollDisplay.classList.add('rarity-slot-tick');
-    await new Promise(resolve => setTimeout(resolve, (42 + step * 7) / speedMultiplier));
+    await new Promise(resolve => setTimeout(resolve, (playerPreferences.rollDelayMs + step * 7) / speedMultiplier));
   }
 
   rollDisplay.classList.remove('global-anticipation');
@@ -3245,7 +3345,84 @@ function setupRollButton() {
 }
 
 // ==================== INITIALIZATION ====================
+function loadPlayerPreferences() {
+  try {
+    const stored = localStorage.getItem(PLAYER_PREFERENCES_KEY);
+    if (!stored) return { ...DEFAULT_PLAYER_PREFERENCES };
+    const parsed = JSON.parse(stored);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new TypeError('Stored game preferences must be an object.');
+    }
+    const font = Object.prototype.hasOwnProperty.call(PLAYER_FONT_FAMILIES, parsed.font)
+      ? parsed.font
+      : DEFAULT_PLAYER_PREFERENCES.font;
+    const rollDelayMs = Number(parsed.rollDelayMs);
+    return {
+      font,
+      rollDelayMs: Number.isInteger(rollDelayMs) ? Math.min(90, Math.max(20, rollDelayMs)) : DEFAULT_PLAYER_PREFERENCES.rollDelayMs,
+      reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULT_PLAYER_PREFERENCES.reducedMotion
+    };
+  } catch (error) {
+    console.warn('Unable to load saved game preferences:', error.message || error);
+    const status = document.getElementById('player-preferences-status');
+    if (status) status.textContent = 'Could not load saved preferences; defaults are active.';
+    return { ...DEFAULT_PLAYER_PREFERENCES };
+  }
+}
+
+function applyPlayerPreferences() {
+  const gamePage = document.getElementById('game-page');
+  gamePage?.style.setProperty('--player-font-family', PLAYER_FONT_FAMILIES[playerPreferences.font]);
+  gamePage?.style.setProperty('--player-roll-delay', `${playerPreferences.rollDelayMs}ms`);
+  gamePage?.classList.toggle('personalized-font', playerPreferences.font !== DEFAULT_PLAYER_PREFERENCES.font);
+  gamePage?.classList.toggle('player-reduced-motion', playerPreferences.reducedMotion);
+  const fontInput = document.getElementById('game-font-preference');
+  const delayInput = document.getElementById('roll-delay-preference');
+  const delayValue = document.getElementById('roll-delay-value');
+  const motionInput = document.getElementById('reduced-motion-preference');
+  if (fontInput) fontInput.value = playerPreferences.font;
+  if (delayInput) delayInput.value = String(playerPreferences.rollDelayMs);
+  if (delayValue) delayValue.textContent = `${playerPreferences.rollDelayMs} ms`;
+  if (motionInput) motionInput.checked = playerPreferences.reducedMotion;
+}
+
+function setupPlayerPreferences() {
+  playerPreferences = loadPlayerPreferences();
+  applyPlayerPreferences();
+  const status = document.getElementById('player-preferences-status');
+  const save = () => {
+    playerPreferences = {
+      font: document.getElementById('game-font-preference')?.value || DEFAULT_PLAYER_PREFERENCES.font,
+      rollDelayMs: Number(document.getElementById('roll-delay-preference')?.value) || DEFAULT_PLAYER_PREFERENCES.rollDelayMs,
+      reducedMotion: Boolean(document.getElementById('reduced-motion-preference')?.checked)
+    };
+    applyPlayerPreferences();
+    try {
+      localStorage.setItem(PLAYER_PREFERENCES_KEY, JSON.stringify(playerPreferences));
+      if (status) status.textContent = 'Preferences saved on this device.';
+    } catch (error) {
+      console.error('Unable to save game preferences:', error.message || error);
+      if (status) status.textContent = 'Could not save preferences in this browser.';
+    }
+  };
+  document.getElementById('game-font-preference')?.addEventListener('change', save);
+  document.getElementById('roll-delay-preference')?.addEventListener('input', save);
+  document.getElementById('reduced-motion-preference')?.addEventListener('change', save);
+  document.getElementById('reset-player-preferences')?.addEventListener('click', () => {
+    playerPreferences = { ...DEFAULT_PLAYER_PREFERENCES };
+    applyPlayerPreferences();
+    try {
+      localStorage.removeItem(PLAYER_PREFERENCES_KEY);
+      if (status) status.textContent = 'Preferences restored to defaults.';
+    } catch (error) {
+      console.error('Unable to reset game preferences:', error.message || error);
+      if (status) status.textContent = 'Could not reset saved preferences in this browser.';
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  setupPlayerPreferences();
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
   document.getElementById('register-form')?.addEventListener('submit', handleRegister);
   document.getElementById('login-btn')?.addEventListener('click', () => showPage('login'));
@@ -3635,6 +3812,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('refresh-admin-users')?.classList.toggle('hidden', isMini);
       showAdminPanelWelcome(currentUser);
       showPage('admin-panel');
+      animateAdminPanelTransition(panel, 'is-connecting', 820);
       if (currentUser.is_admin) {
         loadAdminUsers();
         loadShutdownState();
@@ -3645,18 +3823,24 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAdminRulesAgreements();
       }
       loadAdminHeadline();
-      loadMiniAdminOverview();
       clearInterval(miniAdminRefreshTimer);
-      miniAdminRefreshTimer = setInterval(loadMiniAdminOverview, 10000);
+      if (isMini) {
+        loadMiniAdminOverview();
+        miniAdminRefreshTimer = setInterval(loadMiniAdminOverview, 10000);
+      }
     } else {
       showPopup('Admin access denied', 'error');
     }
   });
   document.getElementById('back-to-game')?.addEventListener('click', () => {
+    const panel = document.getElementById('admin-panel');
+    if (panel?.classList.contains('is-disconnecting')) return;
     setAdminPanelMinimized(false);
-    document.getElementById('admin-panel')?.classList.remove('mini-admin');
     if (miniAdminRefreshTimer) clearInterval(miniAdminRefreshTimer);
-    showPage('game');
+    animateAdminPanelTransition(panel, 'is-disconnecting', 460, () => {
+      panel?.classList.remove('mini-admin');
+      showPage('game');
+    });
   });
   document.getElementById('rules-btn')?.addEventListener('click', () => showRulesDialog());
   document.getElementById('rules-close-btn')?.addEventListener('click', () => {
@@ -3736,56 +3920,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const response = await handleAPI('/api/admin/update-shutdown', { method: 'POST' });
     if (!response.success) showPopup(response.error || 'Unable to start update shutdown.', 'error');
   });
-  document.getElementById('admin-headline-form')?.addEventListener('submit', async event => {
-    event.preventDefault();
-    const active = document.getElementById('admin-headline-enabled').checked;
-    const text = document.getElementById('admin-headline-text').value.trim();
-    if (active && !text) {
-      showPopup('Enter headline text before enabling it.', 'error');
-      return;
-    }
-    const response = await handleAPI('/api/admin/headline', {
-      method: 'POST',
-      body: {
-        active,
-        text,
-        label: document.getElementById('admin-headline-label-input').value,
-        detail: document.getElementById('admin-headline-detail').value,
-        color: document.getElementById('admin-headline-color').value,
-        speed: Number(document.getElementById('admin-headline-speed').value)
-      }
+  document.querySelectorAll('#admin-headline-form, #mini-headline-form').forEach(form => {
+    form.addEventListener('input', () => {
+      updateHeadlineFormPreview(form);
+      const speedValue = form.querySelector('#admin-headline-speed-value, [data-headline-speed-value]');
+      const speedInput = form.querySelector('[name="speed"]');
+      if (speedValue && speedInput) speedValue.textContent = `${speedInput.value} seconds`;
     });
-    if (!response.success) {
-      showPopup(response.error || 'Unable to save headline.', 'error');
-      return;
-    }
-    applyAdminHeadline(response.headline);
-      loadAdminAudit();
-    showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
-  });
-  document.getElementById('admin-headline-speed')?.addEventListener('input', event => {
-    const label = document.getElementById('admin-headline-speed-value');
-    if (label) label.textContent = `${event.target.value} seconds`;
-  });
-  document.getElementById('mini-headline-form')?.addEventListener('submit', async event => {
-    event.preventDefault();
-    const fields = new FormData(event.currentTarget);
-    const active = fields.get('active') === 'on';
-    const text = String(fields.get('text') || '').trim();
-    if (active && !text) {
-      showPopup('Enter headline text before enabling it.', 'error');
-      return;
-    }
-    const response = await handleAPI('/api/admin/headline', {
-      method: 'POST',
-      body: { ...currentHeadlineConfig, active, text }
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      await saveAdminHeadlineForm(form);
     });
-    if (!response.success) {
-      showPopup(response.error || 'Unable to save headline.', 'error');
-      return;
-    }
-    applyAdminHeadline(response.headline);
-    showPopup(active ? 'Moving headline is live.' : 'Moving headline turned off.');
   });
 
   Object.entries(LIVE_EVENT_PRESENTATION).forEach(([eventName, presentation]) => {
