@@ -6557,6 +6557,143 @@
             box-shadow: 0 12px 26px rgba(20, 18, 60, 0.34), 0 0 18px rgba(96, 165, 250, 0.1);
         }
         #game-page .roll-chance { border-color: var(--game-purple-border); }
+        #game-page.personalized-font,
+        #game-page.personalized-font * {
+            font-family: var(--player-font-family), sans-serif;
+        }
+        #game-page.player-reduced-motion *,
+        #game-page.player-reduced-motion *::before,
+        #game-page.player-reduced-motion *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+        }
+        .player-preferences { display: grid; gap: 16px; }
+        .player-preferences-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .player-preferences-heading h3 { margin: 0; }
+        .player-preferences-heading p { margin: 4px 0 0; color: #94a3b8; font-size: 0.76rem; }
+        .player-preferences-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .player-preference-control { display: grid; align-content: start; gap: 7px; color: #c7d2fe; font-size: 0.82rem; font-weight: 700; }
+        .player-preference-control select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 4px; background: #0c1731; color: #eff6ff; font: inherit; }
+        .player-preference-control input[type="range"] { width: 100%; accent-color: #a78bfa; }
+        .player-preference-control output { color: #7dd3fc; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+        .player-preference-control small,
+        .player-motion-toggle small { color: #94a3b8; font-size: 0.7rem; font-weight: 500; }
+        .player-motion-toggle { display: flex; grid-column: 1 / -1; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid rgba(96, 165, 250, 0.2); background: rgba(24, 34, 72, 0.46); color: #e2e8f0; cursor: pointer; }
+        .player-motion-toggle input { width: 18px; height: 18px; accent-color: #8b5cf6; }
+        .player-motion-toggle span { display: grid; gap: 3px; }
+        .player-motion-toggle strong { font-size: 0.8rem; }
+        .player-preferences-status { min-height: 1em; margin: 0; color: #93c5fd; font-size: 0.72rem; }
+        .admin-panel:not(.mini-admin) #mini-ops-section { display: none !important; }
+        .admin-panel.mini-admin #mini-ops-section { display: block; }
+        .admin-panel.mini-admin #mini-ops-section > summary { padding-right: 20px; padding-left: 20px; }
+        .admin-panel.mini-admin #mini-ops-section > :not(summary) { margin-right: 20px; margin-left: 20px; }
+        .admin-panel.mini-admin #mini-ops-section > :last-child { margin-bottom: 20px; }
+        .admin-abuse-warning { margin: 14px 0 0; padding: 10px 12px; border-left: 2px solid #f59e0b; background: rgba(120, 53, 15, 0.14); color: #fde68a; font-size: 0.76rem; }
+        .mini-ops-events { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 9px; }
+        .mini-ops-events .btn { min-width: 0; width: 100%; }
+        .mini-ops-events .stop-btn { grid-column: 1 / -1; }
+        .mini-headline-form { display: grid; gap: 12px; padding-top: 12px; }
+        .mini-headline-form label { display: grid; gap: 6px; color: #bfdbfe; font-size: 0.82rem; }
+        .mini-headline-form .headline-enabled-control { display: flex; align-items: center; gap: 9px; }
+        .mini-headline-form input[type="checkbox"] { width: 18px; height: 18px; accent-color: #8b5cf6; }
+        .mini-headline-form input[type="text"],
+        .mini-ops-announcement input,
+        .mini-ops-announcement textarea {
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 10px;
+            border: 1px solid rgba(125, 211, 252, 0.24);
+            border-radius: 4px;
+            background: #09152d;
+            color: #eff6ff;
+            font: inherit;
+        }
+        .mini-headline-form input[type="color"] { width: 100%; min-height: 40px; padding: 4px; border: 1px solid rgba(125, 211, 252, 0.24); border-radius: 4px; background: #09152d; }
+        .mini-headline-form input[type="range"] { width: 100%; accent-color: #a78bfa; }
+        .mini-headline-form .headline-admin-footer { margin-top: 2px; }
+        .mini-ops-announcement { display: grid; gap: 10px; padding-top: 12px; }
+        .mini-ops-announcement label { display: grid; gap: 6px; color: #c7d2fe; font-size: 0.8rem; }
+        .mini-ops-announcement textarea { min-height: 90px; resize: vertical; }
+        .mini-ops-announcement button { justify-self: start; min-width: 200px; }
+        .headline-live-preview { display: grid; gap: 6px; min-height: 72px; padding: 12px 14px; overflow: hidden; border: 1px solid rgba(125, 211, 252, 0.24); border-left: 3px solid var(--headline-preview-color, #7dd3fc); background: linear-gradient(110deg, rgba(42, 34, 92, 0.34), rgba(11, 26, 55, 0.72)); }
+        .headline-live-preview span { color: var(--headline-preview-color, #7dd3fc); font-size: 0.63rem; font-weight: 900; letter-spacing: 0.1em; }
+        .headline-live-preview strong { overflow: hidden; color: #f1f5f9; font-size: 0.84rem; text-overflow: ellipsis; white-space: nowrap; }
+        .headline-live-preview.is-off { opacity: 0.62; }
+        .admin-connection-overlay { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; overflow: hidden; background: radial-gradient(ellipse at center, rgba(23, 18, 64, 0.98), rgba(3, 8, 24, 0.99)); color: #e0e7ff; opacity: 0; visibility: hidden; pointer-events: none; }
+        .admin-connection-overlay::before,
+        .admin-connection-overlay::after { position: absolute; inset: 0; content: ''; pointer-events: none; }
+        .admin-connection-overlay::before { background: repeating-linear-gradient(0deg, transparent 0 38px, rgba(125, 211, 252, 0.09) 39px, transparent 40px), repeating-linear-gradient(90deg, transparent 0 38px, rgba(167, 139, 250, 0.09) 39px, transparent 40px); mask-image: radial-gradient(ellipse at center, #000 0, transparent 72%); }
+        .admin-connection-overlay::after { inset: 50% auto auto 50%; width: min(72vw, 780px); height: 1px; background: linear-gradient(90deg, transparent, #7dd3fc, #c4b5fd, transparent); box-shadow: 0 0 22px 4px rgba(96, 165, 250, 0.44); transform: translate(-50%, -50%) scaleX(0.02); }
+        .admin-connection-label { z-index: 1; padding: 12px 18px; border: 1px solid rgba(167, 139, 250, 0.34); background: rgba(8, 15, 38, 0.72); box-shadow: 0 0 36px rgba(96, 165, 250, 0.15); font-family: 'Orbitron', monospace; font-size: clamp(0.65rem, 2vw, 0.9rem); font-weight: 800; letter-spacing: 0.14em; }
+        .admin-connection-overlay > i { position: absolute; top: 50%; left: 50%; width: min(66vw, 680px); height: min(66vw, 680px); border: 1px solid rgba(167, 139, 250, 0.22); border-radius: 50%; transform: translate(-50%, -50%) scale(0.1); }
+        .admin-connection-overlay > i:nth-of-type(2) { width: min(50vw, 500px); height: min(50vw, 500px); border-color: rgba(96, 165, 250, 0.24); }
+        .admin-connection-overlay > i:nth-of-type(3) { width: min(34vw, 340px); height: min(34vw, 340px); }
+        .admin-panel.is-connecting .admin-connection-overlay { visibility: visible; animation: adminLinkConnect 780ms ease-in-out both; }
+        .admin-panel.is-connecting .admin-connection-overlay,
+        .admin-panel.is-disconnecting .admin-connection-overlay { pointer-events: auto; }
+        .admin-panel.is-connecting .admin-connection-overlay::after { animation: adminLinkSweep 780ms ease-out both; }
+        .admin-panel.is-connecting .admin-connection-overlay > i { animation: adminLinkRingIn 780ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .admin-panel.is-connecting .admin-connection-overlay > i:nth-of-type(2) { animation-delay: 50ms; }
+        .admin-panel.is-connecting .admin-connection-overlay > i:nth-of-type(3) { animation-delay: 100ms; }
+        .admin-panel.is-disconnecting .admin-connection-overlay { visibility: visible; animation: adminLinkDisconnect 460ms ease-in both; }
+        .admin-panel.is-disconnecting .admin-connection-overlay::after { animation: adminLinkSweepOut 460ms ease-in both; }
+        .admin-panel.is-disconnecting .admin-connection-overlay > i { animation: adminLinkRingOut 460ms ease-in both; }
+        .admin-panel.is-connecting .admin-content,
+        .admin-panel.is-connecting .admin-header,
+        .admin-panel.is-connecting .admin-welcome-banner { animation: adminPanelDockIn 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        #game-page .admin-headline { border-color: rgba(167, 139, 250, 0.34); border-left: 3px solid #a78bfa; border-radius: 4px; background: linear-gradient(100deg, rgba(38, 28, 79, 0.84), rgba(11, 27, 55, 0.92)); box-shadow: inset 0 0 18px rgba(96, 165, 250, 0.08); }
+        #game-page .admin-headline-label { text-shadow: 0 0 12px color-mix(in srgb, var(--headline-color, #7dd3fc), transparent 35%); }
+        @keyframes adminLinkConnect { 0%, 74% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+        @keyframes adminLinkDisconnect { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes adminLinkSweep { 0% { transform: translate(-50%, -50%) scaleX(0.02); } 40% { transform: translate(-50%, -50%) scaleX(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.22); } }
+        @keyframes adminLinkSweepOut { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.22); } 65% { opacity: 1; transform: translate(-50%, -50%) scaleX(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.02); } }
+        @keyframes adminLinkRingIn { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1) rotate(-35deg); } 50% { opacity: 0.8; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(25deg); } }
+        @keyframes adminLinkRingOut { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(25deg); } 40% { opacity: 0.75; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.1) rotate(-35deg); } }
+        @keyframes adminPanelDockIn { from { opacity: 0; transform: translateY(12px); filter: blur(4px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+        .chat-container { overflow: hidden; border-color: rgba(167, 139, 250, 0.28); border-radius: 10px; background: linear-gradient(155deg, rgba(15, 17, 45, 0.98), rgba(7, 20, 43, 0.98)); box-shadow: 0 22px 56px rgba(3, 7, 25, 0.3); }
+        .chat-header { align-items: center; padding: 18px 20px; border-bottom: 1px solid rgba(167, 139, 250, 0.2); background: linear-gradient(105deg, rgba(50, 35, 101, 0.54), rgba(11, 27, 55, 0.9)); }
+        .chat-header h2 { margin: 0; color: #f3f0ff; font-size: 1.15rem; }
+        .chat-subtitle { margin: 4px 0 0; color: #a5b4fc; font-size: 0.76rem; }
+        .chat-view-tabs { gap: 8px; padding: 10px 14px; border-color: rgba(167, 139, 250, 0.18); background: rgba(10, 14, 37, 0.82); }
+        .chat-view-tab { flex: 1 1 0; min-height: 38px; border-radius: 5px; color: #bdc8e8; transition: background 160ms ease, border-color 160ms ease, color 160ms ease; }
+        .chat-view-tab.active { border-color: rgba(167, 139, 250, 0.66); background: linear-gradient(110deg, rgba(109, 72, 190, 0.44), rgba(37, 99, 235, 0.3)); color: #f5f3ff; box-shadow: inset 0 -2px #a78bfa, 0 0 18px rgba(96, 165, 250, 0.1); }
+        .chat-messages { display: flex; flex-direction: column; gap: 8px; min-height: 320px; max-height: 520px; padding: 14px; background: linear-gradient(180deg, rgba(13, 14, 39, 0.98), rgba(7, 18, 37, 0.98)); }
+        .chat-message { position: relative; padding: 10px 12px; border: 1px solid rgba(125, 145, 211, 0.12); border-left: 2px solid rgba(96, 165, 250, 0.42); border-radius: 5px; background: rgba(26, 31, 65, 0.38); line-height: 1.4; overflow-wrap: anywhere; }
+        .chat-message .username { margin-right: 4px; }
+        .chat-message > small { display: block; margin-top: 5px; color: #8291b3; font-size: 0.67rem; }
+        .global-drop-message { border-radius: 6px; }
+        #global-chat-view .global-drop-message:not(.owner-global-drop-message) { border-color: rgba(167, 139, 250, 0.28) !important; border-left-color: var(--drop-glow, #a78bfa) !important; background: linear-gradient(105deg, rgba(70, 47, 134, 0.22), rgba(12, 21, 48, 0.92)) !important; }
+        #global-chat-view .global-drop-kicker { color: #c4b5fd; }
+        .global-rarity-counts { max-height: 210px; overflow-y: auto; border-bottom-color: rgba(167, 139, 250, 0.2); background: rgba(10, 17, 42, 0.78); }
+        .global-rarity-grid { grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 7px; }
+        .global-rarity-stat { border-radius: 4px; background: rgba(28, 35, 75, 0.46); }
+        .chat-input-area { gap: 8px; padding: 12px; border-top: 1px solid rgba(167, 139, 250, 0.18); background: rgba(11, 19, 45, 0.9); }
+        .chat-input-area input[type="text"] { min-height: 42px; border-color: rgba(167, 139, 250, 0.25); border-radius: 5px; background: rgba(8, 15, 36, 0.9); }
+        .chat-input-area input[type="text"]:focus { border-color: rgba(125, 211, 252, 0.7); outline: 2px solid rgba(96, 165, 250, 0.14); }
+        .chat-input-area .btn { min-height: 40px; border-radius: 5px; }
+        .roll-display.rarity-slot-tick { animation-duration: var(--player-roll-delay, 90ms); }
+        @media (max-width: 640px) {
+            .player-preferences-grid { grid-template-columns: minmax(0, 1fr); }
+            .player-motion-toggle { grid-column: auto; }
+            .admin-panel.mini-admin #mini-ops-section > summary { padding-right: 14px; padding-left: 14px; }
+            .admin-panel.mini-admin #mini-ops-section > :not(summary) { margin-right: 14px; margin-left: 14px; }
+            .admin-panel.mini-admin #mini-ops-section > :last-child { margin-bottom: 14px; }
+            .chat-header { align-items: flex-start; }
+            .chat-view-tabs { gap: 5px; padding: 8px; }
+            .chat-view-tab { padding-right: 6px; padding-left: 6px; font-size: 0.76rem; }
+            .chat-messages { min-height: 260px; max-height: 58vh; padding: 10px; }
+            .admin-connection-overlay > i { width: 86vw; height: 86vw; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .admin-panel.is-connecting .admin-connection-overlay,
+            .admin-panel.is-disconnecting .admin-connection-overlay,
+            .admin-panel.is-connecting .admin-connection-overlay::after,
+            .admin-panel.is-disconnecting .admin-connection-overlay::after,
+            .admin-panel.is-connecting .admin-connection-overlay > i,
+            .admin-panel.is-disconnecting .admin-connection-overlay > i { animation-duration: 0.01ms !important; }
+        }
         .finn-hourly-copy { border-color: rgba(249, 168, 212, 0.64); background: linear-gradient(120deg, rgba(39, 12, 52, 0.96), rgba(25, 18, 52, 0.94)); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.54), 0 0 48px rgba(217, 70, 239, 0.28); }
         .finn-hourly-reward { display: block; margin-top: 16px; padding: 10px 12px; border: 1px solid rgba(249, 168, 212, 0.42); background: rgba(126, 34, 206, 0.22); color: #f5d0fe; font-size: 0.86rem; }
     </style>
@@ -6652,7 +6789,13 @@
                     <p>✦ Lord Finn watches Realm Three corruption, returns hourly with gifts, and has a new Finn Potion.</p>
                 </div>
                 <details class="update-archive">
-                    <summary>Previous updates <span>4 releases</span></summary>
+                    <summary>Previous updates <span>5 releases</span></summary>
+                    <div class="log-entry">
+                        <div class="date">Early Nov 2026 / Update 5 · New Frontiers</div>
+                        <p><strong>More ways to explore, manage your progress, and keep the community moving.</strong></p>
+                        <p>✦ Playtime tracking, expanded realm and Forge progression, and new event rewards joined the game.</p>
+                        <p>✦ Admin tools grew with player activity, moderation, live-event controls, and improved operations logs.</p>
+                    </div>
                     <div class="log-entry">
                         <div class="date">1 Nov 2026 / Update 4</div>
                         <p><strong>New discoveries, better tools, and a fresh home for your messages.</strong></p>
@@ -6971,6 +7114,31 @@
                                 <div class="settings-total-playtime"><div><span>Total Playtime</span><small>Tracked from Update 5</small></div><strong id="settings-total-playtime">0h 0m</strong></div>
                                 <button class="btn" id="leaderboard-btn" type="button">Leaderboard</button>
                             </div>
+                            <section class="settings-section player-preferences" id="player-preferences-section" aria-labelledby="player-preferences-title">
+                                <div class="player-preferences-heading">
+                                    <div><h3 id="player-preferences-title">Personalize your game</h3><p>Saved in this browser</p></div>
+                                    <button class="btn btn-small" id="reset-player-preferences" type="button">Reset</button>
+                                </div>
+                                <div class="player-preferences-grid">
+                                    <label class="player-preference-control" for="game-font-preference">Game font
+                                        <select id="game-font-preference">
+                                            <option value="rajdhani">Rajdhani · default</option>
+                                            <option value="orbitron">Orbitron</option>
+                                            <option value="system">System sans</option>
+                                            <option value="serif">Serif</option>
+                                        </select>
+                                    </label>
+                                    <label class="player-preference-control" for="roll-delay-preference">Roll reveal timing <output id="roll-delay-value" for="roll-delay-preference">42 ms</output>
+                                        <input id="roll-delay-preference" type="range" min="20" max="90" step="1" value="42">
+                                        <small>Milliseconds between reveal steps</small>
+                                    </label>
+                                    <label class="player-motion-toggle" for="reduced-motion-preference">
+                                        <input id="reduced-motion-preference" type="checkbox">
+                                        <span><strong>Reduce motion</strong><small>Limit decorative movement and transitions</small></span>
+                                    </label>
+                                </div>
+                                <p class="player-preferences-status" id="player-preferences-status" role="status" aria-live="polite">Preferences are saved on this device.</p>
+                            </section>
                             <div class="settings-section settings-rules-section">
                                 <h3>Community Guidelines</h3>
                                 <button class="btn btn-small" id="rules-btn" type="button">Rules</button>
@@ -7234,6 +7402,10 @@
 
     <!-- Admin Panel -->
     <div class="admin-panel hidden" id="admin-panel">
+        <div class="admin-connection-overlay" aria-hidden="true">
+            <span class="admin-connection-label">ESTABLISHING SECURE LINK</span>
+            <i></i><i></i><i></i>
+        </div>
         <header class="admin-header">
             <div>
                 <p class="admin-eyebrow">17 NEWS / OPERATIONS</p>
@@ -7263,17 +7435,18 @@
             <details class="admin-section admin-foldout">
                 <summary><span class="admin-foldout-title">Moving Headline</span><span class="admin-foldout-note">Message and ticker settings</span></summary>
                 <form class="headline-admin-form" id="admin-headline-form">
-                    <label class="headline-enabled-control"><input type="checkbox" id="admin-headline-enabled"> Show headline to players</label>
+                    <label class="headline-enabled-control"><input type="checkbox" id="admin-headline-enabled" name="active"> Show headline to players</label>
                     <label for="admin-headline-label-input">Ticker label</label>
-                    <input id="admin-headline-label-input" type="text" maxlength="36" placeholder="NOTICE">
+                    <input id="admin-headline-label-input" name="label" type="text" maxlength="36" placeholder="NOTICE">
                     <label for="admin-headline-text">Headline text</label>
-                    <input id="admin-headline-text" type="text" maxlength="220" placeholder="Enter the message players will see...">
+                    <input id="admin-headline-text" name="text" type="text" maxlength="220" placeholder="Enter the message players will see...">
                     <label for="admin-headline-detail">Supporting line</label>
-                    <input id="admin-headline-detail" type="text" maxlength="120" placeholder="Optional extra detail">
+                    <input id="admin-headline-detail" name="detail" type="text" maxlength="120" placeholder="Optional extra detail">
                     <div class="headline-style-controls">
-                        <label for="admin-headline-color">Text color<input id="admin-headline-color" type="color" value="#eff6ff"></label>
-                        <label for="admin-headline-speed">Scroll speed<input id="admin-headline-speed" type="range" min="10" max="36" value="18"><span id="admin-headline-speed-value">18 seconds</span></label>
+                        <label for="admin-headline-color">Text color<input id="admin-headline-color" name="color" type="color" value="#eff6ff"></label>
+                        <label for="admin-headline-speed">Scroll speed<input id="admin-headline-speed" name="speed" type="range" min="10" max="36" value="18"><span id="admin-headline-speed-value">18 seconds</span></label>
                     </div>
+                    <div class="headline-live-preview" data-headline-preview><span data-headline-preview-label>NOTICE</span><strong data-headline-preview-text>Headline preview</strong></div>
                     <div class="headline-admin-footer"><span id="admin-headline-status" role="status">Headline is off</span><button class="btn" type="submit">Save headline</button></div>
                 </form>
             </details>
@@ -7344,37 +7517,50 @@
                 </div>
             </details>
 
-            <div class="admin-section" id="mini-ops-section">
-                <h2>Admin Panel</h2>
-                <p class="admin-abuse-warning" role="note">Do not abuse, your activity is being monitored.</p>
+            <details class="admin-section admin-foldout" id="mini-ops-section">
+                <summary><span class="admin-foldout-title">Admin Operations</span><span class="admin-foldout-note">Moderation and community tools</span></summary>
+                <p class="admin-abuse-warning" role="note">Use these tools responsibly. Admin activity is logged.</p>
                 <details class="admin-tool-dropdown" open>
-                    <summary>Event controls<span>Manual start / stop</span></summary>
+                    <summary>Live event controls<span>Manual start / stop</span></summary>
                     <div class="mini-ops-events">
                         <button class="btn" data-mini-event="starlight-surge" type="button">Launch Starlight Surge</button>
                         <button class="btn" data-mini-event="meteor-shower" type="button">Call Meteor Shower</button>
                         <button class="btn" data-mini-event="abyssal-resonance" type="button">Call Abyssal Resonance</button>
+                        <button class="btn" data-mini-event="prismfall" type="button">Start Prismfall</button>
+                        <button class="btn" data-mini-event="gravity-well" type="button">Open Gravity Well</button>
                         <button class="btn" data-mini-event="confetti-party" type="button">Start Confetti Party</button>
                         <button class="btn stop-btn" data-mini-stop type="button">End My Event</button>
                     </div>
                 </details>
-                <form class="mini-headline-form" id="mini-headline-form">
-                    <h3>Moving headline</h3>
-                    <label><input type="checkbox" name="active"> Show headline</label>
-                    <label>Headline<input name="text" maxlength="220" placeholder="Message for players"></label>
-                    <button class="btn" type="submit">Save headline</button>
-                    <span id="mini-headline-status" role="status">Headline is off</span>
-                </form>
-                <form class="mini-ops-announcement" id="mini-announcement-form">
-                    <label>Announcement title<input name="title" maxlength="80" required></label>
-                    <label>Message<textarea name="content" maxlength="500" required></textarea></label>
-                    <button class="btn" type="submit">Send Admin Announcement</button>
-                </form>
-                <details class="admin-tool-dropdown" open>
+                <details class="admin-tool-dropdown">
+                    <summary>Moving headline<span>Style and publish the game ticker</span></summary>
+                    <form class="mini-headline-form headline-admin-form" id="mini-headline-form">
+                        <label class="headline-enabled-control"><input type="checkbox" name="active"> Show headline to players</label>
+                        <label>Ticker label<input name="label" type="text" maxlength="36" placeholder="NOTICE"></label>
+                        <label>Headline text<input name="text" type="text" maxlength="220" placeholder="Message for players"></label>
+                        <label>Supporting line<input name="detail" type="text" maxlength="120" placeholder="Optional extra detail"></label>
+                        <div class="headline-style-controls">
+                            <label>Text color<input name="color" type="color" value="#eff6ff"></label>
+                            <label>Scroll speed<input name="speed" type="range" min="10" max="36" value="18"><span data-headline-speed-value>18 seconds</span></label>
+                        </div>
+                        <div class="headline-live-preview" data-headline-preview><span data-headline-preview-label>NOTICE</span><strong data-headline-preview-text>Headline preview</strong></div>
+                        <div class="headline-admin-footer"><span id="mini-headline-status" role="status">Headline is off</span><button class="btn" type="submit">Save headline</button></div>
+                    </form>
+                </details>
+                <details class="admin-tool-dropdown">
+                    <summary>Player announcement<span>Send a community notice</span></summary>
+                    <form class="mini-ops-announcement" id="mini-announcement-form">
+                        <label>Announcement title<input name="title" maxlength="80" required></label>
+                        <label>Message<textarea name="content" maxlength="500" required></textarea></label>
+                        <button class="btn" type="submit">Send Admin Announcement</button>
+                    </form>
+                </details>
+                <details class="admin-tool-dropdown">
                     <summary>Player list<span>Online status and activity</span></summary>
                     <p class="mini-ops-status" id="mini-ops-status" role="status">Loading player activity…</p>
                     <div class="mini-user-roster" id="mini-user-roster"></div>
                 </details>
-            </div>
+            </details>
 
             <details class="admin-section admin-foldout" id="owner-audit-section">
                 <summary><span class="admin-foldout-title">Admin Activity</span><span class="admin-foldout-note">Moderation and operations log</span></summary>
