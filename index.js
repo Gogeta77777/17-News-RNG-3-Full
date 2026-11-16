@@ -857,7 +857,7 @@ const GAME_EVENTS = {
     bonusCoins: 350,
     luckMultiplier: 5,
     durationSeconds: 300,
-    ownerOnly: true,
+    panelOnly: true,
     rewardSummary: '5× luck · 2× coins · +350 coins per roll',
     description: '5× luck, 2× coins, and +350 coins per roll while active'
   },
@@ -866,7 +866,7 @@ const GAME_EVENTS = {
     coinMultiplier: 5,
     bonusCoins: 500,
     durationSeconds: 300,
-    ownerOnly: true,
+    panelOnly: true,
     rewardSummary: '5× coins · +500 coins per roll',
     description: '5× coins and +500 coins per roll as gravity bends the star map'
   }
