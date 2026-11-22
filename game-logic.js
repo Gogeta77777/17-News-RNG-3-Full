@@ -3058,16 +3058,9 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
 // ==================== CHAT API ====================
 
 function showPage(pageName) {
-  document.querySelectorAll('dialog[open]').forEach(dialog => {
-    dialog.close();
-  });
-  document.getElementById('finn-dialog-overlay')?.classList.add('hidden');
-  document.getElementById('finn-boss-overlay')?.classList.add('hidden');
-  document.getElementById('realm-selector')?.classList.add('hidden');
-  document.getElementById('forge-mini-game')?.classList.add('hidden');
-  document.body.classList.remove('finn-dialog-open');
+  resetUIBlockers();
   if (pageName === 'landing' || pageName === 'login' || pageName === 'register') {
-    document.getElementById('auto-roll-presence-dialog')?.close?.();
+    window.stopAutoRollPresenceCheck?.();
   }
   const pageIds = ['landing-page', 'login-page', 'register-page', 'game-page', 'admin-panel'];
   pageIds.forEach(id => {
@@ -3089,6 +3082,27 @@ function showPage(pageName) {
     }
   }
 }
+
+function resetUIBlockers() {
+  document.querySelectorAll('dialog[open]').forEach(dialog => {
+    try { dialog.close(); } catch {}
+  });
+  [
+    'finn-dialog-overlay',
+    'finn-boss-overlay',
+    'realm-selector',
+    'forge-mini-game',
+    'deep-sea-dimension',
+    'forge-dimension',
+    'realm-transition-overlay'
+  ].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+  document.getElementById('admin-panel')?.classList.remove('is-connecting', 'is-disconnecting');
+  document.body.classList.remove('finn-dialog-open');
+  document.body.style.pointerEvents = '';
+  document.documentElement.style.pointerEvents = '';
+  gameState.currentDimension = null;
+}
+window.resetUIBlockers = resetUIBlockers;
 
 function showGamePage() {
   showPage('game');
@@ -3538,6 +3552,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Show landing page and start tagline
   showPage('landing');
+  setInterval(() => {
+    const openDialog = [...document.querySelectorAll('dialog')].some(dialog => dialog.open);
+    const finnOverlayActive = !document.getElementById('finn-dialog-overlay')?.classList.contains('hidden');
+    const bossOverlayActive = !document.getElementById('finn-boss-overlay')?.classList.contains('hidden');
+    if (!openDialog && !finnOverlayActive && !bossOverlayActive) {
+      document.body.style.pointerEvents = '';
+      document.documentElement.style.pointerEvents = '';
+      document.body.classList.remove('finn-dialog-open');
+    }
+  }, 500);
   
   // Allow Enter key in chat input
   document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
