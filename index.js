@@ -2264,12 +2264,17 @@ app.post('/api/finn-boss/defeat', async (req, res) => {
     if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
     const items = normalizeRecord(user.items);
     const alreadyRewarded = (Number(items.finn_energy) || 0) >= 1;
+    let reward = null;
     if (!alreadyRewarded) {
       items.finn_energy = 1;
-      await updateUser(req.session.username, { items: JSON.stringify(items) });
+      await updateUser(req.session.username, {
+        items: JSON.stringify(items),
+        coins: addProgressionValue(user.coins, 100000)
+      });
+      reward = { item: 'Finn Energy', amount: 1, coins: 100000 };
     }
     const updated = await findUser(req.session.username);
-    res.json({ success: true, reward: alreadyRewarded ? null : { item: 'Finn Energy', amount: 1 }, alreadyRewarded, user: sanitizeUser(updated) });
+    res.json({ success: true, reward, alreadyRewarded, user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Finn boss reward error:', error.message || error);
     res.status(503).json({ success: false, error: 'Unable to award Finn Energy.' });
