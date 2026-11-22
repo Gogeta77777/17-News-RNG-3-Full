@@ -1514,13 +1514,6 @@ app.use('/api', async (req, res, next) => {
     if (user?.is_banned) {
       return res.status(403).json({ success: false, banned: true, banReason: user.ban_reason || '' });
     }
-    if (user && !user.rules_agreed_at && !['/rules-agreement', '/version', '/health'].includes(apiPath)) {
-      return res.status(403).json({
-        success: false,
-        rulesAgreementRequired: true,
-        error: 'Please agree to the Community Guidelines before playing.'
-      });
-    }
     next();
   } catch (error) {
     next(error);
@@ -3556,7 +3549,6 @@ io.use((socket, next) => {
     if (!username) return next();
     try {
       const user = await findUser(username);
-      if (user && !user.rules_agreed_at) return next(new Error('rules-agreement-required'));
       next();
     } catch (lookupError) {
       next(lookupError);
