@@ -49,6 +49,8 @@ const globalOptions = [
   { key: 'mrs-bradley', name: 'Mrs Bradley', reward: 9500, chance: 0.08, color: '#db2777', glowColor: '#fbcfe8', isGlobal: true },
   { key: 'mrs-croft', name: 'Mrs Croft', reward: 9500, chance: 0.08, color: '#16a34a', glowColor: '#bbf7d0', isGlobal: true },
   { key: 'lord-finn', name: 'Lord Finn', reward: 30000, chance: 0.02, color: '#ff5fd2', glowColor: '#ffc2f1', isGlobal: true },
+  { key: 'corrupted-lord-finn', name: 'Corrupted Lord Finn', reward: 50000, chance: 0.005, color: '#ef4444', glowColor: '#c084fc', isGlobal: true, riftOnly: true },
+  { key: 'spencer-james-carter', name: 'Spencer James Carter', reward: 28000, chance: 0.055, color: '#38bdf8', glowColor: '#a78bfa', isGlobal: true },
   { key: 'king-baxter', name: 'King Baxter', reward: 14000, chance: 0.125, color: '#b7f34a', glowColor: '#edffb1', isGlobal: true },
   { key: 'lazar-kiwi-games', name: 'Lazar Kiwi Games', reward: 14000, chance: 0.125, color: '#ff8c42', glowColor: '#ffd6b0', isGlobal: true }
 ];
@@ -73,7 +75,8 @@ const ROTATING_SHOP_ITEMS = [
   { name: 'Clover Leaf', cost: 500, rarity: 'common' },
   { name: 'Sea Essence', cost: 300000, rarity: 'legendary' },
   { name: 'Molten Rock', cost: 1000, rarity: 'common' },
-  { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
+  { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' },
+  { name: 'Light Essence', cost: 100000, rarity: 'mythic' }
 ];
 
 const TITLES = [
@@ -136,6 +139,7 @@ let gameState = {
   portalUnlocked: false,
   seaRealmUnlocked: false,
   forgeRealmUnlocked: false,
+  riftRealmUnlocked: false,
   autoRollEnabled: false,
   userTitles: [],
   activeTitle: null,
@@ -659,7 +663,7 @@ function renderInboxGiftOptions(giftType) {
   const options = giftType === 'item'
     ? [
       ['fragments', 'Portal Fragment'], ['clovers', 'Clover Leaf'], ['essence', 'Sea Essence'],
-      ['light_essence', 'Light Essence'],
+      ['light_essence', 'Light Essence'], ['finn_energy', 'Finn Energy'],
       ['molten_rock', 'Molten Rock'], ['ancient_ore', 'Ancient Ore'], ['event_controller', 'Event Controller'],
       ['old_potato_sticker', 'Old Potato Sticker'], ['empty_vial', 'Empty Vial'], ['treasure_chest', 'Treasure Chest']
     ]
@@ -701,7 +705,7 @@ async function loadInbox(folder = activeInboxFolder) {
   }
 
   const giftNames = {
-    fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence', molten_rock: 'Molten Rock',
+    fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence', finn_energy: 'Finn Energy', molten_rock: 'Molten Rock',
     ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker',
     empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest',
     '17-news': '17 News', '17-news-reborn': '17 News Reborn', 'the-daily-ellerslilian': 'The Daily Ellerslilian',
@@ -885,6 +889,12 @@ function setupPortalUI() {
     forgeAction.dataset.bound = 'true';
   }
 
+  const riftAction = document.getElementById('rift-realm-action');
+  if (riftAction && !riftAction.dataset.bound) {
+    riftAction.addEventListener('click', enterOrUnlockRiftRealm);
+    riftAction.dataset.bound = 'true';
+  }
+
   const realmClose = document.getElementById('close-realm-selector');
   if (realmClose && !realmClose.dataset.bound) {
     realmClose.addEventListener('click', closeRealmSelector);
@@ -952,6 +962,22 @@ function closeRealmSelector() {
   document.getElementById('realm-selector')?.classList.add('hidden');
 }
 
+function getNextRiftReleaseTime(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(now).reduce((result, part) => {
+    result[part.type] = part.value;
+    return result;
+  }, {});
+  const local = new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00+13:00`);
+  const weekday = local.getUTCDay();
+  let days = (1 - weekday + 7) % 7;
+  if (weekday === 1 && Number(parts.hour) >= 22) days = 7;
+  return new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + days, 9, 0, 0));
+}
+
 function renderRealmSelector() {
   const action = document.getElementById('sea-realm-action');
   const status = document.getElementById('sea-realm-status');
@@ -975,6 +1001,28 @@ function renderRealmSelector() {
   if (forgeStatus) forgeStatus.textContent = forgeUnlocked
     ? 'Permanently unlocked · entry is free'
     : `${ore}/1 Ancient Ore · ${molten}/30 Molten Rock`;
+
+  const riftAction = document.getElementById('rift-realm-action');
+  const riftStatus = document.getElementById('rift-realm-status');
+  const riftUnlocked = gameState.riftRealmUnlocked;
+  const releaseAt = getNextRiftReleaseTime();
+  const releaseRemaining = releaseAt.getTime() - Date.now();
+  const released = releaseRemaining <= 0;
+  const lightEssence = Number(gameState.itemInventory.light_essence) || 0;
+  const finnEnergy = Number(gameState.itemInventory.finn_energy) || 0;
+  if (riftAction) {
+    riftAction.disabled = riftUnlocked ? false : !released || lightEssence < 10 || finnEnergy < 1;
+    riftAction.textContent = riftUnlocked
+      ? 'ENTER RIFT REALM'
+      : released
+        ? 'UNLOCK · 10 LIGHT ESSENCE + 1 FINN ENERGY'
+        : 'SEALED UNTIL MONDAY · 10PM NZ';
+  }
+  if (riftStatus) {
+    if (riftUnlocked) riftStatus.textContent = 'Permanently unlocked · Rift chests available';
+    else if (!released) riftStatus.textContent = `Releases in ${formatDiveTime(releaseRemaining)} · NZ time`;
+    else riftStatus.textContent = `${lightEssence}/10 Light Essence · ${finnEnergy}/1 Finn Energy`;
+  }
 }
 
 async function enterOrUnlockSeaRealm() {
@@ -1007,6 +1055,32 @@ async function enterOrUnlockSeaRealm() {
   } catch (error) {
     showPopup(error.message, 'error');
     renderRealmSelector();
+  } finally {
+    isEnteringDimension = false;
+    renderRealmSelector();
+  }
+}
+
+async function enterOrUnlockRiftRealm() {
+  if (isEnteringDimension) return;
+  isEnteringDimension = true;
+  const action = document.getElementById('rift-realm-action');
+  if (action) action.disabled = true;
+  try {
+    if (!gameState.riftRealmUnlocked) {
+      const unlock = await handleAPI('/api/realms/rift/unlock', { method: 'POST' });
+      if (!unlock.success || !unlock.user) throw new Error(unlock.error || 'Unable to unlock Rift Realm.');
+      currentUser = unlock.user;
+      updateUI(currentUser);
+    }
+    const entry = await handleAPI('/api/enter-dimension', { method: 'POST', body: { dimension: 'rift-realm' } });
+    if (!entry.success || !entry.user) throw new Error(entry.error || 'Unable to enter Rift Realm.');
+    currentUser = entry.user;
+    updateUI(currentUser);
+    closeRealmSelector();
+    showPopup('Rift Realm opened. Exploration content arrives in the next Rift release.', 'success');
+  } catch (error) {
+    showPopup(error.message, 'error');
   } finally {
     isEnteringDimension = false;
     renderRealmSelector();
@@ -1520,6 +1594,7 @@ function renderInventory(user) {
       { name: 'Clover Leaves', count: gameState.itemInventory.clovers || 0, emoji: '🍀' },
       { name: 'Sea Essence', count: gameState.itemInventory.essence || 0, emoji: '💧' },
         { name: 'Light Essence', count: gameState.itemInventory.light_essence || 0, emoji: '✨' },
+      { name: 'Finn Energy', count: gameState.itemInventory.finn_energy || 0, emoji: '⚡' },
       { name: 'Molten Rock', count: gameState.itemInventory.molten_rock || 0, emoji: '🌋' },
       { name: 'Ancient Ore', count: gameState.itemInventory.ancient_ore || 0, emoji: '⛏️' },
       { name: 'Event Controller', count: gameState.itemInventory.event_controller || 0, emoji: '🎛️' },
@@ -1607,7 +1682,7 @@ function updateUI(user) {
   if (user.is_admin) setShutdownScreen(false);
   
   // Load game state from user
-  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
+  gameState.itemInventory = user.items || { fragments: 0, clovers: 0, essence: 0, light_essence: 0, finn_energy: 0, molten_rock: 0, ancient_ore: 0, event_controller: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0 };
   gameState.potionInventory = user.potions || { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 };
   gameState.userTitles = user.titles || [];
   gameState.activeTitle = user.active_title || null;
@@ -1615,6 +1690,7 @@ function updateUI(user) {
   gameState.portalUnlocked = user.portal_unlocked || false;
   gameState.seaRealmUnlocked = user.sea_realm_unlocked || false;
   gameState.forgeRealmUnlocked = user.forge_realm_unlocked || false;
+  gameState.riftRealmUnlocked = user.rift_realm_unlocked || false;
     window.updateGatewayWatch?.();
   
   const usernameDisplay = document.getElementById('game-username');
@@ -1988,12 +2064,13 @@ async function loadAdminUsers() {
           <button class="btn" type="submit">Grant</button>
         </form>
         <form class="admin-adjust-form" data-adjustment="item">
-          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="light_essence">Light Essence</option><option value="molten_rock">Molten Rock</option><option value="ancient_ore">Ancient Ore</option><option value="event_controller">Event Controller</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
+          <label>Grant item<select name="item"><option value="fragments">Portal fragments</option><option value="clovers">Clover leaves</option><option value="essence">Sea essence</option><option value="light_essence">Light Essence</option><option value="finn_energy">Finn Energy</option><option value="molten_rock">Molten Rock</option><option value="ancient_ore">Ancient Ore</option><option value="event_controller">Event Controller</option><option value="old_potato_sticker">Old Potato Sticker</option><option value="empty_vial">Empty Vial</option><option value="treasure_chest">Treasure Chest</option></select></label>
           <label>Qty<input name="amount" type="number" min="1" max="99" value="1" required></label>
           <button class="btn" type="submit">Grant</button>
         </form>
         ${String(currentUser?.username || '').toLowerCase() === 'mr_fernanski' ? `<form class="admin-title-form"><span>Admin title</span><button class="btn" type="submit">${(user.titles || []).includes('admin') ? 'Revoke title' : 'Grant title'}</button></form><form class="admin-birthday-title-form"><span>Birthday Boy title</span><button class="btn" type="submit">${(user.titles || []).includes('birthday-boy') ? 'Revoke title' : 'Grant title'}</button></form>` : ''}
         <form class="admin-forge-form"><span>Forge Realm</span><button class="btn" type="submit">${user.forge_realm_unlocked ? 'Revoke access' : 'Grant access'}</button></form>
+        <form class="admin-rift-form"><span>Rift Realm</span><button class="btn" type="submit">${user.rift_realm_unlocked ? 'Revoke access' : 'Grant access'}</button></form>
               <form class="admin-password-form">
                 <label>Set new password<input name="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
                 <button class="btn" type="submit">Change password</button>
@@ -2067,6 +2144,19 @@ async function loadAdminUsers() {
         return;
       }
       showPopup(`${grant ? 'Granted' : 'Revoked'} Forge Realm access for ${user.username}.`);
+      loadAdminUsers();
+    });
+    row.querySelector('.admin-rift-form')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const grant = !user.rift_realm_unlocked;
+      const result = await handleAPI(`/api/admin/users/${encodeURIComponent(user.username)}`, {
+        method: 'POST', body: { type: 'rift-realm', grant }
+      });
+      if (!result.success) {
+        showPopup(result.error || 'Unable to update Rift Realm access.', 'error');
+        return;
+      }
+      showPopup(`${grant ? 'Granted' : 'Revoked'} Rift Realm access for ${user.username}.`);
       loadAdminUsers();
     });
     row.querySelector('.admin-password-form')?.addEventListener('submit', async event => {
@@ -3263,6 +3353,80 @@ function setupRollButton() {
     updateAutoRollUI();
   });
 
+  let autoRollOnlinePromptTimer = null;
+  let autoRollUnansweredTimer = null;
+  let autoRollUnansweredInterval = null;
+
+  const pauseAutoRoll = () => {
+    clearInterval(autoRollTimer);
+    autoRollTimer = null;
+    gameState.autoRollEnabled = false;
+    updateAutoRollUI();
+  };
+
+  const closeTabOrLogout = async () => {
+    pauseAutoRoll();
+    window.close();
+    setTimeout(async () => {
+      if (window.closed) return;
+      await handleAPI('/api/logout', { method: 'POST' });
+      window.location.reload();
+    }, 250);
+  };
+
+  const clearAutoRollPresenceCheck = () => {
+    clearTimeout(autoRollUnansweredTimer);
+    clearInterval(autoRollUnansweredInterval);
+    autoRollUnansweredTimer = null;
+    autoRollUnansweredInterval = null;
+  };
+
+  const showAutoRollPresenceCheck = () => {
+    if (!gameState.autoRollEnabled) return;
+    clearAutoRollPresenceCheck();
+    const dialog = document.getElementById('auto-roll-presence-dialog');
+    const countdown = document.getElementById('auto-roll-presence-countdown');
+    if (!dialog) return;
+    if (typeof dialog.showModal === 'function' && !dialog.open) dialog.showModal();
+    else dialog.classList.remove('hidden');
+
+    let remainingSeconds = 10 * 60;
+    const updateCountdown = () => {
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
+      if (countdown) countdown.textContent = `Session closes in ${minutes}:${String(seconds).padStart(2, '0')} if unanswered`;
+      if (remainingSeconds <= 0) {
+        clearAutoRollPresenceCheck();
+        void closeTabOrLogout();
+        dialog.close?.();
+        return;
+      }
+      remainingSeconds -= 1;
+    };
+    updateCountdown();
+    autoRollUnansweredInterval = setInterval(updateCountdown, 1000);
+  };
+
+  document.getElementById('auto-roll-still-playing')?.addEventListener('click', () => {
+    clearAutoRollPresenceCheck();
+    document.getElementById('auto-roll-presence-dialog')?.close();
+  });
+
+  document.getElementById('auto-roll-stop-playing')?.addEventListener('click', async () => {
+    clearAutoRollPresenceCheck();
+    document.getElementById('auto-roll-presence-dialog')?.close();
+    showPopup('Auto Roll paused. Closing this session.', 'error');
+    await closeTabOrLogout();
+  });
+
+  const scheduleAutoRollOnlinePrompt = () => {
+    clearInterval(autoRollOnlinePromptTimer);
+    autoRollOnlinePromptTimer = setInterval(() => {
+      showAutoRollPresenceCheck();
+    }, 20 * 60 * 1000);
+  };
+  scheduleAutoRollOnlinePrompt();
+
   rollBtn.addEventListener('click', async () => {
     if (!currentUser) {
       showPopup('Login first to roll', 'error');
@@ -3362,12 +3526,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const finnReplies = {
-    flicker: 'That is not a flicker. Something is moving behind the realm, and it knows when I am looking.',
-    beyond: 'There is a third route, but it is not a place. It is a wound in the map. Please do not open it.',
-    signal: 'It repeats my words before I say them. I hear my own voice coming from the other side.',
-    origin: 'The charts used to be clear. Now the blank space is spreading through them, line by line.',
-    response: 'It answered before I called. I felt it reach through the gateway and touch my thoughts.',
-    warning: 'I am trying to hold it back, but it is changing me. If my voice turns strange, close the gateway and run.'
+    flicker: 'The gateway is stable today. Event power is flowing through the portal in controlled pulses.',
+    beyond: 'There are realms beyond the regular rolls. Explore only the routes you have unlocked.',
+    signal: 'The watch keeps regular event readings. No Rift signal should appear during ordinary events.',
+    origin: 'This gateway was built from portal fragments, and Lord Finn is its permanent keeper.',
+    response: 'The portal responds only when a valid event or realm route is activated.',
+    warning: 'Stay with the current event rules. Challenging the corrupted copy is a separate encounter.'
   };
   const finnChat = document.getElementById('finn-chat');
   const finnChoices = document.getElementById('finn-choices');
@@ -3428,11 +3592,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   const finnQuestionOptions = [
-    { key: 'flicker', prompt: 'Why does it stutter?', page: 0 },
-    { key: 'beyond', prompt: 'Where does that path lead?', page: 0 },
-    { key: 'signal', prompt: 'What is that repeating signal?', page: 0 },
-    { key: 'origin', prompt: 'What did the charts show?', page: 1 },
-    { key: 'response', prompt: 'Did anything answer back?', page: 1 },
+    { key: 'flicker', prompt: 'How is the gateway?', page: 0 },
+    { key: 'beyond', prompt: 'What realms are available?', page: 0 },
+    { key: 'signal', prompt: 'How do event signals work?', page: 0 },
+    { key: 'origin', prompt: 'Where did the gateway come from?', page: 1 },
+    { key: 'response', prompt: 'What activates it?', page: 1 },
     { key: 'warning', prompt: 'What should I watch for?', page: 1 }
   ];
   const appendFinnLine = (speaker, text, isPlayer = false) => {
@@ -3492,7 +3656,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!finnChat) return;
     finnDialoguePage = 0;
     finnChat.replaceChildren();
-    appendFinnLine('Lord Finn', 'You came back. Good. Something is behind the third realm. It is inside my thoughts now. I am trying to keep it out. Please, ask quickly.');
+    appendFinnLine('Lord Finn', 'Welcome back. Ask me about the gateway, realms, or events. The Rift challenge is separate from normal portal events.');
     renderFinnQuestionPage();
   };
 
@@ -3526,6 +3690,141 @@ document.addEventListener('DOMContentLoaded', () => {
     finnOverlay?.classList.remove('hidden');
     document.body.classList.add('finn-dialog-open');
     requestAnimationFrame(() => (finnChoices?.querySelector('[data-finn-question]') || finnDialog)?.focus());
+  });
+  const finnBossOverlay = document.getElementById('finn-boss-overlay');
+  const finnBossStage = document.getElementById('finn-boss-stage');
+  const finnBossPlayer = document.getElementById('finn-boss-player');
+  const finnBossHealth = document.getElementById('finn-boss-health');
+  const finnPlayerHealth = document.getElementById('finn-player-health');
+  const finnBossDialogue = document.getElementById('finn-boss-dialogue');
+  const finnBossStatus = document.getElementById('finn-boss-status');
+  const finnBossAttack = document.getElementByById('finn-boss-attack');
+  const finnBossRechallenge = document.getElementById('finn-boss-rechallenge');
+  let finnBossActive = false;
+  let finnBossHp = 180;
+  let finnPlayerHp = 100;
+  let finnPlayerX = 16;
+  let finnPlayerY = 72;
+  let finnBossTimers = [];
+  let finnAttackCooldown = false;
+
+  const stopFinnBoss = () => {
+    finnBossActive = false;
+    finnBossTimers.forEach(timer => clearInterval(timer));
+    finnBossTimers = [];
+  };
+
+  const updateFinnBossHud = () => {
+    if (finnBossHealth) finnBossHealth.style.width = `${Math.max(0, finnBossHp / 180 * 100)}%`;
+    if (finnPlayerHealth) finnPlayerHealth.style.width = `${Math.max(0, finnPlayerHp)}%`;
+  };
+
+  const resetFinnBoss = () => {
+    stopFinnBoss();
+    finnBossHp = 180;
+    finnPlayerHp = 100;
+    finnPlayerX = 16;
+    finnPlayerY = 72;
+    if (finnBossPlayer) finnBossPlayer.style.cssText = `left:${finnPlayerX}%;top:${finnPlayerY}%`;
+    if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: You crossed into the Rift before it opened. Now prove you belong.';
+    if (finnBossStatus) finnBossStatus.textContent = 'BATTLE READY';
+    finnBossRechallenge?.classList.add('hidden');
+    if (finnBossAttack) finnBossAttack.disabled = false;
+    updateFinnBossHud();
+  };
+
+  const finishFinnBoss = async (defeated) => {
+    stopFinnBoss();
+    if (finnBossAttack) finnBossAttack.disabled = true;
+    finnBossRechallenge?.classList.remove('hidden');
+    if (defeated) {
+      if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: Impossible... the Rift remembers you. Take this energy, and find what waits beyond.';
+      if (finnBossStatus) finnBossStatus.textContent = 'VICTORY';
+      const response = await handleAPI('/api/finn-boss/defeat', { method: 'POST' });
+      if (response.success) {
+        currentUser = response.user;
+        updateUI(currentUser);
+        showPopup(response.alreadyRewarded ? 'Corrupted Lord Finn defeated. Finn Energy already collected.' : 'Victory! 1 Finn Energy obtained.', 'success');
+      } else {
+        showPopup(response.error || 'Victory reward could not be saved.', 'error');
+      }
+    } else {
+      if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: You fell to the corruption. Return when your timing is sharper.';
+      if (finnBossStatus) finnBossStatus.textContent = 'DEFEATED';
+    }
+  };
+
+  const spawnFinnBossProjectile = () => {
+    if (!finnBossActive || !finnBossStage) return;
+    const projectile = document.createElement('span');
+    projectile.className = 'finn-boss-projectile';
+    let x = 79;
+    let y = 35;
+    projectile.style.left = `${x}%`;
+    projectile.style.top = `${y}%`;
+    finnBossStage.appendChild(projectile);
+    const frame = setInterval(() => {
+      x -= (x - finnPlayerX) * 0.018;
+      y -= (y - finnPlayerY) * 0.018;
+      projectile.style.left = `${x}%`;
+      projectile.style.top = `${y}%`;
+      if (Math.abs(x - finnPlayerX) < 4 && Math.abs(y - finnPlayerY) < 6) {
+        clearInterval(frame);
+        projectile.remove();
+        finnPlayerHp = Math.max(0, finnPlayerHp - 9);
+        updateFinnBossHud();
+        if (finnPlayerHp <= 0) void finishFinnBoss(false);
+      }
+      if (x < -3 || y < -3 || x > 103 || y > 103) {
+        clearInterval(frame);
+        projectile.remove();
+      }
+    }, 30);
+    finnBossTimers.push(frame);
+  };
+
+  const attackFinnBoss = () => {
+    if (!finnBossActive || finnAttackCooldown) return;
+    finnAttackCooldown = true;
+    finnBossHp = Math.max(0, finnBossHp - 12);
+    updateFinnBossHud();
+    if (finnBossDialogue) finnBossDialogue.textContent = finnBossHp > 0
+      ? `Strike landed. Corrupted Lord Finn has ${finnBossHp} HP.`
+      : 'Corrupted Lord Finn: The Rift is opening...';
+    if (finnBossHp <= 0) void finishFinnBoss(true);
+    setTimeout(() => { finnAttackCooldown = false; }, 260);
+  };
+
+  const openFinnBoss = () => {
+    closeFinnDialog();
+    resetFinnBoss();
+    finnBossActive = true;
+    finnBossOverlay?.classList.remove('hidden');
+    document.body.classList.add('finn-dialog-open');
+    finnBossStage?.focus();
+    const projectileTimer = setInterval(spawnFinnBossProjectile, 720);
+    finnBossTimers.push(projectileTimer);
+  };
+
+  document.getElementById('finn-challenge-button')?.addEventListener('click', openFinnBoss);
+  finnBossAttack?.addEventListener('click', attackFinnBoss);
+  document.getElementById('finn-boss-key-attack')?.addEventListener('click', attackFinnBoss);
+  finnBossRechallenge?.addEventListener('click', openFinnBoss);
+  document.getElementById('finn-boss-close')?.addEventListener('click', () => {
+    stopFinnBoss();
+    finnBossOverlay?.classList.add('hidden');
+    document.body.classList.remove('finn-dialog-open');
+  });
+  document.addEventListener('keydown', event => {
+    if (!finnBossActive) return;
+    const key = event.key.toLowerCase();
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) event.preventDefault();
+    if (key === 'w' || key === 'arrowup') finnPlayerY = Math.max(4, finnPlayerY - 4);
+    if (key === 's' || key === 'arrowdown') finnPlayerY = Math.min(88, finnPlayerY + 4);
+    if (key === 'a' || key === 'arrowleft') finnPlayerX = Math.max(2, finnPlayerX - 4);
+    if (key === 'd' || key === 'arrowright') finnPlayerX = Math.min(94, finnPlayerX + 4);
+    if (key === ' ') attackFinnBoss();
+    if (finnBossPlayer) finnBossPlayer.style.cssText = `left:${finnPlayerX}%;top:${finnPlayerY}%`;
   });
   finnClose?.addEventListener('click', closeFinnDialog);
   finnWatchButton?.addEventListener('click', () => {
@@ -3915,4 +4214,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Game loops
   setInterval(updatePotionDisplay, 1000);
   setInterval(updateShopTimer, 1000);
+  setInterval(() => {
+    if (!document.getElementById('realm-selector')?.classList.contains('hidden')) renderRealmSelector();
+  }, 1000);
 });
