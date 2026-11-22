@@ -2191,7 +2191,9 @@
             z-index: 1200;
             font-weight: 700;
             backdrop-filter: blur(10px);
+            pointer-events: none;
         }
+        dialog:not([open]) { display: none !important; pointer-events: none; }
 
         /* Responsive design */
         @media (max-width: 768px) {
