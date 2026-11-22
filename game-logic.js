@@ -3751,7 +3751,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let finnBossProjectiles = [];
   let finnBossKeys = new Set();
   let finnBossInvulnerableUntil = 0;
+  let finnBossStunHits = 0;
   let finnAttackCooldown = false;
+
+  const getFinnBossTuning = () => ({
+    telegraphDuration: [0, 0.9, 0.72, 0.54][finnBossPhaseNumber],
+    attackDuration: [0, 3.2, 3.8, 4.4][finnBossPhaseNumber],
+    projectileRate: [0, 1, 0.78, 0.62][finnBossPhaseNumber],
+    damage: [0, 12, 15, 18][finnBossPhaseNumber]
+  });
 
   const stopFinnBoss = () => {
     finnBossActive = false;
@@ -3773,10 +3781,8 @@ document.addEventListener('DOMContentLoaded', () => {
       finnBossDialogue.textContent = phase === 2
         ? 'Corrupted Lord Finn: The Rift deepens. Keep up!'
         : 'Corrupted Lord Finn: You will not survive this final surge.';
-      finnBossState = 'stunned';
-      finnBossStateTime = 1.8;
-      finnBossStatus.textContent = `PHASE ${['I', 'II', 'III'][phase - 1]} · FINN STAGGERED`;
-      finnBossNpc?.classList.add('stunned');
+      finnBossStunHits = 0;
+      setFinnBossState('stunned', 2, `Phase ${['I', 'II', 'III'][phase - 1]}! Finn is staggered. Land up to two close-range hits within 2 seconds.`, `PHASE ${['I', 'II', 'III'][phase - 1]} · STAGGERED`);
     }
     updateFinnBossAttackAvailability();
   };
@@ -3814,6 +3820,7 @@ document.addEventListener('DOMContentLoaded', () => {
     finnBossPhaseNumber = 1;
     finnBossPatternTime = 0;
     finnBossInvulnerableUntil = 0;
+    finnBossStunHits = 0;
     finnAttackCooldown = false;
     if (finnBossPlayer) {
       finnBossPlayer.style.left = `${finnPlayerX}%`;
@@ -3897,7 +3904,9 @@ document.addEventListener('DOMContentLoaded', () => {
     finnBossCycle += 1;
     finnBossPattern = finnBossCycle % 3 === 0 ? 'burst' : finnBossCycle % 3 === 2 ? 'sweep' : 'aimed';
     const patternName = finnBossPattern === 'burst' ? 'FRACTURE BURST' : finnBossPattern === 'sweep' ? 'RIFT SWEEP' : 'RIFT BOLTS';
-    setFinnBossState('telegraph', 0.9, `Corrupted Lord Finn is forming ${patternName}. Dodge!`, `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ${patternName}`);
+    finnBossStunHits = 0;
+    const tuning = getFinnBossTuning();
+    setFinnBossState('telegraph', tuning.telegraphDuration, `Phase ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · Corrupted Lord Finn is forming ${patternName}. Dodge!`, `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ${patternName}`);
   };
 
   const attackFinnBoss = () => {
@@ -3910,10 +3919,18 @@ document.addEventListener('DOMContentLoaded', () => {
     finnAttackCooldown = true;
     finnBossHp = Math.max(0, finnBossHp - 24);
     updateFinnBossHud();
+    finnBossStunHits += 1;
     if (finnBossDialogue) finnBossDialogue.textContent = finnBossHp > 0
-      ? `Direct hit! Corrupted Lord Finn has ${finnBossHp} HP remaining.`
+      ? `Direct hit ${finnBossStunHits}/2! Corrupted Lord Finn has ${finnBossHp} HP remaining.`
       : 'Corrupted Lord Finn: The Rift is opening...';
-    if (finnBossHp <= 0) void finishFinnBoss(true);
+    if (finnBossHp <= 0) {
+      void finishFinnBoss(true);
+      return;
+    }
+    if (finnBossStunHits >= 2) {
+      beginFinnBossCycle();
+      return;
+    }
     setTimeout(() => {
       finnAttackCooldown = false;
       updateFinnBossAttackAvailability();
@@ -3940,17 +3957,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finnBossState === 'intro' && finnBossStateTime <= 0) beginFinnBossCycle();
     else if (finnBossState === 'telegraph' && finnBossStateTime <= 0) {
       finnBossPatternTime = 0;
-      setFinnBossState('attacking', 3.2, 'Dodge the Rift attacks, then strike while Finn is staggered.', `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ATTACKING`);
+      const tuning = getFinnBossTuning();
+      setFinnBossState('attacking', tuning.attackDuration, 'Dodge the Rift attacks, then strike while Finn is staggered.', `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ATTACKING`);
     } else if (finnBossState === 'attacking') {
       finnBossPatternTime += delta;
-      const patternInterval = finnBossPattern === 'aimed' ? 0.62 : finnBossPattern === 'sweep' ? 0.48 : 1.25;
+      const tuning = getFinnBossTuning();
+      const basePatternInterval = finnBossPattern === 'aimed' ? 0.62 : finnBossPattern === 'sweep' ? 0.48 : 1.25;
+      const patternInterval = basePatternInterval * tuning.projectileRate;
       if (finnBossPatternTime >= patternInterval) {
         finnBossPatternTime = 0;
         if (finnBossPattern === 'aimed') spawnAimedFinnProjectile();
         else if (finnBossPattern === 'sweep') spawnFinnSweep();
         else spawnFinnBurst();
       }
-      if (finnBossStateTime <= 0) setFinnBossState('stunned', 2.5, 'Finn is stunned! Move close and press ATTACK or Space.', 'STAGGERED · STRIKE NOW');
+      if (finnBossStateTime <= 0) {
+        finnBossStunHits = 0;
+        setFinnBossState('stunned', 2, 'Finn is stunned for 2 seconds! Move close and land up to two hits with ATTACK or Space.', 'STAGGERED · 2 HITS / 2 SECONDS');
+      }
     } else if (finnBossState === 'stunned' && finnBossStateTime <= 0) beginFinnBossCycle();
 
     const box = finnBossBox.getBoundingClientRect();
@@ -3963,7 +3986,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const hitY = (projectile.y - finnPlayerY) * box.height / 100;
       if (performance.now() >= finnBossInvulnerableUntil && Math.hypot(hitX, hitY) < 20) {
         finnBossInvulnerableUntil = performance.now() + 720;
-        finnPlayerHp = Math.max(0, finnPlayerHp - 12);
+        finnPlayerHp = Math.max(0, finnPlayerHp - getFinnBossTuning().damage);
         updateFinnBossHud();
         if (finnPlayerHp <= 0) void finishFinnBoss(false);
         projectile.element.remove();
