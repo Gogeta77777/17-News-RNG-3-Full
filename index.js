@@ -169,7 +169,7 @@ function isHalloweenUpdateActive(now = Date.now()) {
 
 function getActiveCoreRarities() {
   const halloweenAdjustment = isHalloweenUpdateActive() ? 0.11 : 0;
-  const rarities = CORE_RARITIES.map(rarity => rarity.key === '17-news'
+  const rarities = CORE_RARITIES.filter(rarity => !rarity.riftOnly).map(rarity => rarity.key === '17-news'
     ? { ...rarity, chance: rarity.chance - halloweenAdjustment }
     : rarity);
   return isHalloweenUpdateActive() ? [...rarities, ...HALLOWEEN_RARITIES] : rarities;
