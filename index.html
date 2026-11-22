@@ -6460,11 +6460,25 @@
         .finn-companion-corrupted .finn-talk-bubble { border-color: rgba(248, 113, 113, 0.58); background: linear-gradient(120deg, rgba(127, 29, 29, 0.9), rgba(76, 29, 149, 0.82)); color: #fee2e2; }
         .finn-companion-corrupted .finn-talk-bubble::before { border-right-color: rgba(248, 113, 113, 0.58); }
         .finn-companion-corrupted .finn-orb,
-        .finn-dialog-orbit .finn-orb { border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+        .finn-dialog-orbit .finn-orb,
+        .finn-boss-npc .finn-orb {
+            border-color: rgba(248, 113, 113, 0.9);
+            border-radius: 50%;
+            background: radial-gradient(circle at 38% 34%, #fff1f2 0 5%, #f87171 14%, #dc2626 35%, #7f1d1d 57%, #581c87 78%, #160b2b 100%);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.72), 0 0 32px rgba(192, 132, 252, 0.38), inset 0 0 20px rgba(255, 255, 255, 0.24);
+        }
         .finn-companion-corrupted .finn-orb::before,
-        .finn-dialog-orbit .finn-orb::before { display: none; }
-        .corrupted-finn-model { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.6)) drop-shadow(0 0 16px rgba(192, 132, 252, 0.34)); }
-        .finn-dialog-orbit .corrupted-finn-model { filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.72)) drop-shadow(0 0 30px rgba(192, 132, 252, 0.45)); }
+        .finn-dialog-orbit .finn-orb::before,
+        .finn-boss-npc .finn-orb::before { border-color: rgba(192, 132, 252, 0.88); }
+        .finn-companion-corrupted .finn-energy::before,
+        .finn-companion-corrupted .finn-energy::after,
+        .finn-dialog-orbit .finn-energy::before,
+        .finn-dialog-orbit .finn-energy::after,
+        .finn-boss-npc .finn-energy::before,
+        .finn-boss-npc .finn-energy::after {
+            background: conic-gradient(from 25deg, transparent 0 8%, #ef4444 17%, #fca5a5 32%, #c084fc 52%, #7e22ce 70%, #e879f9 84%, transparent 92%) border-box;
+            filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.9));
+        }
         .finn-boss-overlay { position: fixed; z-index: 1900; inset: 0; display: grid; place-items: center; padding: 18px; background: radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.34), rgba(3, 8, 18, 0.96) 72%); backdrop-filter: blur(12px); }
         .finn-boss-overlay.hidden { display: none; }
         .finn-boss-arena { width: min(920px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; border: 1px solid rgba(248, 113, 113, 0.38); background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(23, 12, 38, 0.98)); box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72), 0 0 34px rgba(239, 68, 68, 0.12); }
@@ -6491,11 +6505,9 @@
         .finn-boss-stage.telegraphing .finn-battle-box { border-color: #f87171; box-shadow: 0 0 22px rgba(239, 68, 68, 0.48), inset 0 0 28px rgba(239, 68, 68, 0.1); }
         .finn-boss-player { position: absolute; z-index: 3; width: 22px; height: 22px; border: 2px solid #bae6fd; border-radius: 50%; background: radial-gradient(circle, #fff 0 20%, #38bdf8 22% 52%, #1d4ed8 54%); box-shadow: 0 0 16px #38bdf8; transform: translate(-50%, -50%); transition: filter 100ms linear; }
         .finn-boss-player.hurt { filter: brightness(2.2); }
-        .finn-boss-npc { position: absolute; z-index: 3; left: 50%; top: 0; width: 110px; height: 132px; transform: translateX(-50%); animation: bossCorruptFloat 1.8s ease-in-out infinite alternate; }
-        .finn-boss-npc .corrupted-finn-model { transition: filter 180ms ease, opacity 180ms ease; }
-        .finn-boss-npc.stunned .corrupted-finn-model { filter: drop-shadow(0 0 20px rgba(192, 132, 252, 0.95)); opacity: 0.78; }
-        .finn-boss-npc[data-phase="2"] .corrupted-finn-model { filter: hue-rotate(-8deg) saturate(1.2) drop-shadow(0 0 13px rgba(239, 68, 68, 0.74)); }
-        .finn-boss-npc[data-phase="3"] .corrupted-finn-model { filter: saturate(1.5) drop-shadow(0 0 20px rgba(192, 132, 252, 0.72)); }
+        .finn-boss-npc { position: absolute; z-index: 3; left: 50%; top: 1%; display: grid; width: 132px; height: 132px; place-items: center; transform: translateX(-50%); animation: bossCorruptFloat 1.8s ease-in-out infinite alternate; }
+        .finn-boss-npc .finn-orb { width: 108px; transition: filter 180ms ease, opacity 180ms ease; }
+        .finn-boss-npc.stunned .finn-orb { filter: brightness(1.2); opacity: 0.82; }
         @keyframes bossCorruptFloat { to { margin-top: -7px; filter: drop-shadow(0 0 20px rgba(192, 132, 252, 0.64)); } }
         .finn-boss-projectile { position: absolute; z-index: 4; width: 13px; height: 13px; border: 2px solid #fda4af; border-radius: 50%; background: #ef4444; box-shadow: 0 0 14px #c084fc; pointer-events: none; transform: translate(-50%, -50%); }
         .finn-boss-projectile-shard { width: 10px; height: 10px; border-color: #e9d5ff; background: #c084fc; }
@@ -7231,15 +7243,7 @@
                                     </div>
                                     <section class="finn-companion finn-companion-corrupted" aria-label="Corrupted Lord Finn">
                                         <div class="finn-orb" data-finn-orb aria-hidden="true">
-                                            <svg class="corrupted-finn-model" viewBox="0 0 100 120" aria-hidden="true">
-                                                <path d="M13 111 19 77 30 55 27 35 38 40 44 14 53 31 64 10 69 37 84 26 78 53 91 70 87 111Z" fill="#7f1d1d" stroke="#dc2626" stroke-width="4" stroke-linejoin="round"/>
-                                                <path d="M22 104 29 76 41 59 59 59 75 78 81 104Z" fill="#ef4444" stroke="#f87171" stroke-width="3"/>
-                                                <path d="M34 47 37 34 47 39 53 27 61 39 71 33 72 49 65 61 43 61Z" fill="#fecaca" stroke="#f87171" stroke-width="3"/>
-                                                <path d="m41 47 7 2-6 4Zm18 2 7-2-2 6Z" fill="#581c87"/>
-                                                <path d="m46 57 7 3 7-3" fill="none" stroke="#7e22ce" stroke-width="3" stroke-linecap="round"/>
-                                                <path d="m28 77 13 5-9 12m36-17-12 5 10 12" fill="none" stroke="#c084fc" stroke-width="4" stroke-linecap="round"/>
-                                                <path d="M17 106h68" stroke="#c084fc" stroke-width="3" stroke-linecap="round"/>
-                                            </svg>
+                                            <span class="finn-energy" data-finn-energy></span>
                                         </div>
                                         <button class="finn-talk-bubble" id="finn-open" type="button" aria-label="Challenge Corrupted Lord Finn">Challenge</button>
                                     </section>
@@ -7310,15 +7314,7 @@
             <div class="finn-talk-view" id="finn-talk-view">
                 <div class="finn-dialog-orbit" aria-hidden="true">
                     <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
-                        <svg class="corrupted-finn-model" viewBox="0 0 100 120" aria-hidden="true">
-                            <path d="M13 111 19 77 30 55 27 35 38 40 44 14 53 31 64 10 69 37 84 26 78 53 91 70 87 111Z" fill="#7f1d1d" stroke="#dc2626" stroke-width="4" stroke-linejoin="round"/>
-                            <path d="M22 104 29 76 41 59 59 59 75 78 81 104Z" fill="#ef4444" stroke="#f87171" stroke-width="3"/>
-                            <path d="M34 47 37 34 47 39 53 27 61 39 71 33 72 49 65 61 43 61Z" fill="#fecaca" stroke="#f87171" stroke-width="3"/>
-                            <path d="m41 47 7 2-6 4Zm18 2 7-2-2 6Z" fill="#581c87"/>
-                            <path d="m46 57 7 3 7-3" fill="none" stroke="#7e22ce" stroke-width="3" stroke-linecap="round"/>
-                            <path d="m28 77 13 5-9 12m36-17-12 5 10 12" fill="none" stroke="#c084fc" stroke-width="4" stroke-linecap="round"/>
-                            <path d="M17 106h68" stroke="#c084fc" stroke-width="3" stroke-linecap="round"/>
-                        </svg>
+                        <span class="finn-energy" data-finn-energy></span>
                     </div>
                 </div>
                 <div class="finn-dialogue">
@@ -7369,15 +7365,9 @@
             <div class="finn-boss-stage" id="finn-boss-stage" tabindex="0" aria-label="Boss fight arena">
                 <div class="finn-boss-grid" aria-hidden="true"></div>
                 <div class="finn-boss-npc" id="finn-boss-npc" aria-label="Corrupted Lord Finn">
-                    <svg class="corrupted-finn-model" viewBox="0 0 100 120" aria-hidden="true">
-                        <path d="M13 111 19 77 30 55 27 35 38 40 44 14 53 31 64 10 69 37 84 26 78 53 91 70 87 111Z" fill="#7f1d1d" stroke="#dc2626" stroke-width="4" stroke-linejoin="round"/>
-                        <path d="M22 104 29 76 41 59 59 59 75 78 81 104Z" fill="#ef4444" stroke="#f87171" stroke-width="3"/>
-                        <path d="M34 47 37 34 47 39 53 27 61 39 71 33 72 49 65 61 43 61Z" fill="#fecaca" stroke="#f87171" stroke-width="3"/>
-                        <path d="m41 47 7 2-6 4Zm18 2 7-2-2 6Z" fill="#581c87"/>
-                        <path d="m46 57 7 3 7-3" fill="none" stroke="#7e22ce" stroke-width="3" stroke-linecap="round"/>
-                        <path d="m28 77 13 5-9 12m36-17-12 5 10 12" fill="none" stroke="#c084fc" stroke-width="4" stroke-linecap="round"/>
-                        <path d="M17 106h68" stroke="#c084fc" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
+                    <div class="finn-orb finn-orb-large" data-finn-orb aria-hidden="true">
+                        <span class="finn-energy"></span>
+                    </div>
                 </div>
                 <div class="finn-battle-box" id="finn-battle-box" aria-label="Battle area">
                     <div class="finn-boss-player" id="finn-boss-player" aria-label="Player"></div>
