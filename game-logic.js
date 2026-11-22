@@ -1639,7 +1639,7 @@ function renderRarityCatalog() {
       row.className = `rarity-catalog-row${rarity.isGlobal ? ' global-catalog-row' : ''}${rarity.diveOnly ? ' dive-only-rarity' : ''}${rarity.halloweenOnly ? ' halloween-rarity' : ''}`;
       row.style.setProperty('--rarity-color', rarityColor);
       if (rarity.isGlobal) row.style.setProperty('--rarity-glow', rarity.glowColor || rarity.color);
-      const rarityTag = rarity.diveOnly ? ' SEA ONLY' : rarity.halloweenOnly ? ' HALLOWEEN ONLY' : '';
+      const rarityTag = rarity.riftOnly ? ' RIFT ONLY' : rarity.diveOnly ? ' SEA ONLY' : rarity.halloweenOnly ? ' HALLOWEEN ONLY' : '';
       row.innerHTML = `<span class="rarity-rank">${String(index + 1).padStart(2, '0')}</span><strong><span class="glitch-rarity-name">${escapeHtml(rarity.name)}</span>${rarityTag ? `<small>${rarityTag}</small>` : ''}</strong><span class="rarity-catalog-rate">${rarity.chance}%</span>`;
       list.appendChild(row);
       animateRarityAlias(row.querySelector('.glitch-rarity-name'), rarity, '', true);
@@ -3698,14 +3698,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return buttons;
   };
 
-  const resetFinnConversation = () => {
-    if (!finnChat) return;
-    finnDialoguePage = 0;
-    finnChat.replaceChildren();
-    appendFinnLine('Lord Finn', 'Welcome back. Ask me about the gateway, realms, or events. The Rift challenge is separate from normal portal events.');
-    renderFinnQuestionPage();
-  };
-
   const closeFinnDialog = () => {
     finnOverlay?.classList.add('hidden');
     document.body.classList.remove('finn-dialog-open');
@@ -3729,54 +3721,112 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finnFlash) finnFlash.animationTimer = setTimeout(() => finnFlash.classList.remove('active'), 560);
   };
 
-  finnOpen?.addEventListener('click', () => {
-    resetFinnConversation();
-    finnConversationStarted = true;
-    showFinnWatch(false);
-    finnOverlay?.classList.remove('hidden');
-    document.body.classList.add('finn-dialog-open');
-    requestAnimationFrame(() => (finnChoices?.querySelector('[data-finn-question]') || finnDialog)?.focus());
-  });
   const getFinnBossElement = id => typeof window.document?.getElementById === 'function' ? window.document.getElementById(id) : null;
   const finnBossOverlay = getFinnBossElement('finn-boss-overlay');
   const finnBossStage = getFinnBossElement('finn-boss-stage');
+  const finnBossBox = getFinnBossElement('finn-battle-box');
   const finnBossPlayer = getFinnBossElement('finn-boss-player');
+  const finnBossNpc = getFinnBossElement('finn-boss-npc');
   const finnBossHealth = getFinnBossElement('finn-boss-health');
   const finnPlayerHealth = getFinnBossElement('finn-player-health');
   const finnBossDialogue = getFinnBossElement('finn-boss-dialogue');
   const finnBossStatus = getFinnBossElement('finn-boss-status');
+  const finnBossPhase = getFinnBossElement('finn-boss-phase');
   const finnBossAttack = getFinnBossElement('finn-boss-attack');
+  const finnBossMiniAttack = getFinnBossElement('finn-boss-key-attack');
   const finnBossRechallenge = getFinnBossElement('finn-boss-rechallenge');
   let finnBossActive = false;
   let finnBossHp = 180;
   let finnPlayerHp = 100;
-  let finnPlayerX = 16;
-  let finnPlayerY = 72;
-  let finnBossTimers = [];
+  let finnPlayerX = 50;
+  let finnPlayerY = 78;
+  let finnBossFrame = 0;
+  let finnBossLastFrame = 0;
+  let finnBossState = 'intro';
+  let finnBossStateTime = 0;
+  let finnBossCycle = 0;
+  let finnBossPhaseNumber = 1;
+  let finnBossPattern = 'aimed';
+  let finnBossPatternTime = 0;
+  let finnBossProjectiles = [];
+  let finnBossKeys = new Set();
+  let finnBossInvulnerableUntil = 0;
   let finnAttackCooldown = false;
 
   const stopFinnBoss = () => {
     finnBossActive = false;
-    finnBossTimers.forEach(timer => clearInterval(timer));
-    finnBossTimers = [];
+    if (finnBossFrame) cancelAnimationFrame(finnBossFrame);
+    finnBossFrame = 0;
+    finnBossKeys.clear();
+    finnBossProjectiles.forEach(projectile => projectile.element.remove());
+    finnBossProjectiles = [];
   };
 
   const updateFinnBossHud = () => {
     if (finnBossHealth) finnBossHealth.style.width = `${Math.max(0, finnBossHp / 180 * 100)}%`;
     if (finnPlayerHealth) finnPlayerHealth.style.width = `${Math.max(0, finnPlayerHp)}%`;
+    const phase = finnBossHp > 120 ? 1 : finnBossHp > 60 ? 2 : 3;
+    if (phase !== finnBossPhaseNumber) {
+      finnBossPhaseNumber = phase;
+      if (finnBossPhase) finnBossPhase.textContent = `PHASE ${['I', 'II', 'III'][phase - 1]}`;
+      finnBossNpc?.setAttribute('data-phase', String(phase));
+      finnBossDialogue.textContent = phase === 2
+        ? 'Corrupted Lord Finn: The Rift deepens. Keep up!'
+        : 'Corrupted Lord Finn: You will not survive this final surge.';
+      finnBossState = 'stunned';
+      finnBossStateTime = 1.8;
+      finnBossStatus.textContent = `PHASE ${['I', 'II', 'III'][phase - 1]} · FINN STAGGERED`;
+      finnBossNpc?.classList.add('stunned');
+    }
+    updateFinnBossAttackAvailability();
+  };
+
+  const updateFinnBossAttackAvailability = () => {
+    if (!finnBossAttack) return;
+    const inRange = Math.abs(finnPlayerX - 50) <= 23 && finnPlayerY <= 34;
+    const canAttack = finnBossActive && finnBossState === 'stunned' && inRange && !finnAttackCooldown;
+    [finnBossAttack, finnBossMiniAttack].forEach(button => {
+      if (!button) return;
+      button.disabled = !canAttack;
+      button.title = !inRange ? 'Move close to Corrupted Lord Finn to attack.' : finnBossState !== 'stunned' ? 'Attack when Corrupted Lord Finn is staggered.' : '';
+    });
+  };
+
+  const setFinnBossState = (state, duration, message, status) => {
+    finnBossState = state;
+    finnBossStateTime = duration;
+    if (finnBossDialogue && message) finnBossDialogue.textContent = message;
+    if (finnBossStatus && status) finnBossStatus.textContent = status;
+    finnBossNpc?.classList.toggle('stunned', state === 'stunned');
+    finnBossStage?.classList.toggle('telegraphing', state === 'telegraph');
+    updateFinnBossAttackAvailability();
   };
 
   const resetFinnBoss = () => {
     stopFinnBoss();
     finnBossHp = 180;
     finnPlayerHp = 100;
-    finnPlayerX = 16;
-    finnPlayerY = 72;
-    if (finnBossPlayer) finnBossPlayer.style.cssText = `left:${finnPlayerX}%;top:${finnPlayerY}%`;
-    if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: You crossed into the Rift before it opened. Now prove you belong.';
-    if (finnBossStatus) finnBossStatus.textContent = 'BATTLE READY';
+    finnPlayerX = 50;
+    finnPlayerY = 78;
+    finnBossState = 'intro';
+    finnBossStateTime = 1.4;
+    finnBossCycle = 0;
+    finnBossPhaseNumber = 1;
+    finnBossPatternTime = 0;
+    finnBossInvulnerableUntil = 0;
+    finnAttackCooldown = false;
+    if (finnBossPlayer) {
+      finnBossPlayer.style.left = `${finnPlayerX}%`;
+      finnBossPlayer.style.top = `${finnPlayerY}%`;
+    }
+    finnBossNpc?.classList.remove('stunned');
+    finnBossNpc?.setAttribute('data-phase', '1');
+    finnBossStage?.classList.remove('telegraphing');
+    if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: Step into the Rift. Show me what you can do.';
+    if (finnBossStatus) finnBossStatus.textContent = 'GET READY';
+    if (finnBossPhase) finnBossPhase.textContent = 'PHASE I';
     finnBossRechallenge?.classList.add('hidden');
-    if (finnBossAttack) finnBossAttack.disabled = false;
+    if (finnBossAttack) finnBossAttack.disabled = true;
     updateFinnBossHud();
   };
 
@@ -3791,7 +3841,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.success) {
         currentUser = response.user;
         updateUI(currentUser);
-        showPopup(response.alreadyRewarded ? 'Corrupted Lord Finn defeated. Finn Energy already collected.' : 'Victory! 1 Finn Energy obtained.', 'success');
+        showPopup(response.alreadyRewarded ? 'Corrupted Lord Finn defeated. Your victory rewards were already claimed.' : 'Victory! 100,000 coins and 1 Finn Energy obtained.', 'success');
       } else {
         showPopup(response.error || 'Victory reward could not be saved.', 'error');
       }
@@ -3801,45 +3851,132 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const spawnFinnBossProjectile = () => {
-    if (!finnBossActive || !finnBossStage) return;
-    const projectile = document.createElement('span');
-    projectile.className = 'finn-boss-projectile';
-    let x = 79;
-    let y = 35;
-    projectile.style.left = `${x}%`;
-    projectile.style.top = `${y}%`;
-    finnBossStage.appendChild(projectile);
-    const frame = setInterval(() => {
-      x -= (x - finnPlayerX) * 0.018;
-      y -= (y - finnPlayerY) * 0.018;
-      projectile.style.left = `${x}%`;
-      projectile.style.top = `${y}%`;
-      if (Math.abs(x - finnPlayerX) < 4 && Math.abs(y - finnPlayerY) < 6) {
-        clearInterval(frame);
-        projectile.remove();
-        finnPlayerHp = Math.max(0, finnPlayerHp - 9);
-        updateFinnBossHud();
-        if (finnPlayerHp <= 0) void finishFinnBoss(false);
-      }
-      if (x < -3 || y < -3 || x > 103 || y > 103) {
-        clearInterval(frame);
-        projectile.remove();
-      }
-    }, 30);
-    finnBossTimers.push(frame);
+  const spawnFinnProjectile = (x, y, vx, vy, type = 'orb') => {
+    if (!finnBossBox) return;
+    const element = document.createElement('span');
+    element.className = `finn-boss-projectile finn-boss-projectile-${type}`;
+    element.style.left = `${x}%`;
+    element.style.top = `${y}%`;
+    finnBossBox.appendChild(element);
+    finnBossProjectiles.push({ element, x, y, vx, vy });
+  };
+
+  const spawnAimedFinnProjectile = () => {
+    const rect = finnBossBox?.getBoundingClientRect();
+    if (!rect) return;
+    const x = 50;
+    const y = 4;
+    const dx = (finnPlayerX - x) * rect.width / 100;
+    const dy = (finnPlayerY - y) * rect.height / 100;
+    const length = Math.hypot(dx, dy) || 1;
+    const speed = 190 + finnBossPhaseNumber * 28;
+    spawnFinnProjectile(x, y, dx / length * speed * 100 / rect.width, dy / length * speed * 100 / rect.height);
+  };
+
+  const spawnFinnBurst = () => {
+    const rect = finnBossBox?.getBoundingClientRect();
+    if (!rect) return;
+    const count = finnBossPhaseNumber === 3 ? 12 : 9;
+    for (let index = 0; index < count; index += 1) {
+      const angle = Math.PI * 2 * index / count;
+      const speed = 150 + finnBossPhaseNumber * 24;
+      spawnFinnProjectile(50, 40, Math.cos(angle) * speed * 100 / rect.width, Math.sin(angle) * speed * 100 / rect.height, 'shard');
+    }
+  };
+
+  const spawnFinnSweep = () => {
+    const leftToRight = finnBossCycle % 2 === 0;
+    const y = 18 + Math.random() * 64;
+    const speed = (leftToRight ? 1 : -1) * (170 + finnBossPhaseNumber * 28);
+    const rect = finnBossBox?.getBoundingClientRect();
+    if (!rect) return;
+    spawnFinnProjectile(leftToRight ? 0 : 100, y, speed * 100 / rect.width, 0, 'sweep');
+  };
+
+  const beginFinnBossCycle = () => {
+    finnBossCycle += 1;
+    finnBossPattern = finnBossCycle % 3 === 0 ? 'burst' : finnBossCycle % 3 === 2 ? 'sweep' : 'aimed';
+    const patternName = finnBossPattern === 'burst' ? 'FRACTURE BURST' : finnBossPattern === 'sweep' ? 'RIFT SWEEP' : 'RIFT BOLTS';
+    setFinnBossState('telegraph', 0.9, `Corrupted Lord Finn is forming ${patternName}. Dodge!`, `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ${patternName}`);
   };
 
   const attackFinnBoss = () => {
-    if (!finnBossActive || finnAttackCooldown) return;
+    if (!finnBossActive || finnBossState !== 'stunned' || finnAttackCooldown) return;
+    const inRange = Math.abs(finnPlayerX - 50) <= 23 && finnPlayerY <= 34;
+    if (!inRange) {
+      if (finnBossDialogue) finnBossDialogue.textContent = 'Get closer while Finn is staggered to land a strike!';
+      return;
+    }
     finnAttackCooldown = true;
-    finnBossHp = Math.max(0, finnBossHp - 12);
+    finnBossHp = Math.max(0, finnBossHp - 24);
     updateFinnBossHud();
     if (finnBossDialogue) finnBossDialogue.textContent = finnBossHp > 0
-      ? `Strike landed. Corrupted Lord Finn has ${finnBossHp} HP.`
+      ? `Direct hit! Corrupted Lord Finn has ${finnBossHp} HP remaining.`
       : 'Corrupted Lord Finn: The Rift is opening...';
     if (finnBossHp <= 0) void finishFinnBoss(true);
-    setTimeout(() => { finnAttackCooldown = false; }, 260);
+    setTimeout(() => {
+      finnAttackCooldown = false;
+      updateFinnBossAttackAvailability();
+    }, 380);
+  };
+
+  const updateFinnBoss = timestamp => {
+    if (!finnBossActive || !finnBossBox) return;
+    const delta = Math.min(0.05, Math.max(0, (timestamp - (finnBossLastFrame || timestamp)) / 1000));
+    finnBossLastFrame = timestamp;
+    const horizontal = Number(finnBossKeys.has('d') || finnBossKeys.has('arrowright')) - Number(finnBossKeys.has('a') || finnBossKeys.has('arrowleft'));
+    const vertical = Number(finnBossKeys.has('s') || finnBossKeys.has('arrowdown')) - Number(finnBossKeys.has('w') || finnBossKeys.has('arrowup'));
+    const directionLength = Math.hypot(horizontal, vertical) || 1;
+    const moveSpeed = 66 * delta / directionLength;
+    finnPlayerX = Math.max(5, Math.min(95, finnPlayerX + horizontal * moveSpeed));
+    finnPlayerY = Math.max(7, Math.min(93, finnPlayerY + vertical * moveSpeed));
+    if (finnBossPlayer) {
+      finnBossPlayer.style.left = `${finnPlayerX}%`;
+      finnBossPlayer.style.top = `${finnPlayerY}%`;
+      finnBossPlayer.classList.toggle('hurt', performance.now() < finnBossInvulnerableUntil);
+    }
+
+    finnBossStateTime -= delta;
+    if (finnBossState === 'intro' && finnBossStateTime <= 0) beginFinnBossCycle();
+    else if (finnBossState === 'telegraph' && finnBossStateTime <= 0) {
+      finnBossPatternTime = 0;
+      setFinnBossState('attacking', 3.2, 'Dodge the Rift attacks, then strike while Finn is staggered.', `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ATTACKING`);
+    } else if (finnBossState === 'attacking') {
+      finnBossPatternTime += delta;
+      const patternInterval = finnBossPattern === 'aimed' ? 0.62 : finnBossPattern === 'sweep' ? 0.48 : 1.25;
+      if (finnBossPatternTime >= patternInterval) {
+        finnBossPatternTime = 0;
+        if (finnBossPattern === 'aimed') spawnAimedFinnProjectile();
+        else if (finnBossPattern === 'sweep') spawnFinnSweep();
+        else spawnFinnBurst();
+      }
+      if (finnBossStateTime <= 0) setFinnBossState('stunned', 2.5, 'Finn is stunned! Move close and press ATTACK or Space.', 'STAGGERED · STRIKE NOW');
+    } else if (finnBossState === 'stunned' && finnBossStateTime <= 0) beginFinnBossCycle();
+
+    const box = finnBossBox.getBoundingClientRect();
+    finnBossProjectiles = finnBossProjectiles.filter(projectile => {
+      projectile.x += projectile.vx * delta;
+      projectile.y += projectile.vy * delta;
+      projectile.element.style.left = `${projectile.x}%`;
+      projectile.element.style.top = `${projectile.y}%`;
+      const hitX = (projectile.x - finnPlayerX) * box.width / 100;
+      const hitY = (projectile.y - finnPlayerY) * box.height / 100;
+      if (performance.now() >= finnBossInvulnerableUntil && Math.hypot(hitX, hitY) < 20) {
+        finnBossInvulnerableUntil = performance.now() + 720;
+        finnPlayerHp = Math.max(0, finnPlayerHp - 12);
+        updateFinnBossHud();
+        if (finnPlayerHp <= 0) void finishFinnBoss(false);
+        projectile.element.remove();
+        return false;
+      }
+      if (projectile.x < -5 || projectile.x > 105 || projectile.y < -5 || projectile.y > 105) {
+        projectile.element.remove();
+        return false;
+      }
+      return true;
+    });
+    updateFinnBossAttackAvailability();
+    finnBossFrame = requestAnimationFrame(updateFinnBoss);
   };
 
   const openFinnBoss = () => {
@@ -3849,10 +3986,11 @@ document.addEventListener('DOMContentLoaded', () => {
     finnBossOverlay?.classList.remove('hidden');
     document.body.classList.add('finn-dialog-open');
     finnBossStage?.focus();
-    const projectileTimer = setInterval(spawnFinnBossProjectile, 720);
-    finnBossTimers.push(projectileTimer);
+    finnBossLastFrame = 0;
+    finnBossFrame = requestAnimationFrame(updateFinnBoss);
   };
 
+  finnOpen?.addEventListener('click', openFinnBoss);
   document.getElementById('finn-challenge-button')?.addEventListener('click', openFinnBoss);
   finnBossAttack?.addEventListener('click', attackFinnBoss);
   document.getElementById('finn-boss-key-attack')?.addEventListener('click', attackFinnBoss);
@@ -3861,18 +3999,18 @@ document.addEventListener('DOMContentLoaded', () => {
     stopFinnBoss();
     finnBossOverlay?.classList.add('hidden');
     document.body.classList.remove('finn-dialog-open');
+    finnOpen?.focus();
   });
   document.addEventListener('keydown', event => {
     if (!finnBossActive) return;
     const key = event.key.toLowerCase();
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(key)) event.preventDefault();
-    if (key === 'w' || key === 'arrowup') finnPlayerY = Math.max(4, finnPlayerY - 4);
-    if (key === 's' || key === 'arrowdown') finnPlayerY = Math.min(88, finnPlayerY + 4);
-    if (key === 'a' || key === 'arrowleft') finnPlayerX = Math.max(2, finnPlayerX - 4);
-    if (key === 'd' || key === 'arrowright') finnPlayerX = Math.min(94, finnPlayerX + 4);
+    if (key === 'w' || key === 'a' || key === 's' || key === 'd' || key.startsWith('arrow')) finnBossKeys.add(key);
     if (key === ' ') attackFinnBoss();
-    if (finnBossPlayer) finnBossPlayer.style.cssText = `left:${finnPlayerX}%;top:${finnPlayerY}%`;
   });
+  document.addEventListener('keyup', event => finnBossKeys.delete(event.key.toLowerCase()));
+  window.addEventListener('blur', () => finnBossKeys.clear());
+  finnBossStage?.addEventListener('pointerdown', () => finnBossStage.focus());
   finnClose?.addEventListener('click', closeFinnDialog);
   finnWatchButton?.addEventListener('click', () => {
     const watching = finnWatchButton.getAttribute('aria-pressed') !== 'true';
