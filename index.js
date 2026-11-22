@@ -81,20 +81,38 @@ const inMemoryStore = {
 const playtimeLastTick = new Map();
 const playtimeWritesInFlight = new Set();
 const inboxClaimsInFlight = new Set();
-const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
+const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'finn_energy', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
 
 const ROTATING_SHOP_ITEMS = [
   { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
   { name: 'Clover Leaf', cost: 500, rarity: 'common' },
   { name: 'Sea Essence', cost: 300000, rarity: 'legendary' },
   { name: 'Molten Rock', cost: 1000, rarity: 'common' },
-  { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' }
+  { name: 'Ancient Ore', cost: 100000, rarity: 'legendary' },
+  { name: 'Light Essence', cost: 100000, rarity: 'mythic' }
 ];
 const SHOP_ROTATION_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_STACKED_EFFECT_MULTIPLIER = 5;
 const MAX_LUCK_EFFECT_MULTIPLIER = 25;
 const MAX_TOTAL_LUCK_MULTIPLIER = 100;
 const MAX_PROGRESSION_VALUE = Number.MAX_SAFE_INTEGER;
+
+function getNextRiftReleaseAt(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(now).reduce((result, part) => {
+    result[part.type] = part.value;
+    return result;
+  }, {});
+  const aucklandNow = new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00+13:00`);
+  const weekday = aucklandNow.getUTCDay();
+  let daysUntilMonday = (1 - weekday + 7) % 7;
+  if (weekday === 1 && Number(parts.hour) >= 22) daysUntilMonday = 7;
+  const release = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + daysUntilMonday, 9, 0, 0));
+  return release;
+}
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
 const CORE_RARITIES = [
@@ -127,8 +145,16 @@ const CORE_RARITIES = [
   { key: 'mrs-bradley', name: 'Mrs Bradley', chance: 0.08, reward: 9500, isGlobal: true, color: '#db2777', glowColor: '#fbcfe8' },
   { key: 'mrs-croft', name: 'Mrs Croft', chance: 0.08, reward: 9500, isGlobal: true, color: '#16a34a', glowColor: '#bbf7d0' },
   { key: 'lord-finn', name: 'Lord Finn', chance: 0.02, reward: 30000, isGlobal: true, color: '#ff5fd2', glowColor: '#ffc2f1' },
+  { key: 'corrupted-lord-finn', name: 'Corrupted Lord Finn', chance: 0.005, reward: 50000, isGlobal: true, riftOnly: true, color: '#ef4444', glowColor: '#c084fc' },
+  { key: 'spencer-james-carter', name: 'Spencer James Carter', chance: 0.055, reward: 28000, isGlobal: true, color: '#38bdf8', glowColor: '#a78bfa' },
   { key: 'king-baxter', name: 'King Baxter', chance: 0.125, reward: 14000, isGlobal: true, color: '#b7f34a', glowColor: '#edffb1' },
   { key: 'lazar-kiwi-games', name: 'Lazar Kiwi Games', chance: 0.125, reward: 14000, isGlobal: true, color: '#ff8c42', glowColor: '#ffd6b0' }
+];
+const RIFT_RARITIES = [
+  { key: 'rift-signal', name: 'Rift Signal', chance: 30, reward: 900, color: '#2563eb', glowColor: '#60a5fa' },
+  { key: 'rift-shard', name: 'Rift Shard', chance: 8, reward: 3500, color: '#7c3aed', glowColor: '#c4b5fd' },
+  { key: 'spencer-james-carter', name: 'Spencer James Carter', chance: 0.055, reward: 28000, isGlobal: true, color: '#38bdf8', glowColor: '#a78bfa' },
+  { key: 'corrupted-lord-finn', name: 'Corrupted Lord Finn', chance: 0.005, reward: 50000, isGlobal: true, riftOnly: true, color: '#ef4444', glowColor: '#c084fc' }
 ];
 const HALLOWEEN_RARITIES = [
   { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 8500, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
@@ -490,7 +516,7 @@ async function findUser(username) {
     const user = result.rows[0];
     const inventory = normalizeInventory(user.inventory);
     const potions = normalizeRecord(user.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
-    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
+    const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, light_essence: 0, finn_energy: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
     const titles = getUnlockedTitles({ ...user, inventory });
     return {
       username: user.username,
@@ -513,7 +539,8 @@ async function findUser(username) {
       is_banned: user.is_banned || false,
       ban_reason: user.ban_reason || '',
       sea_realm_unlocked: user.sea_realm_unlocked || false,
-      forge_realm_unlocked: user.forge_realm_unlocked || false
+      forge_realm_unlocked: user.forge_realm_unlocked || false,
+      rift_realm_unlocked: user.rift_realm_unlocked || false
     };
   }
   const stored = inMemoryStore.users[normalized] || null;
@@ -524,7 +551,7 @@ async function findUser(username) {
     inventory: normalizeInventory(stored.inventory),
     achievements: normalizeList(stored.achievements),
     potions: normalizeRecord(stored.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 }),
-    items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
+    items: normalizeRecord(stored.items, { fragments: 0, clovers: 0, essence: 0, light_essence: 0, finn_energy: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 }),
     titles: getUnlockedTitles(stored),
     redeemed_codes: normalizeList(stored.redeemed_codes),
     is_admin: isAdministratorUser(stored),
@@ -534,7 +561,8 @@ async function findUser(username) {
     active_title: stored.active_title || null,
     rules_agreed_at: stored.rules_agreed_at || null,
     sea_realm_unlocked: stored.sea_realm_unlocked || false,
-    forge_realm_unlocked: stored.forge_realm_unlocked || false
+    forge_realm_unlocked: stored.forge_realm_unlocked || false,
+    rift_realm_unlocked: stored.rift_realm_unlocked || false
   };
 }
 
@@ -542,8 +570,8 @@ async function saveUser(user) {
   const normalized = user.username.trim();
   if (pool) {
     const result = await executeQuery(
-      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_admin, created_at, last_login, playtime_seconds)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      `INSERT INTO users (username, password, coins, spins, inventory, achievements, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, rift_realm_unlocked, is_admin, created_at, last_login, playtime_seconds)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        ON CONFLICT (username) DO NOTHING
        RETURNING username`,
       [
@@ -561,6 +589,7 @@ async function saveUser(user) {
         user.portal_unlocked || false,
         user.sea_realm_unlocked || false,
         user.forge_realm_unlocked || false,
+        user.rift_realm_unlocked || false,
         user.is_admin,
         user.created_at || new Date().toISOString(),
         user.last_login || new Date().toISOString(),
@@ -672,13 +701,14 @@ async function ensureDatabase() {
       achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       is_admin BOOLEAN NOT NULL DEFAULT false,
       potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
-      items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
+      items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"light_essence":0,"finn_energy":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
       titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       redeemed_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
       active_title TEXT,
       portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       forge_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
+      rift_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       is_banned BOOLEAN NOT NULL DEFAULT false,
       ban_reason TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -760,13 +790,14 @@ async function ensureDatabase() {
       ADD COLUMN IF NOT EXISTS achievements JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS potions JSONB NOT NULL DEFAULT '{"luck":0,"luck-ii":0,"speed":0}'::jsonb,
-      ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
+      ADD COLUMN IF NOT EXISTS items JSONB NOT NULL DEFAULT '{"fragments":0,"clovers":0,"essence":0,"light_essence":0,"finn_energy":0,"molten_rock":0,"ancient_ore":0,"old_potato_sticker":0,"empty_vial":0,"treasure_chest":0,"event_controller":0}'::jsonb,
       ADD COLUMN IF NOT EXISTS titles JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS redeemed_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS active_title TEXT,
       ADD COLUMN IF NOT EXISTS portal_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS sea_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS forge_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS rift_realm_unlocked BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS is_banned BOOLEAN NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1521,7 +1552,7 @@ app.get('/health', (req, res) => {
 function sanitizeUser(user) {
   const inventory = normalizeInventory(user.inventory);
   const potions = normalizeRecord(user.potions, { luck: 0, speed: 0 });
-  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
+  const items = normalizeRecord(user.items, { fragments: 0, clovers: 0, essence: 0, light_essence: 0, finn_energy: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 });
   const titles = getUnlockedTitles(user);
   
   return {
@@ -1540,6 +1571,7 @@ function sanitizeUser(user) {
     portal_unlocked: user.portal_unlocked || false,
     sea_realm_unlocked: user.sea_realm_unlocked || false,
     forge_realm_unlocked: user.forge_realm_unlocked || false,
+    rift_realm_unlocked: user.rift_realm_unlocked || false,
     accountAge: user.created_at ? new Date(user.created_at).toLocaleDateString() : '-',
     inventoryValue: calculateInventoryValue(inventory),
     inventoryTotal: Object.values(inventory.rarities).reduce((sum, count) => sum + (Number(count) || 0), 0),
@@ -1610,11 +1642,12 @@ app.post('/api/register', async (req, res) => {
     inventory: { rarities: {} },
     achievements: [],
     potions: { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 },
-    items: { fragments: 0, clovers: 0, essence: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 },
+    items: { fragments: 0, clovers: 0, essence: 0, light_essence: 0, finn_energy: 0, molten_rock: 0, ancient_ore: 0, old_potato_sticker: 0, empty_vial: 0, treasure_chest: 0, event_controller: 0 },
     titles: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin' ? ['owner'] : [],
     portal_unlocked: false,
     sea_realm_unlocked: false,
     forge_realm_unlocked: false,
+    rift_realm_unlocked: false,
     is_admin: normalized.toLowerCase() === 'mr_fernanski' || normalized === 'testadmin',
     created_at: new Date().toISOString(),
     last_login: new Date().toISOString()
@@ -2060,7 +2093,7 @@ app.post('/api/buy-shop-item', async (req, res) => {
     
     const itemKey = {
       'Portal Fragment': 'fragments', 'Clover Leaf': 'clovers', 'Sea Essence': 'essence',
-      'Molten Rock': 'molten_rock', 'Ancient Ore': 'ancient_ore'
+      'Molten Rock': 'molten_rock', 'Ancient Ore': 'ancient_ore', 'Light Essence': 'light_essence'
     }[itemName];
     if (!itemKey) return res.status(400).json({ success: false, error: 'That item cannot be purchased.' });
     items[itemKey] = (Number(items[itemKey]) || 0) + 1;
@@ -2206,20 +2239,91 @@ app.post('/api/realms/forge/unlock', async (req, res) => {
   }
 });
 
+app.post('/api/realms/rift/unlock', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const releaseAt = getNextRiftReleaseAt();
+    if (Date.now() < releaseAt.getTime()) {
+      return res.status(423).json({ success: false, error: 'The Rift Realm opens Monday at 10pm NZ time.', releaseAt: releaseAt.toISOString() });
+    }
+    const user = await findUser(req.session.username);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+    if (!user.portal_unlocked) return res.status(400).json({ success: false, error: 'Open the gateway before entering the Rift Realm.' });
+    if (user.rift_realm_unlocked) return res.json({ success: true, alreadyUnlocked: true, user: sanitizeUser(user) });
+    const items = normalizeRecord(user.items);
+    if ((Number(items.light_essence) || 0) < 10) return res.status(400).json({ success: false, error: 'The Rift Realm requires 10 Light Essence.' });
+    if ((Number(items.finn_energy) || 0) < 1) return res.status(400).json({ success: false, error: 'Defeat Corrupted Lord Finn to obtain 1 Finn Energy.' });
+    items.light_essence -= 10;
+    items.finn_energy -= 1;
+    await updateUser(req.session.username, { rift_realm_unlocked: true, items: JSON.stringify(items) });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Rift Realm unlock error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to unlock the Rift Realm.' });
+  }
+});
+
+app.post('/api/finn-boss/defeat', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+    const items = normalizeRecord(user.items);
+    const alreadyRewarded = (Number(items.finn_energy) || 0) >= 1;
+    if (!alreadyRewarded) {
+      items.finn_energy = 1;
+      await updateUser(req.session.username, { items: JSON.stringify(items) });
+    }
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, reward: alreadyRewarded ? null : { item: 'Finn Energy', amount: 1 }, alreadyRewarded, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Finn boss reward error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to award Finn Energy.' });
+  }
+});
+
+app.post('/api/rift/chest/open', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.rift_realm_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Rift Realm first.' });
+    const selection = selectWeightedOption(RIFT_RARITIES, 1);
+    const result = selection.result;
+    const inventory = normalizeInventory(user.inventory);
+    inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
+    const reward = result.reward || 0;
+    await updateUser(req.session.username, {
+      inventory: JSON.stringify(inventory),
+      coins: addProgressionValue(user.coins, reward)
+    });
+    const updated = await findUser(req.session.username);
+    res.json({ success: true, result: { ...result, reward }, user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Rift chest error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to open a Rift chest.' });
+  }
+});
+
 app.post('/api/enter-dimension', async (req, res) => {
   if (!req.session || !req.session.username) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
   const { dimension } = req.body || {};
-  if (!['deep-sea', 'forge-realm'].includes(dimension)) {
+  if (!['deep-sea', 'forge-realm', 'rift-realm'].includes(dimension)) {
     return res.status(400).json({ success: false, error: 'Invalid dimension.' });
   }
 
   try {
     const user = await findUser(req.session.username);
-    const unlocked = dimension === 'deep-sea' ? user?.sea_realm_unlocked : user?.forge_realm_unlocked;
+    const unlocked = dimension === 'deep-sea'
+      ? user?.sea_realm_unlocked
+      : dimension === 'forge-realm'
+        ? user?.forge_realm_unlocked
+        : user?.rift_realm_unlocked;
     if (!user?.portal_unlocked || !unlocked) {
-      return res.status(403).json({ success: false, error: `Unlock the ${dimension === 'deep-sea' ? 'Sea' : 'Forge'} Realm before entering.` });
+      const realmName = dimension === 'deep-sea' ? 'Sea' : dimension === 'forge-realm' ? 'Forge' : 'Rift';
+      return res.status(403).json({ success: false, error: `Unlock the ${realmName} Realm before entering.` });
     }
     res.json({ success: true, user: sanitizeUser(user) });
   } catch (error) {
@@ -2494,8 +2598,8 @@ async function renamePlayerAccount(oldUsername, newUsername) {
     try {
       await client.query('BEGIN');
       const inserted = await client.query(
-        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds, rules_agreed_at)
-         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds, rules_agreed_at
+        `INSERT INTO users (username, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, rift_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds, rules_agreed_at)
+         SELECT $1, password, coins, spins, inventory, achievements, is_admin, potions, items, titles, redeemed_codes, active_title, portal_unlocked, sea_realm_unlocked, forge_realm_unlocked, rift_realm_unlocked, is_banned, ban_reason, created_at, last_login, playtime_seconds, rules_agreed_at
          FROM users WHERE username = $2 RETURNING username`,
         [newUsername, oldUsername]
       );
@@ -2657,6 +2761,9 @@ app.post('/api/admin/users/:username', async (req, res) => {
     } else if (type === 'forge-realm') {
       if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether Forge access should be enabled.' });
       updates = { forge_realm_unlocked: grant };
+    } else if (type === 'rift-realm') {
+      if (typeof grant !== 'boolean') return res.status(400).json({ success: false, error: 'Choose whether Rift access should be enabled.' });
+      updates = { rift_realm_unlocked: grant };
     } else {
       const quantity = Number(amount);
       if (!Number.isSafeInteger(quantity) || quantity < 0) {
@@ -2676,7 +2783,7 @@ app.post('/api/admin/users/:username', async (req, res) => {
         const potions = normalizeRecord(target.potions, { luck: 0, 'luck-ii': 0, coin: 0, speed: 0 });
         potions[potion] = Math.min(999, (Number(potions[potion]) || 0) + quantity);
         updates = { potions: JSON.stringify(potions) };
-        } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
+        } else if (type === 'item' && ['fragments', 'clovers', 'essence', 'light_essence', 'finn_energy', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'].includes(item) && quantity >= 1 && quantity <= 99) {
         const items = normalizeRecord(target.items);
         items[item] = Math.min(999, (Number(items[item]) || 0) + quantity);
         updates = { items: JSON.stringify(items) };
@@ -2722,7 +2829,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
     }
 
     const rarity = [...CORE_RARITIES, ...DIVE_OPTIONS].find(option => option.key === key && !option.isItem && !option.halloweenOnly);
-    const itemKeys = ['fragments', 'clovers', 'essence', 'light_essence', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
+    const itemKeys = ['fragments', 'clovers', 'essence', 'light_essence', 'finn_energy', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest'];
     if (!((type === 'rarity' && rarity) || (type === 'potion' && POTION_CATALOG[key]) || (type === 'item' && itemKeys.includes(key)))) {
       return res.status(400).json({ success: false, error: 'Choose a valid rarity, potion, or item.' });
     }
@@ -2731,7 +2838,7 @@ app.post('/api/admin/global-drop', async (req, res) => {
       ? (await executeQuery('SELECT username FROM users')).rows.map(user => user.username)
       : Object.keys(inMemoryStore.users);
 
-    const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
+    const itemNames = { fragments: 'Portal Fragment', clovers: 'Clover Leaf', essence: 'Sea Essence', light_essence: 'Light Essence', finn_energy: 'Finn Energy', molten_rock: 'Molten Rock', ancient_ore: 'Ancient Ore', event_controller: 'Event Controller', old_potato_sticker: 'Old Potato Sticker', empty_vial: 'Empty Vial', treasure_chest: 'Treasure Chest' };
     const name = type === 'rarity' ? rarity.name : type === 'potion' ? POTION_CATALOG[key].name : itemNames[key];
     if (pool) {
       await executeQuery(
