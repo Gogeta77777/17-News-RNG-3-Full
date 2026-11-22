@@ -3782,7 +3782,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'Corrupted Lord Finn: The Rift deepens. Keep up!'
         : 'Corrupted Lord Finn: You will not survive this final surge.';
       finnBossStunHits = 0;
-      setFinnBossState('stunned', 2, `Phase ${['I', 'II', 'III'][phase - 1]}! Finn is staggered. Land up to two close-range hits within 2 seconds.`, `PHASE ${['I', 'II', 'III'][phase - 1]} · STAGGERED`);
+      setFinnBossState('stunned', 3, `Phase ${['I', 'II', 'III'][phase - 1]}! Finn is staggered. Land up to two close-range hits within 3 seconds.`, `PHASE ${['I', 'II', 'III'][phase - 1]} · STAGGERED`);
     }
     updateFinnBossAttackAvailability();
   };
@@ -3901,6 +3901,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const beginFinnBossCycle = () => {
+    finnAttackCooldown = false;
     finnBossCycle += 1;
     finnBossPattern = finnBossCycle % 3 === 0 ? 'burst' : finnBossCycle % 3 === 2 ? 'sweep' : 'aimed';
     const patternName = finnBossPattern === 'burst' ? 'FRACTURE BURST' : finnBossPattern === 'sweep' ? 'RIFT SWEEP' : 'RIFT BOLTS';
@@ -3928,6 +3929,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (finnBossStunHits >= 2) {
+      finnAttackCooldown = false;
       beginFinnBossCycle();
       return;
     }
@@ -3972,7 +3974,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (finnBossStateTime <= 0) {
         finnBossStunHits = 0;
-        setFinnBossState('stunned', 2, 'Finn is stunned for 2 seconds! Move close and land up to two hits with ATTACK or Space.', 'STAGGERED · 2 HITS / 2 SECONDS');
+        setFinnBossState('stunned', 3, 'Finn is stunned for 3 seconds! Move close and land up to two hits with ATTACK or Space.', 'STAGGERED · 2 HITS / 3 SECONDS');
       }
     } else if (finnBossState === 'stunned' && finnBossStateTime <= 0) beginFinnBossCycle();
 
