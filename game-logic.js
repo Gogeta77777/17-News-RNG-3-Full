@@ -3058,6 +3058,14 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
 // ==================== CHAT API ====================
 
 function showPage(pageName) {
+  document.querySelectorAll('dialog[open]').forEach(dialog => {
+    dialog.close();
+  });
+  document.getElementById('finn-dialog-overlay')?.classList.add('hidden');
+  document.getElementById('finn-boss-overlay')?.classList.add('hidden');
+  document.getElementById('realm-selector')?.classList.add('hidden');
+  document.getElementById('forge-mini-game')?.classList.add('hidden');
+  document.body.classList.remove('finn-dialog-open');
   if (pageName === 'landing' || pageName === 'login' || pageName === 'register') {
     document.getElementById('auto-roll-presence-dialog')?.close?.();
   }
@@ -3098,7 +3106,7 @@ function showLanding() {
 function showRulesDialog(forceAgreement = false) {
   const dialog = document.getElementById('rules-dialog');
   if (!dialog || !currentUser) return;
-  const needsAgreement = forceAgreement || !currentUser.rules_agreed_at;
+  const needsAgreement = Boolean(forceAgreement);
   dialog.dataset.required = String(needsAgreement);
   const closeButton = document.getElementById('rules-close-btn');
   const acceptButton = document.getElementById('rules-accept-btn');
@@ -3152,7 +3160,6 @@ async function handleLogin(e) {
         window.loadChatFallback?.();
         window.refreshInboxBadge?.();
       }
-      else showRulesDialog(true);
       window.updatePlayerActivity?.('At the RNG console');
       e.target.reset();
     } else {
@@ -3214,7 +3221,6 @@ async function handleRegister(e) {
         window.loadChatFallback?.();
         window.refreshInboxBadge?.();
       }
-      else showRulesDialog(true);
       window.updatePlayerActivity?.('At the RNG console');
       e.target.reset();
     } else {
@@ -3246,7 +3252,6 @@ async function loadSession() {
       window.loadChatFallback?.();
       window.refreshInboxBadge?.();
     }
-    else showRulesDialog(true);
     window.updatePlayerActivity?.('At the RNG console');
     setupPortalUI();
     setupRollButton();
