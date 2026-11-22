@@ -3058,6 +3058,9 @@ function applyThemeEvent(eventData, legacyInitiatedBy = 'Admin') {
 // ==================== CHAT API ====================
 
 function showPage(pageName) {
+  if (pageName === 'landing' || pageName === 'login' || pageName === 'register') {
+    document.getElementById('auto-roll-presence-dialog')?.close?.();
+  }
   const pageIds = ['landing-page', 'login-page', 'register-page', 'game-page', 'admin-panel'];
   pageIds.forEach(id => {
     const el = document.getElementById(id);
@@ -3254,6 +3257,7 @@ document.getElementById('logout-btn')?.addEventListener('click', async () => {
   await handleAPI('/api/logout', { method: 'POST' });
   clearInterval(autoRollTimer);
   autoRollTimer = null;
+  window.stopAutoRollPresenceCheck?.();
   gameState.autoRollEnabled = false;
   currentUser = null;
   hideGamePage();
@@ -3366,6 +3370,7 @@ function setupRollButton() {
 
   const closeTabOrLogout = async () => {
     pauseAutoRoll();
+    window.stopAutoRollPresenceCheck?.();
     window.close();
     setTimeout(async () => {
       if (window.closed) return;
@@ -3379,6 +3384,13 @@ function setupRollButton() {
     clearInterval(autoRollUnansweredInterval);
     autoRollUnansweredTimer = null;
     autoRollUnansweredInterval = null;
+  };
+
+  window.stopAutoRollPresenceCheck = () => {
+    clearInterval(autoRollOnlinePromptTimer);
+    clearAutoRollPresenceCheck();
+    const dialog = document.getElementById('auto-roll-presence-dialog');
+    if (dialog?.open) dialog.close();
   };
 
   const showAutoRollPresenceCheck = () => {
@@ -3444,14 +3456,19 @@ function setupRollButton() {
     rollDisplay.style.opacity = '1';
     if (chanceDisplay) chanceDisplay.textContent = 'Chance: —';
 
-    const response = await handleAPI('/api/spin', {
-      method: 'POST',
-      body: { dimension: gameState.currentDimension || null, autoRoll: gameState.autoRollEnabled }
-    });
-
-    if (response.success && response.result && response.user) await animateRarityRoll(rollDisplay, response.result);
-
-    setLoading(rollBtn, false);
+    let response;
+    try {
+      response = await handleAPI('/api/spin', {
+        method: 'POST',
+        body: { dimension: gameState.currentDimension || null, autoRoll: gameState.autoRollEnabled }
+      });
+      if (response.success && response.result && response.user) await animateRarityRoll(rollDisplay, response.result);
+    } catch (error) {
+      console.error('Roll reveal failed:', error);
+      response = { success: false, error: 'Roll completed, but the reveal failed. Please try again.' };
+    } finally {
+      setLoading(rollBtn, false);
+    }
 
     if (!response.success || !response.result || !response.user) {
       rollDisplay.textContent = '❌ Roll Failed';
