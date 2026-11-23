@@ -78,10 +78,209 @@ const inMemoryStore = {
   inboxMessages: [],
   adminAudit: []
 };
+const riftLobbyPlayers = new Map();
+const riftParties = new Map();
+const riftPartyByUsername = new Map();
+const riftBossBattles = new Map();
+let nextRiftPartyId = 1;
+let nextRiftBattleId = 1;
 const playtimeLastTick = new Map();
 const playtimeWritesInFlight = new Set();
 const inboxClaimsInFlight = new Set();
 const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_essence', 'finn_energy', 'molten_rock', 'ancient_ore', 'event_controller', 'old_potato_sticker', 'empty_vial', 'treasure_chest']);
+
+const RIFT_BOSSES = {
+  'corrupted-lord-finn-full-power': {
+    name: 'Corrupted Lord Finn (Full Power)',
+    maxHp: 1200,
+    coins: 120,
+    xp: 120,
+    telegraphMs: [1500, 1100, 750],
+    attackMs: [7000, 8000, 9000],
+    attackPeriodMs: [1000, 760, 580],
+    stunMs: 3000,
+    patterns: [['RIFT BOLTS', 'RIFT SWEEP', 'FRACTURE BURST'], ['CROSSRIFT VOLLEY', 'RIFT SWEEP'], ['SPIRAL COLLAPSE', 'CROSSRIFT VOLLEY', 'FRACTURE BURST']]
+  },
+  'rift-angel': {
+    name: 'Rift Angel',
+    maxHp: 2200,
+    coins: 240,
+    xp: 240,
+    telegraphMs: [1350, 950, 600],
+    attackMs: [8000, 9500, 11000],
+    attackPeriodMs: [920, 680, 480],
+    stunMs: 3000,
+    patterns: [['HALO NOVA', 'RIFT RAIN', 'LIGHT SPEARS'], ['HALO NOVA', 'LIGHT SPEARS', 'VOID RAIN'], ['CELESTIAL SPIRAL', 'VOID RAIN', 'LIGHT SPEARS']]
+  }
+};
+
+function getRiftProfile(user) {
+  const items = normalizeRecord(user?.items);
+  const xp = Math.max(0, Math.floor(Number(items.rift_xp) || 0));
+  const level = Math.floor(Math.sqrt(xp / 150)) + 1;
+  const stats = normalizeRecord(items.rift_stats);
+  const damage = Math.max(0, Math.floor(Number(stats.damage) || 0));
+  const speed = Math.max(0, Math.floor(Number(stats.speed) || 0));
+  const luck = Math.max(0, Math.floor(Number(stats.luck) || 0));
+  return {
+    level,
+    xp,
+    nextLevelXp: level * level * 150,
+    availablePoints: Math.max(0, level - 1 - damage - speed - luck),
+    stats: { damage, speed, luck },
+    coins: Math.max(0, Math.floor(Number(items.rift_coins) || 0)),
+    chests: Math.max(0, Math.floor(Number(items.rift_chest) || 0)),
+    potions: normalizeRecord(items.rift_potions),
+    buff: Number(items.rift_buff?.endsAt) > Date.now() ? items.rift_buff : null
+  };
+}
+
+function getRiftPlayerIdentity(user) {
+  const owner = user?.titles?.includes('owner') || user?.active_title === 'owner';
+  const admin = !owner && (user?.is_admin || user?.titles?.includes('admin') || user?.active_title === 'admin');
+  const title = owner ? 'OWNER' : admin ? 'ADMIN' : user?.active_title ? String(user.active_title).replaceAll('-', ' ').toUpperCase() : '';
+  return {
+    username: user?.username || 'Player',
+    title,
+    model: owner ? 'owner' : admin ? 'admin' : 'player',
+    color: owner ? '#fbbf24' : admin ? '#fb7185' : '#7dd3fc'
+  };
+}
+
+function getRiftLobbyRoster() {
+  return [...riftLobbyPlayers.values()].map(({ username, title, model, color, x, y }) => ({
+    username, title, model, color, x, y
+  }));
+}
+
+function getRiftPartySnapshot(partyId) {
+  const party = riftParties.get(partyId);
+  if (!party) return null;
+  return {
+    id: party.id,
+    leader: party.leader,
+    members: party.members.map(key => riftLobbyPlayers.get(key)).filter(Boolean).map(({ username, title, model, color }) => ({ username, title, model, color }))
+  };
+}
+
+function broadcastRiftLobby() {
+  io.to('rift-lobby').emit('rift-lobby-state', getRiftLobbyRoster());
+}
+
+function broadcastRiftParty(partyId) {
+  const party = riftParties.get(partyId);
+  if (!party) return;
+  const snapshot = getRiftPartySnapshot(partyId);
+  party.members.forEach(memberKey => {
+    io.to(`user:${memberKey}`).emit('rift-party-state', { partyId, party: snapshot });
+  });
+}
+
+function getRiftBossPhase(battle) {
+  const ratio = battle.hp / battle.maxHp;
+  return ratio > 0.66 ? 1 : ratio > 0.33 ? 2 : 3;
+}
+
+function advanceRiftBossState(battle, now = Date.now()) {
+  if (battle.ended || battle.hp <= 0) return false;
+  const phase = getRiftBossPhase(battle);
+  if (phase !== battle.phase) {
+    battle.phase = phase;
+    battle.cycle = -1;
+    battle.state = 'transition';
+    battle.stateUntil = now + 1300;
+  }
+  if (now < battle.stateUntil) return false;
+  if (battle.state === 'transition' || battle.state === 'stunned') {
+    battle.cycle += 1;
+    const config = RIFT_BOSSES[battle.bossKey];
+    const patterns = config.patterns[battle.phase - 1];
+    battle.pattern = patterns[battle.cycle % patterns.length];
+    battle.state = 'telegraph';
+    battle.stateUntil = now + config.telegraphMs[battle.phase - 1];
+    battle.stunHits = 0;
+    return true;
+  }
+  if (battle.state === 'telegraph') {
+    battle.state = 'attacking';
+    battle.stateUntil = now + RIFT_BOSSES[battle.bossKey].attackMs[battle.phase - 1];
+    battle.nextPatternAt = now;
+    return true;
+  }
+  if (battle.state === 'attacking' && now >= battle.stateUntil) {
+    battle.state = 'stunned';
+    battle.stateUntil = now + RIFT_BOSSES[battle.bossKey].stunMs;
+    battle.stunHits = 0;
+    return true;
+  }
+  return false;
+}
+
+function getRiftBossSnapshot(battle) {
+  const config = RIFT_BOSSES[battle.bossKey];
+  return {
+    battleId: battle.id,
+    bossKey: battle.bossKey,
+    name: config.name,
+    hp: battle.hp,
+    maxHp: battle.maxHp,
+    phase: battle.phase,
+    state: battle.state,
+    stateUntil: battle.stateUntil,
+    pattern: battle.pattern,
+    party: battle.members.map(key => riftLobbyPlayers.get(key)).filter(Boolean).map(({ username, title, model, color }) => ({ username, title, model, color }))
+  };
+}
+
+async function finishRiftBossBattle(battle) {
+  if (battle.ended) return;
+  battle.ended = true;
+  const config = RIFT_BOSSES[battle.bossKey];
+  for (const usernameKey of battle.members) {
+    const user = await findUser(battle.memberUsernames.get(usernameKey) || usernameKey);
+    if (!user?.rift_realm_unlocked) continue;
+    const items = normalizeRecord(user.items);
+    items.rift_coins = (Number(items.rift_coins) || 0) + config.coins;
+    items.rift_xp = (Number(items.rift_xp) || 0) + config.xp;
+    items.rift_chest = (Number(items.rift_chest) || 0) + 1;
+    await updateUser(user.username, { items: JSON.stringify(items) });
+    const updated = await findUser(user.username);
+    io.to(`user:${usernameKey}`).emit('rift-reward', {
+      user: sanitizeUser(updated),
+      bossName: config.name,
+      coins: config.coins,
+      xp: config.xp,
+      chest: 1
+    });
+  }
+  io.to(battle.room).emit('rift-boss-ended', {
+    battleId: battle.id,
+    success: true,
+    bossName: config.name
+  });
+  setTimeout(() => riftBossBattles.delete(battle.id), 30000).unref?.();
+}
+
+const riftBossTicker = setInterval(() => {
+  for (const battle of riftBossBattles.values()) {
+    if (battle.ended) continue;
+    const changed = advanceRiftBossState(battle);
+    if (changed) io.to(battle.room).emit('rift-boss-state', getRiftBossSnapshot(battle));
+    if (battle.state === 'attacking' && Date.now() >= battle.nextPatternAt) {
+      const config = RIFT_BOSSES[battle.bossKey];
+      battle.nextPatternAt = Date.now() + config.attackPeriodMs[battle.phase - 1];
+      battle.attackPulse = (battle.attackPulse || 0) + 1;
+      io.to(battle.room).emit('rift-boss-pattern', {
+        battleId: battle.id,
+        name: battle.pattern,
+        phase: battle.phase,
+        sequence: battle.cycle,
+        pulse: battle.attackPulse
+      });
+    }
+  }
+}, 100);
+riftBossTicker.unref?.();
 
 const ROTATING_SHOP_ITEMS = [
   { name: 'Portal Fragment', cost: 15000, rarity: 'epic' },
@@ -138,11 +337,17 @@ const CORE_RARITIES = [
   { key: 'lazar-kiwi-games', name: 'Lazar Kiwi Games', chance: 0.125, reward: 14000, isGlobal: true, color: '#ff8c42', glowColor: '#ffd6b0' }
 ];
 const RIFT_RARITIES = [
-  { key: 'rift-signal', name: 'Rift Signal', chance: 30, reward: 900, color: '#2563eb', glowColor: '#60a5fa' },
-  { key: 'rift-shard', name: 'Rift Shard', chance: 8, reward: 3500, color: '#7c3aed', glowColor: '#c4b5fd' },
-  { key: 'spencer-james-carter', name: 'Spencer James Carter', chance: 0.055, reward: 28000, isGlobal: true, color: '#38bdf8', glowColor: '#a78bfa' },
   { key: 'corrupted-lord-finn', name: 'Corrupted Lord Finn', chance: 0.005, reward: 50000, isGlobal: true, riftOnly: true, color: '#ef4444', glowColor: '#c084fc' }
 ];
+const RIFT_SHOP_ITEMS = {
+  'rift-speed': { name: 'Rift Speed Potion', cost: 120, inventoryKey: 'rift_speed', speedMultiplier: 1.35, luckMultiplier: 1 },
+  'rift-luck': { name: 'Rift Luck Potion', cost: 120, inventoryKey: 'rift_luck', speedMultiplier: 1, luckMultiplier: 1.5 },
+  'rift-mixed': { name: 'Rift Convergence Potion', cost: 220, inventoryKey: 'rift_mixed', speedMultiplier: 1.25, luckMultiplier: 1.35 },
+  'speed': { name: 'Speed Potion I', cost: 80, inventoryKey: 'speed', speedMultiplier: 1.2, luckMultiplier: 1 },
+  'luck': { name: 'Luck Potion I', cost: 80, inventoryKey: 'luck', speedMultiplier: 1, luckMultiplier: 1.25 },
+  'luck-ii': { name: 'Luck Potion II', cost: 150, inventoryKey: 'luck-ii', speedMultiplier: 1, luckMultiplier: 1.5 },
+  'mixed': { name: 'Convergence Potion', cost: 160, inventoryKey: 'rift_mixed', speedMultiplier: 1.15, luckMultiplier: 1.25 }
+};
 const HALLOWEEN_RARITIES = [
   { key: 'pumpkin-baxter', name: 'Pumpkin Baxter', chance: 0.1, reward: 8500, color: '#fb923c', glowColor: '#fed7aa', halloweenOnly: true, isGlobal: true },
   { key: 'grim-reaper', name: 'Grim Reaper', chance: 0.01, reward: 20000, color: '#5b21b6', glowColor: '#c4b5fd', halloweenOnly: true, isGlobal: true }
@@ -2270,25 +2475,146 @@ app.post('/api/finn-boss/defeat', async (req, res) => {
   }
 });
 
+app.get('/api/rift/profile', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.rift_realm_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Rift Realm first.' });
+    res.json({ success: true, profile: getRiftProfile(user), shop: Object.entries(RIFT_SHOP_ITEMS).map(([key, item]) => ({ key, ...item })) });
+  } catch (error) {
+    console.error('Rift profile error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to load Rift progression.' });
+  }
+});
+
+app.post('/api/rift/stats/allocate', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const stat = String(req.body?.stat || '');
+  const amount = Number(req.body?.amount ?? 1);
+  if (!['damage', 'speed', 'luck'].includes(stat) || !Number.isSafeInteger(amount) || amount < 1 || amount > 10) {
+    return res.status(400).json({ success: false, error: 'Choose a valid stat and 1–10 points.' });
+  }
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.rift_realm_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Rift Realm first.' });
+    const profile = getRiftProfile(user);
+    if (profile.availablePoints < amount) return res.status(400).json({ success: false, error: 'Not enough Rift stat points.' });
+    const items = normalizeRecord(user.items);
+    const stats = normalizeRecord(items.rift_stats);
+    stats[stat] = (Number(stats[stat]) || 0) + amount;
+    items.rift_stats = stats;
+    await updateUser(user.username, { items: JSON.stringify(items) });
+    const updated = await findUser(user.username);
+    res.json({ success: true, profile: getRiftProfile(updated), user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Rift stat allocation error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to allocate Rift stat points.' });
+  }
+});
+
+app.post('/api/rift/shop/buy', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const itemKey = String(req.body?.item || '');
+  const item = Object.hasOwn(RIFT_SHOP_ITEMS, itemKey) ? RIFT_SHOP_ITEMS[itemKey] : null;
+  if (!item) return res.status(400).json({ success: false, error: 'Choose a valid Rift shop item.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.rift_realm_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Rift Realm first.' });
+    const items = normalizeRecord(user.items);
+    const coins = Math.max(0, Math.floor(Number(items.rift_coins) || 0));
+    if (coins < item.cost) return res.status(400).json({ success: false, error: 'Not enough Rift Coins.' });
+    const potions = normalizeRecord(items.rift_potions);
+    if ((Number(potions[item.inventoryKey]) || 0) >= 99) return res.status(400).json({ success: false, error: 'Potion stack limit reached.' });
+    items.rift_coins = coins - item.cost;
+    potions[item.inventoryKey] = (Number(potions[item.inventoryKey]) || 0) + 1;
+    items.rift_potions = potions;
+    await updateUser(user.username, { items: JSON.stringify(items) });
+    const updated = await findUser(user.username);
+    res.json({ success: true, profile: getRiftProfile(updated), user: sanitizeUser(updated), item: item.name });
+  } catch (error) {
+    console.error('Rift shop purchase error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to purchase that Rift item.' });
+  }
+});
+
+app.post('/api/rift/potion/use', async (req, res) => {
+  if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  const potionKey = String(req.body?.potion || '');
+  const potion = Object.values(RIFT_SHOP_ITEMS).find(item => item.inventoryKey === potionKey);
+  if (!potion) return res.status(400).json({ success: false, error: 'Choose a valid Rift potion.' });
+  try {
+    const user = await findUser(req.session.username);
+    if (!user?.rift_realm_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Rift Realm first.' });
+    const items = normalizeRecord(user.items);
+    const potions = normalizeRecord(items.rift_potions);
+    if ((Number(potions[potionKey]) || 0) < 1) return res.status(400).json({ success: false, error: 'You do not have that Rift potion.' });
+    potions[potionKey] -= 1;
+    items.rift_potions = potions;
+    items.rift_buff = {
+      name: potion.name,
+      speedMultiplier: potion.speedMultiplier,
+      luckMultiplier: potion.luckMultiplier,
+      endsAt: Date.now() + 120000
+    };
+    await updateUser(user.username, { items: JSON.stringify(items) });
+    const updated = await findUser(user.username);
+    res.json({ success: true, profile: getRiftProfile(updated), user: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('Rift potion use error:', error.message || error);
+    res.status(503).json({ success: false, error: 'Unable to use that Rift potion.' });
+  }
+});
+
 app.post('/api/rift/chest/open', async (req, res) => {
   if (!req.session?.username) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   try {
     const user = await findUser(req.session.username);
     if (!user?.rift_realm_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Rift Realm first.' });
-    const selection = selectWeightedOption(RIFT_RARITIES, 1);
-    const result = selection.result;
-    const inventory = normalizeInventory(user.inventory);
-    inventory.rarities[result.key] = (Number(inventory.rarities[result.key]) || 0) + 1;
-    const reward = result.reward || 0;
-    await updateUser(req.session.username, {
-      inventory: JSON.stringify(inventory),
-      coins: addProgressionValue(user.coins, reward)
-    });
-    const updated = await findUser(req.session.username);
-    res.json({ success: true, result: { ...result, reward }, user: sanitizeUser(updated) });
+    const items = normalizeRecord(user.items);
+    if ((Number(items.rift_chest) || 0) < 1) return res.status(400).json({ success: false, error: 'Defeat a Rift boss to earn a Rift Chest.' });
+    items.rift_chest -= 1;
+    const profile = getRiftProfile(user);
+    const buff = normalizeRecord(items.rift_buff);
+    const luckMultiplier = Number(buff.endsAt) > Date.now() ? Math.max(1, Number(buff.luckMultiplier) || 1) : 1;
+    const luckBonus = Math.min(5, profile.stats.luck * 0.1 + (luckMultiplier - 1) * 0.5);
+    const roll = Math.random() * 100 / (1 + luckBonus * 0.04);
+    let reward;
+    if (roll < 0.005) {
+      const inventory = normalizeInventory(user.inventory);
+      inventory.rarities['corrupted-lord-finn'] = (Number(inventory.rarities['corrupted-lord-finn']) || 0) + 1;
+      reward = { type: 'rarity', key: 'corrupted-lord-finn', name: 'Corrupted Lord Finn', color: '#ef4444', riftOnly: true };
+      await updateUser(user.username, { items: JSON.stringify(items), inventory: JSON.stringify(inventory) });
+    } else if (roll < 0.025) {
+      const inventory = normalizeInventory(user.inventory);
+      inventory.rarities['lord-finn'] = (Number(inventory.rarities['lord-finn']) || 0) + 1;
+      reward = { type: 'rarity', key: 'lord-finn', name: 'Lord Finn', color: '#ff5fd2' };
+      await updateUser(user.username, { items: JSON.stringify(items), inventory: JSON.stringify(inventory) });
+    } else if (roll < 35) {
+      const potionKeys = Object.values(RIFT_SHOP_ITEMS).map(item => item.inventoryKey);
+      const key = potionKeys[Math.floor(Math.random() * potionKeys.length)];
+      const potions = normalizeRecord(items.rift_potions);
+      potions[key] = (Number(potions[key]) || 0) + 1;
+      items.rift_potions = potions;
+      reward = { type: 'potion', key, name: RIFT_SHOP_ITEMS[Object.keys(RIFT_SHOP_ITEMS).find(shopKey => RIFT_SHOP_ITEMS[shopKey].inventoryKey === key)]?.name || `${key} Potion` };
+      await updateUser(user.username, { items: JSON.stringify(items) });
+    } else {
+      const drops = [
+        { key: 'ancient_ore', name: 'Ancient Ore', amount: 1 },
+        { key: 'light_essence', name: 'Light Essence', amount: 1 },
+        { key: 'molten_rock', name: 'Molten Rock', amount: 10 },
+        { key: 'empty_vial', name: 'Empty Vial', amount: 2 },
+        { key: 'finn_energy', name: 'Finn Energy', amount: 1 }
+      ];
+      const drop = drops[Math.floor(Math.random() * drops.length)];
+      items[drop.key] = (Number(items[drop.key]) || 0) + drop.amount;
+      reward = { type: 'item', ...drop };
+      await updateUser(user.username, { items: JSON.stringify(items) });
+    }
+    const updated = await findUser(user.username);
+    res.json({ success: true, reward, profile: getRiftProfile(updated), user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Rift chest error:', error.message || error);
-    res.status(503).json({ success: false, error: 'Unable to open a Rift chest.' });
+    res.status(503).json({ success: false, error: 'Unable to open a Rift Chest.' });
   }
 });
 
@@ -3595,7 +3921,301 @@ io.on('connection', async (socket) => {
     system: true
   });
 
+  const removeRiftPlayer = async () => {
+    if (!socket.data.riftJoined || !socketUsername) return;
+    socket.data.riftJoined = false;
+    const usernameKey = normalizeUsername(socketUsername);
+    const lobbyEntry = riftLobbyPlayers.get(usernameKey);
+    if (lobbyEntry?.socketId === socket.id) riftLobbyPlayers.delete(usernameKey);
+    for (const battle of riftBossBattles.values()) {
+      if (battle.ended || !battle.members.includes(usernameKey)) continue;
+      battle.members = battle.members.filter(key => key !== usernameKey);
+      battle.positions.delete(usernameKey);
+      battle.memberUsernames.delete(usernameKey);
+      await socket.leave(battle.room);
+      if (!battle.members.length) {
+        battle.ended = true;
+        io.to(battle.room).emit('rift-boss-ended', {
+          battleId: battle.id,
+          success: false,
+          bossName: RIFT_BOSSES[battle.bossKey].name
+        });
+        setTimeout(() => riftBossBattles.delete(battle.id), 30000).unref?.();
+      } else {
+        io.to(battle.room).emit('rift-boss-party-state', getRiftBossSnapshot(battle));
+      }
+    }
+    const partyId = riftPartyByUsername.get(usernameKey);
+    if (partyId) {
+      const party = riftParties.get(partyId);
+      if (party) {
+        party.members = party.members.filter(key => key !== usernameKey);
+        party.invites.delete(usernameKey);
+        if (!party.members.length) {
+          riftParties.delete(partyId);
+          party.members.forEach(key => riftPartyByUsername.delete(key));
+        } else {
+          if (party.leader === usernameKey) party.leader = party.members[0];
+          broadcastRiftParty(partyId);
+        }
+      }
+      riftPartyByUsername.delete(usernameKey);
+      socket.emit('rift-party-state', { partyId, party: null });
+    }
+    await socket.leave('rift-lobby');
+    broadcastRiftLobby();
+  };
+
+  socket.on('rift-join', async () => {
+    if (!socketUsername || socket.data.isBanned) return;
+    const user = await findUser(socketUsername);
+    if (!user?.portal_unlocked || !user?.rift_realm_unlocked) {
+      socket.emit('rift-error', { error: 'Unlock the Portal and Rift Realm before entering the Rift.' });
+      return;
+    }
+    const key = normalizeUsername(socketUsername);
+    const identity = getRiftPlayerIdentity(user);
+    const existing = riftLobbyPlayers.get(key);
+    if (existing?.socketId && existing.socketId !== socket.id) {
+      const previousSocket = io.sockets.sockets.get(existing.socketId);
+      if (previousSocket) {
+        previousSocket.data.riftJoined = false;
+        await previousSocket.leave('rift-lobby');
+      }
+    }
+    riftLobbyPlayers.set(key, {
+      ...identity,
+      x: existing?.x ?? 48 + Math.random() * 4,
+      y: existing?.y ?? 52 + Math.random() * 4,
+      socketId: socket.id,
+      lastMoveAt: 0
+    });
+    socket.data.riftJoined = true;
+    await socket.join('rift-lobby');
+    socket.emit('rift-lobby-state', getRiftLobbyRoster());
+    const partyId = riftPartyByUsername.get(key);
+    if (partyId) socket.emit('rift-party-state', { partyId, party: getRiftPartySnapshot(partyId) });
+    broadcastRiftLobby();
+  });
+
+  socket.on('rift-leave', removeRiftPlayer);
+
+  socket.on('rift-move', data => {
+    if (!socket.data.riftJoined || !socketUsername) return;
+    const key = normalizeUsername(socketUsername);
+    const player = riftLobbyPlayers.get(key);
+    if (!player || player.socketId !== socket.id) return;
+    const now = Date.now();
+    if (now - player.lastMoveAt < 40) return;
+    player.lastMoveAt = now;
+    const x = Number(data?.x);
+    const y = Number(data?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    player.x = Math.max(4, Math.min(96, x));
+    player.y = Math.max(8, Math.min(92, y));
+    socket.to('rift-lobby').emit('rift-player-moved', { username: player.username, x: player.x, y: player.y });
+  });
+
+  socket.on('rift-party-create', () => {
+    if (!socket.data.riftJoined || !socketUsername) return;
+    const key = normalizeUsername(socketUsername);
+    if (riftPartyByUsername.has(key)) {
+      socket.emit('rift-party-state', { partyId: riftPartyByUsername.get(key), party: getRiftPartySnapshot(riftPartyByUsername.get(key)) });
+      return;
+    }
+    const partyId = `rift-party-${nextRiftPartyId++}`;
+    const party = { id: partyId, leader: key, members: [key], invites: new Set() };
+    riftParties.set(partyId, party);
+    riftPartyByUsername.set(key, partyId);
+    broadcastRiftParty(partyId);
+  });
+
+  socket.on('rift-party-invite', async data => {
+    if (!socket.data.riftJoined || !socketUsername) return;
+    const leaderKey = normalizeUsername(socketUsername);
+    const partyId = riftPartyByUsername.get(leaderKey);
+    const party = riftParties.get(partyId);
+    const targetKey = normalizeUsername(String(data?.username || ''));
+    const target = riftLobbyPlayers.get(targetKey);
+    if (!party || party.leader !== leaderKey || !target || targetKey === leaderKey) {
+      socket.emit('rift-error', { error: 'Invite a player currently in the Rift lobby from your party.' });
+      return;
+    }
+    if (riftPartyByUsername.has(targetKey)) {
+      socket.emit('rift-error', { error: 'That player is already in a party.' });
+      return;
+    }
+    party.invites.add(targetKey);
+    io.to(`user:${targetKey}`).emit('rift-party-invite', {
+      partyId,
+      from: socketUsername,
+      partyName: 'Rift Party'
+    });
+    socket.emit('rift-party-invite-sent', { username: target.username });
+  });
+
+  socket.on('rift-party-respond', async data => {
+    if (!socket.data.riftJoined || !socketUsername) return;
+    const key = normalizeUsername(socketUsername);
+    const partyId = String(data?.partyId || '');
+    const party = riftParties.get(partyId);
+    if (!party || !party.invites.has(key) || riftPartyByUsername.has(key)) return;
+    party.invites.delete(key);
+    if (data?.accept !== true) {
+      broadcastRiftParty(partyId);
+      return;
+    }
+    party.members.push(key);
+    riftPartyByUsername.set(key, partyId);
+    const sockets = await io.in(`user:${key}`).fetchSockets();
+    await Promise.all(sockets.filter(memberSocket => memberSocket.data.riftJoined).map(memberSocket => memberSocket.join(`rift-party:${partyId}`)));
+    broadcastRiftParty(partyId);
+  });
+
+  socket.on('rift-party-leave', async () => {
+    if (!socketUsername) return;
+    const key = normalizeUsername(socketUsername);
+    const partyId = riftPartyByUsername.get(key);
+    if (!partyId) return;
+    const party = riftParties.get(partyId);
+    if (!party) return;
+    party.members = party.members.filter(member => member !== key);
+    riftPartyByUsername.delete(key);
+    await socket.leave(`rift-party:${partyId}`);
+    socket.emit('rift-party-state', { partyId, party: null });
+    if (!party.members.length) {
+      riftParties.delete(partyId);
+    }
+    else {
+      if (party.leader === key) party.leader = party.members[0];
+      broadcastRiftParty(partyId);
+    }
+  });
+
+  socket.on('rift-boss-start', async data => {
+    if (!socket.data.riftJoined || !socketUsername || socket.data.isBanned) return;
+    const user = await findUser(socketUsername);
+    if (!user?.portal_unlocked || !user?.rift_realm_unlocked) {
+      socket.emit('rift-error', { error: 'Unlock the Rift Realm before challenging its bosses.' });
+      return;
+    }
+    const bossKey = String(data?.bossKey || '');
+    const boss = Object.hasOwn(RIFT_BOSSES, bossKey) ? RIFT_BOSSES[bossKey] : null;
+    if (!boss) {
+      socket.emit('rift-error', { error: 'Choose a valid Rift boss.' });
+      return;
+    }
+    const usernameKey = normalizeUsername(socketUsername);
+    const partyId = riftPartyByUsername.get(usernameKey);
+    const party = partyId ? riftParties.get(partyId) : null;
+    if (party && party.leader !== usernameKey) {
+      socket.emit('rift-error', { error: 'Only your party leader can start a boss encounter.' });
+      return;
+    }
+    const members = (party?.members || [usernameKey]).filter(key => riftLobbyPlayers.has(key));
+    if (!members.length) return;
+    const active = [...riftBossBattles.values()].find(battle => !battle.ended && battle.partyId === (partyId || `solo:${usernameKey}`));
+    if (active) {
+      socket.emit('rift-error', { error: 'Your party is already fighting a Rift boss.' });
+      return;
+    }
+    const id = `rift-battle-${nextRiftBattleId++}`;
+    const room = `rift-battle:${id}`;
+    const now = Date.now();
+    const battle = {
+      id, room, partyId: partyId || `solo:${usernameKey}`, bossKey, hp: boss.maxHp, maxHp: boss.maxHp,
+      members, memberUsernames: new Map(members.map(key => [key, riftLobbyPlayers.get(key).username])),
+      positions: new Map(members.map(key => [key, { x: 50, y: 82 }])),
+      lastAttackAt: new Map(), state: 'transition', phase: 1, cycle: -1, attackPulse: 0,
+      pattern: '', stateUntil: now + 1300, nextPatternAt: now + 1300, stunHits: 0, ended: false
+    };
+    riftBossBattles.set(id, battle);
+    for (const memberKey of members) {
+      const memberSockets = await io.in(`user:${memberKey}`).fetchSockets();
+      await Promise.all(memberSockets.filter(memberSocket => memberSocket.data.riftJoined).map(memberSocket => memberSocket.join(room)));
+    }
+    io.to(room).emit('rift-boss-started', getRiftBossSnapshot(battle));
+  });
+
+  socket.on('rift-boss-move', data => {
+    const battle = riftBossBattles.get(String(data?.battleId || ''));
+    const usernameKey = normalizeUsername(socketUsername);
+    if (!battle || battle.ended || !battle.members.includes(usernameKey) || !socket.data.riftJoined) return;
+    const now = Date.now();
+    if (now - (socket.data.riftBossMoveAt || 0) < 35) return;
+    socket.data.riftBossMoveAt = now;
+    const x = Number(data?.x);
+    const y = Number(data?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    battle.positions.set(usernameKey, { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) });
+    io.to(battle.room).emit('rift-boss-player-moved', { username: socketUsername, x, y });
+  });
+
+  socket.on('rift-boss-attack', async data => {
+    const battle = riftBossBattles.get(String(data?.battleId || ''));
+    const usernameKey = normalizeUsername(socketUsername);
+    if (!battle || battle.ended || !battle.members.includes(usernameKey)) return;
+    advanceRiftBossState(battle);
+    if (battle.state !== 'stunned' || Date.now() >= battle.stateUntil) {
+      socket.emit('rift-error', { error: 'Finn can only be attacked while staggered.' });
+      return;
+    }
+    if (Date.now() - (battle.lastAttackAt.get(usernameKey) || 0) < 450) return;
+    const position = battle.positions.get(usernameKey);
+    if (!position || Math.hypot((position.x - 50) * 0.75, position.y - 24) > 24) {
+      socket.emit('rift-error', { error: 'Move close to the boss to land your attack.' });
+      return;
+    }
+    battle.lastAttackAt.set(usernameKey, Date.now());
+    const user = await findUser(socketUsername);
+    if (!user) return;
+    const profile = getRiftProfile(user);
+    const items = normalizeRecord(user?.items);
+    const buff = normalizeRecord(items.rift_buff);
+    const damageMultiplier = Number(buff.endsAt) > Date.now() ? Math.max(1, Number(buff.damageMultiplier) || 1) : 1;
+    const damage = Math.round((55 + profile.stats.damage * 12) * damageMultiplier);
+    battle.hp = Math.max(0, battle.hp - damage);
+    battle.stunHits += 1;
+    if (battle.hp <= 0) {
+      io.to(battle.room).emit('rift-boss-state', getRiftBossSnapshot(battle));
+      await finishRiftBossBattle(battle);
+      return;
+    }
+    if (battle.stunHits >= 2) {
+      battle.state = 'transition';
+      battle.stateUntil = Date.now() + 450;
+    }
+    io.to(battle.room).emit('rift-boss-hit', {
+      username: user.username,
+      damage,
+      hitsRemaining: Math.max(0, 2 - battle.stunHits)
+    });
+    io.to(battle.room).emit('rift-boss-state', getRiftBossSnapshot(battle));
+  });
+
+  socket.on('rift-boss-retreat', async data => {
+    const battle = riftBossBattles.get(String(data?.battleId || ''));
+    const usernameKey = normalizeUsername(socketUsername);
+    if (!battle || battle.ended || !battle.members.includes(usernameKey)) return;
+    battle.members = battle.members.filter(key => key !== usernameKey);
+    battle.positions.delete(usernameKey);
+    battle.memberUsernames.delete(usernameKey);
+    await socket.leave(battle.room);
+    socket.emit('rift-boss-retreated', { battleId: battle.id });
+    io.to(battle.room).emit('rift-boss-party-state', getRiftBossSnapshot(battle));
+    if (!battle.members.length) {
+      battle.ended = true;
+      io.to(battle.room).emit('rift-boss-ended', {
+        battleId: battle.id,
+        success: false,
+        bossName: RIFT_BOSSES[battle.bossKey].name
+      });
+      setTimeout(() => riftBossBattles.delete(battle.id), 30000).unref?.();
+    }
+  });
+
   socket.on('disconnect', async () => {
+    await removeRiftPlayer();
     clearTimeout(socket.data.chatTypingTimeout);
     if (socket.data.chatTyping && socketUsername) {
       socket.broadcast.emit('chat-typing', { username: socketUsername, typing: false });
@@ -3624,7 +4244,7 @@ io.on('connection', async (socket) => {
     const username = socket.request?.session?.username;
     if (!username || socket.data.isBanned) return;
     const safeActivity = String(activity || '').trim().slice(0, 64);
-    if (['At the RNG console', 'Diving in the Sea Realm', 'At the Forge', 'Browsing inventory', 'Using the shop', 'Browsing titles', 'In chat', 'Viewing settings'].includes(safeActivity)) {
+    if (['At the RNG console', 'Diving in the Sea Realm', 'At the Forge', 'Exploring the Rift Realm', 'Browsing inventory', 'Using the shop', 'Browsing titles', 'In chat', 'Viewing settings'].includes(safeActivity)) {
       socket.data.activity = safeActivity;
       await recordPlayerPlaytime(username);
       broadcastOnlineRoster();
