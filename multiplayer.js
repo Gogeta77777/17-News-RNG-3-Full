@@ -283,6 +283,32 @@ function initMultiplayer() {
     console.log('✅ Connected to RNG 3 multiplayer server');
     socket.emit('join-game');
     socket.emit('player-activity', playerActivity);
+    if (!document.getElementById('rift-realm-screen')?.classList.contains('hidden')) {
+      socket.emit('rift-join');
+    }
+  });
+
+  [
+    'rift-lobby-state',
+    'rift-player-moved',
+    'rift-party-state',
+    'rift-party-invite',
+    'rift-party-invite-sent',
+    'rift-boss-started',
+    'rift-boss-state',
+    'rift-boss-pattern',
+    'rift-boss-player-moved',
+    'rift-boss-party-state',
+    'rift-boss-hit',
+    'rift-boss-ended',
+    'rift-boss-retreated',
+    'rift-reward',
+    'rift-error'
+  ].forEach(eventName => {
+    socket.on(eventName, data => {
+      if (eventName === 'rift-reward') window.updateGameUser?.(data?.user);
+      window.dispatchEvent(new CustomEvent(`rift:${eventName}`, { detail: data }));
+    });
   });
 
   socket.on('chat-history', (messages = []) => {
@@ -437,6 +463,7 @@ function initMultiplayer() {
   });
 
   socket.on('disconnect', () => {
+    window.dispatchEvent(new CustomEvent('rift:connection-lost'));
     clearInterval(localChatTypingHeartbeat);
     localChatTypingHeartbeat = null;
     localChatTypingState = false;
@@ -654,6 +681,16 @@ window.updateAdminChatVisibility = updateAdminChatVisibility;
 window.triggerAdminEvent = triggerAdminEvent;
 window.requestClearChat = requestClearChat;
 window.updatePlayerActivity = updatePlayerActivity;
+window.emitRiftEvent = (eventName, data) => {
+  if (!socket?.connected) {
+    if (!['rift-move', 'rift-boss-move'].includes(eventName)) {
+      showPopup('Rift multiplayer is disconnected. Reconnect and try again.', 'error');
+    }
+    return false;
+  }
+  socket.emit(eventName, data);
+  return true;
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   initMultiplayer();
