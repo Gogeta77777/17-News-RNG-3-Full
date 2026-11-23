@@ -3711,6 +3711,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const getFinnBossElement = id => typeof window.document?.getElementById === 'function' ? window.document.getElementById(id) : null;
   const finnBossOverlay = getFinnBossElement('finn-boss-overlay');
+  const finnBossResult = getFinnBossElement('finn-boss-result');
+  const finnBossResultEmblem = getFinnBossElement('finn-boss-result-emblem');
+  const finnBossResultKicker = getFinnBossElement('finn-boss-result-kicker');
+  const finnBossResultTitle = getFinnBossElement('finn-boss-result-title');
+  const finnBossResultMessage = getFinnBossElement('finn-boss-result-message');
+  const finnBossResultRewards = getFinnBossElement('finn-boss-result-rewards');
+  const finnBossResultCoins = getFinnBossElement('finn-boss-result-coins');
+  const finnBossResultEnergy = getFinnBossElement('finn-boss-result-energy');
+  const finnBossResultRetry = getFinnBossElement('finn-boss-result-retry');
+  const finnBossResultClose = getFinnBossElement('finn-boss-result-close');
   const finnBossStage = getFinnBossElement('finn-boss-stage');
   const finnBossBox = getFinnBossElement('finn-battle-box');
   const finnBossPlayer = getFinnBossElement('finn-boss-player');
@@ -3875,6 +3885,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finnBossStatus) finnBossStatus.textContent = 'GET READY';
     if (finnBossPhase) finnBossPhase.textContent = 'PHASE I';
     finnBossRechallenge?.classList.add('hidden');
+    finnBossResult?.classList.add('hidden');
     if (finnBossAttack) finnBossAttack.disabled = true;
     finnBossPhaseBanner?.classList.add('hidden');
     updateFinnBossHud();
@@ -3899,7 +3910,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const finishFinnBoss = async (defeated) => {
     stopFinnBoss();
     if (finnBossAttack) finnBossAttack.disabled = true;
-    finnBossRechallenge?.classList.remove('hidden');
+    finnBossRechallenge?.classList.add('hidden');
     if (defeated) {
       if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: Impossible... the Rift remembers you. Take this energy, and find what waits beyond.';
       if (finnBossStatus) finnBossStatus.textContent = 'VICTORY';
@@ -3907,14 +3918,39 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.success) {
         currentUser = response.user;
         updateUI(currentUser);
-        showPopup(response.alreadyRewarded ? 'Corrupted Lord Finn defeated. Your victory rewards were already claimed.' : 'Victory! 100,000 coins and 1 Finn Energy obtained.', 'success');
+        if (response.reward) {
+          finnBossResultCoins.textContent = `🪙 +${(Number(response.reward.coins) || 100000).toLocaleString()} coins`;
+          finnBossResultEnergy.textContent = `⚡ +${Number(response.reward.amount) || 1} Finn Energy`;
+          finnBossResultRewards?.classList.remove('hidden');
+          finnBossResultMessage.textContent = 'You defeated Corrupted Lord Finn and earned these rewards:';
+        } else {
+          finnBossResultRewards?.classList.add('hidden');
+          finnBossResultMessage.textContent = 'You defeated Corrupted Lord Finn. Your victory rewards were already claimed.';
+        }
+        showPopup(response.alreadyRewarded ? 'Corrupted Lord Finn defeated.' : 'Victory! 100,000 coins and 1 Finn Energy obtained.', 'success');
       } else {
+        finnBossResultRewards?.classList.add('hidden');
+        finnBossResultMessage.textContent = response.error || 'You won the battle, but your rewards could not be saved. Please contact an admin.';
         showPopup(response.error || 'Victory reward could not be saved.', 'error');
       }
+      finnBossResult?.setAttribute('data-result', 'victory');
+      if (finnBossResultEmblem) finnBossResultEmblem.textContent = '✦';
+      if (finnBossResultKicker) finnBossResultKicker.textContent = 'ENCOUNTER COMPLETE';
+      if (finnBossResultTitle) finnBossResultTitle.textContent = 'VICTORY';
+      finnBossResultRetry?.classList.add('hidden');
     } else {
       if (finnBossDialogue) finnBossDialogue.textContent = 'Corrupted Lord Finn: You fell to the corruption. Return when your timing is sharper.';
       if (finnBossStatus) finnBossStatus.textContent = 'DEFEATED';
+      finnBossResult?.setAttribute('data-result', 'defeat');
+      if (finnBossResultEmblem) finnBossResultEmblem.textContent = '×';
+      if (finnBossResultKicker) finnBossResultKicker.textContent = 'ENCOUNTER ENDED';
+      if (finnBossResultTitle) finnBossResultTitle.textContent = 'DEFEAT';
+      if (finnBossResultMessage) finnBossResultMessage.textContent = 'Corrupted Lord Finn overwhelmed you. Regroup and challenge him again when you are ready.';
+      finnBossResultRewards?.classList.add('hidden');
+      finnBossResultRetry?.classList.remove('hidden');
     }
+    finnBossResult?.classList.remove('hidden');
+    finnBossResultClose?.focus();
   };
 
   const spawnFinnProjectile = (x, y, vx, vy, type = 'orb') => {
@@ -4114,6 +4150,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const openFinnBoss = () => {
+    if (!currentUser || !gameState.portalUnlocked) {
+      showPopup(currentUser ? 'Unlock the Portal Gateway before challenging Corrupted Lord Finn.' : 'Log in and unlock the Portal Gateway before challenging Corrupted Lord Finn.', 'error');
+      return;
+    }
     closeFinnDialog();
     resetFinnBoss();
     finnBossOverlay?.classList.remove('hidden');
@@ -4127,6 +4167,13 @@ document.addEventListener('DOMContentLoaded', () => {
   finnBossAttack?.addEventListener('click', attackFinnBoss);
   document.getElementById('finn-boss-key-attack')?.addEventListener('click', attackFinnBoss);
   finnBossRechallenge?.addEventListener('click', openFinnBoss);
+  finnBossResultRetry?.addEventListener('click', openFinnBoss);
+  finnBossResultClose?.addEventListener('click', () => {
+    stopFinnBoss();
+    finnBossOverlay?.classList.add('hidden');
+    document.body.classList.remove('finn-dialog-open');
+    finnOpen?.focus();
+  });
   document.getElementById('finn-boss-close')?.addEventListener('click', () => {
     stopFinnBoss();
     finnBossOverlay?.classList.add('hidden');
