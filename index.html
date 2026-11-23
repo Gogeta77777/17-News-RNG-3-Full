@@ -5482,6 +5482,9 @@
             .finn-boss-arena { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
             .finn-boss-header { padding: 12px; }
             .finn-boss-header h2 { font-size: 1.05rem; }
+            .finn-boss-intro { gap: 10px; padding: 16px; }
+            .finn-boss-intro .finn-orb { width: 86px; }
+            .finn-boss-intro-dialogue { font-size: 0.88rem; }
             .finn-boss-help { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px 12px; }
             .finn-boss-help > strong { grid-column: auto; }
             .finn-boss-control { min-height: 42px; }
@@ -6450,14 +6453,13 @@
         .portal-orb { background: radial-gradient(ellipse at 50% 44%, #fff1f7 0 2%, rgba(249, 168, 212, 0.92) 9%, rgba(192, 132, 252, 0.72) 35%, rgba(36, 16, 67, 0.96) 72%), #160b2b; box-shadow: 0 0 32px rgba(244, 114, 182, 0.88), inset 0 0 26px rgba(255, 228, 242, 0.42), 0 0 40px rgba(192, 132, 252, 0.28); }
         .portal-core { background: #fff1f7; box-shadow: 0 0 18px #f9a8d4, 0 0 42px rgba(217, 70, 239, 0.92); }
         .portal-lightning { background: conic-gradient(from 25deg, transparent 0 7%, #fff1f7 8%, transparent 10% 27%, #f472b6 28%, transparent 30% 54%, #f5d0fe 55%, transparent 58% 76%, #c084fc 77%, transparent 80%); filter: drop-shadow(0 0 6px #ec4899); }
-        .realm-corrupted .realm-art-unknown { background-color: #120a24; background-image: repeating-conic-gradient(from 8deg at 52% 46%, transparent 0 12deg, rgba(192, 132, 252, 0.1) 13deg 14deg, transparent 15deg 27deg), radial-gradient(ellipse at center, rgba(126, 34, 206, 0.28), #10091d 72%); }
-        .realm-corrupted .realm-art-unknown::before { position: absolute; inset: 9% 29%; border: 2px solid rgba(232, 121, 249, 0.5); border-radius: 48% 52% 44% 56%; background: repeating-radial-gradient(ellipse at 50% 50%, transparent 0 8px, rgba(216, 180, 254, 0.18) 9px 10px, transparent 11px 18px); box-shadow: 0 0 38px rgba(168, 85, 247, 0.5), inset 0 0 32px rgba(217, 70, 239, 0.22); content: ''; animation: corruptedRealmPulse 4s ease-in-out infinite alternate; }
-        .realm-corrupted .realm-art-unknown::after { position: absolute; inset: 0; background: linear-gradient(102deg, transparent 34%, rgba(232, 121, 249, 0.12) 48%, transparent 56%), radial-gradient(ellipse at 50% 50%, transparent 18%, rgba(8, 4, 20, 0.56) 80%); content: ''; mix-blend-mode: screen; animation: corruptedRealmGlitch 5.2s steps(1, end) infinite; }
-        .realm-corrupted .realm-fracture path { stroke: #e879f9; filter: drop-shadow(0 0 5px rgba(217, 70, 239, 0.9)); }
-        .realm-corrupted .realm-question-logo { width: 76px; height: 76px; border-color: rgba(232, 121, 249, 0.7); border-radius: 42% 58% 34% 66%; background: rgba(26, 10, 43, 0.92); color: #f0abfc; box-shadow: 0 0 34px rgba(217, 70, 239, 0.46); animation: corruptedMark 7s ease-in-out infinite; }
-        @keyframes corruptedRealmPulse { to { transform: scaleX(0.82) rotate(7deg); opacity: 0.72; } }
-        @keyframes corruptedRealmGlitch { 0%, 88%, 100% { opacity: 0.2; } 89% { opacity: 0.85; transform: translateX(3px); } 91% { opacity: 0.12; transform: translateX(-4px); } }
-        @keyframes corruptedMark { 0%, 90%, 100% { rotate: 0deg; } 92% { rotate: 12deg; } 94% { rotate: -9deg; } }
+        .realm-corrupted .realm-art-unknown { background-color: #0c0b21; background-image: radial-gradient(ellipse at 50% 52%, rgba(126, 34, 206, 0.48), transparent 34%), radial-gradient(ellipse at 50% 100%, rgba(37, 99, 235, 0.22), transparent 56%), linear-gradient(145deg, #090e20, #170b2a 52%, #080b19); }
+        .realm-corrupted .realm-art-unknown::before { position: absolute; left: 39%; top: 8%; width: 22%; height: 84%; border: 3px solid rgba(232, 121, 249, 0.72); border-radius: 50%; background: radial-gradient(ellipse at 50% 45%, rgba(216, 180, 254, 0.84) 0 3%, rgba(126, 34, 206, 0.76) 18%, rgba(37, 12, 72, 0.94) 56%, rgba(5, 10, 29, 0.98) 76%); box-shadow: 0 0 24px rgba(192, 132, 252, 0.62), 0 0 54px rgba(126, 34, 206, 0.42), inset 0 0 26px rgba(216, 180, 254, 0.38); content: ''; animation: riftGatewayPulse 3.8s ease-in-out infinite alternate; }
+        .realm-corrupted .realm-art-unknown::after { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 52%, transparent 17%, rgba(5, 8, 24, 0.1) 53%, rgba(3, 7, 18, 0.82) 100%), linear-gradient(115deg, transparent 20%, rgba(192, 132, 252, 0.1) 48%, transparent 74%); content: ''; mix-blend-mode: screen; animation: riftGateLight 5.5s ease-in-out infinite alternate; }
+        .realm-rift-mark { position: relative; z-index: 2; display: grid; width: 52px; height: 52px; place-items: center; border: 1px solid rgba(233, 213, 255, 0.68); border-radius: 50%; background: rgba(30, 12, 57, 0.58); color: #f5d0fe; font-size: 1.8rem; text-shadow: 0 0 18px #d8b4fe; box-shadow: 0 0 22px rgba(192, 132, 252, 0.5); animation: riftMarkFloat 3s ease-in-out infinite alternate; }
+        @keyframes riftGatewayPulse { to { transform: scaleX(0.86); filter: hue-rotate(15deg) brightness(1.16); } }
+        @keyframes riftGateLight { to { opacity: 0.48; transform: translateY(-4px); } }
+        @keyframes riftMarkFloat { to { transform: translateY(-5px) scale(1.05); } }
         .finn-challenge-button { border-color: rgba(248, 113, 113, 0.42); background: linear-gradient(120deg, rgba(127, 29, 29, 0.72), rgba(76, 29, 149, 0.58)); color: #fee2e2; }
         .finn-companion-corrupted .finn-talk-bubble { border-color: rgba(248, 113, 113, 0.58); background: linear-gradient(120deg, rgba(127, 29, 29, 0.9), rgba(76, 29, 149, 0.82)); color: #fee2e2; }
         .finn-companion-corrupted .finn-talk-bubble::before { border-right-color: rgba(248, 113, 113, 0.58); }
@@ -6483,7 +6485,19 @@
         }
         .finn-boss-overlay { position: fixed; z-index: 1900; inset: 0; display: grid; place-items: center; padding: 18px; background: radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.34), rgba(3, 8, 18, 0.96) 72%); backdrop-filter: blur(12px); }
         .finn-boss-overlay.hidden { display: none; }
-        .finn-boss-arena { width: min(920px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; border: 1px solid rgba(248, 113, 113, 0.38); background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(23, 12, 38, 0.98)); box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72), 0 0 34px rgba(239, 68, 68, 0.12); }
+        .finn-boss-arena { position: relative; width: min(920px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; border: 1px solid rgba(248, 113, 113, 0.38); background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(23, 12, 38, 0.98)); box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72), 0 0 34px rgba(239, 68, 68, 0.12); }
+        .finn-boss-intro { position: absolute; z-index: 20; inset: 0; display: grid; align-content: center; justify-items: center; gap: 16px; padding: 28px; background: radial-gradient(ellipse at 50% 30%, rgba(127, 29, 29, 0.9), rgba(18, 8, 31, 0.98) 66%); text-align: center; animation: finnBossIntroReveal 650ms ease-out both; }
+        .finn-boss-intro.hidden { display: none; }
+        .finn-boss-intro-kicker { color: #c4b5fd; font-size: 0.66rem; font-weight: 900; letter-spacing: 0.2em; }
+        .finn-boss-intro h3 { margin: 0; color: #fee2e2; font-size: clamp(1.3rem, 3vw, 2rem); text-shadow: 0 0 22px rgba(239, 68, 68, 0.55); }
+        .finn-boss-intro .finn-orb { width: 120px; }
+        .finn-boss-intro-dialogue { max-width: 560px; min-height: 3.2em; color: #f8fafc; font-size: 1rem; line-height: 1.65; }
+        .finn-boss-intro-next { min-width: 180px; border: 1px solid rgba(248, 113, 113, 0.64); background: linear-gradient(110deg, #991b1b, #6b21a8); color: #fff; font-weight: 900; letter-spacing: 0.08em; }
+        @keyframes finnBossIntroReveal { from { opacity: 0; filter: brightness(1.8); } to { opacity: 1; filter: brightness(1); } }
+        .finn-boss-phase-banner { position: absolute; z-index: 9; top: 38%; left: 50%; width: max-content; max-width: 90%; padding: 10px 18px; border: 1px solid rgba(248, 113, 113, 0.72); background: rgba(15, 5, 24, 0.9); color: #fee2e2; font-size: clamp(0.7rem, 2.4vw, 1rem); font-weight: 1000; letter-spacing: 0.16em; text-align: center; text-shadow: 0 0 15px #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.36); transform: translate(-50%, -50%) scale(0.8); opacity: 0; pointer-events: none; }
+        .finn-boss-phase-banner.hidden { display: none; }
+        .finn-boss-phase-banner.active { display: block; animation: finnBossPhaseBanner 1.9s ease-out both; }
+        @keyframes finnBossPhaseBanner { 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); } 25%, 72% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.12); } }
         .finn-boss-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid rgba(248, 113, 113, 0.22); }
         .finn-boss-header div { display: grid; gap: 3px; }
         .finn-boss-header div span { color: #f87171; font-size: 0.64rem; font-weight: 900; letter-spacing: 0.12em; }
@@ -6504,6 +6518,10 @@
         .finn-boss-health-row b { display: block; height: 100%; background: linear-gradient(90deg, #ef4444, #f97316); transition: width 180ms ease; }
         .finn-boss-health-row div:first-child b { background: linear-gradient(90deg, #38bdf8, #2563eb); }
         .finn-boss-stage { position: relative; height: min(58vh, 470px); min-height: 330px; margin: 8px 18px 0; overflow: hidden; border: 1px solid rgba(167, 139, 250, 0.28); background: radial-gradient(circle at 50% 22%, rgba(239, 68, 68, 0.19), transparent 25%), radial-gradient(circle at 50% 86%, rgba(96, 165, 250, 0.12), transparent 35%), linear-gradient(160deg, #090e20, #160a23 58%, #08091a); outline: none; }
+        .finn-boss-stage[data-phase="2"] { background: radial-gradient(circle at 50% 22%, rgba(192, 132, 252, 0.28), transparent 29%), radial-gradient(circle at 50% 86%, rgba(239, 68, 68, 0.14), transparent 36%), linear-gradient(160deg, #100b25, #210d28 58%, #08091a); }
+        .finn-boss-stage[data-phase="3"] { background: radial-gradient(circle at 50% 22%, rgba(239, 68, 68, 0.38), transparent 32%), radial-gradient(circle at 50% 86%, rgba(192, 132, 252, 0.22), transparent 38%), linear-gradient(160deg, #16071c, #2b0b25 58%, #08091a); }
+        .finn-boss-stage.phase-impact { animation: finnBossImpact 720ms ease-out; }
+        @keyframes finnBossImpact { 10%, 40%, 70% { transform: translateX(-5px); filter: brightness(1.5); } 25%, 55%, 85% { transform: translateX(5px); } 100% { transform: translateX(0); filter: brightness(1); } }
         .finn-boss-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(125, 211, 252, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(167, 139, 250, 0.05) 1px, transparent 1px); background-size: 32px 32px; animation: bossGridPulse 3s linear infinite; }
         @keyframes bossGridPulse { to { background-position: 32px 32px; } }
         .finn-battle-box { position: absolute; z-index: 2; left: 14%; right: 14%; top: 35%; bottom: 7%; overflow: hidden; border: 3px solid #f8fafc; background: rgba(2, 6, 23, 0.45); box-shadow: 0 0 18px rgba(192, 132, 252, 0.2), inset 0 0 24px rgba(248, 250, 252, 0.04); transition: border-color 180ms ease, box-shadow 180ms ease; }
@@ -6517,6 +6535,8 @@
         .finn-boss-projectile { position: absolute; z-index: 4; width: 13px; height: 13px; border: 2px solid #fda4af; border-radius: 50%; background: #ef4444; box-shadow: 0 0 14px #c084fc; pointer-events: none; transform: translate(-50%, -50%); }
         .finn-boss-projectile-shard { width: 10px; height: 10px; border-color: #e9d5ff; background: #c084fc; }
         .finn-boss-projectile-sweep { width: 15px; height: 15px; background: #fb7185; }
+        .finn-boss-projectile-cross { width: 17px; height: 17px; border-radius: 2px; background: #f0abfc; box-shadow: 0 0 18px #a855f7; transform: translate(-50%, -50%) rotate(45deg); }
+        .finn-boss-projectile-spiral { width: 16px; height: 16px; border-color: #fef08a; background: #c026d3; box-shadow: 0 0 18px #e879f9; }
         .finn-boss-dialogue { min-height: 38px; margin: 8px 18px 10px; padding: 9px 12px; border: 1px solid rgba(248, 113, 113, 0.28); background: rgba(2, 6, 23, 0.88); color: #fecaca; text-align: center; font-size: 0.78rem; }
         .finn-boss-footer { display: flex; align-items: center; gap: 10px; padding: 0 18px 16px; }
         .finn-boss-footer > span { margin-left: auto; color: #93c5fd; font-size: 0.72rem; font-weight: 800; }
@@ -7357,6 +7377,13 @@
                 <strong class="finn-boss-phase" id="finn-boss-phase">PHASE I</strong>
                 <button class="finn-boss-close" id="finn-boss-close" type="button" aria-label="Close boss fight">×</button>
             </header>
+            <section class="finn-boss-intro hidden" id="finn-boss-intro" aria-label="Corrupted Lord Finn introduction">
+                <span class="finn-boss-intro-kicker">RIFT GATEWAY · ENCOUNTER</span>
+                <div class="finn-orb finn-orb-large" aria-hidden="true"><span class="finn-energy"></span></div>
+                <h3>Corrupted Lord Finn</h3>
+                <p class="finn-boss-intro-dialogue" id="finn-boss-intro-dialogue"></p>
+                <button class="btn finn-boss-intro-next" id="finn-boss-intro-next" type="button">CONTINUE</button>
+            </section>
             <div class="finn-boss-help">
                 <strong>COMBAT CONTROLS</strong>
                 <div class="finn-boss-control">
@@ -7378,7 +7405,7 @@
             </div>
             <div class="finn-boss-health-row">
                 <div><span>YOU</span><i><b id="finn-player-health" style="width:100%"></b></i></div>
-                <div><span>CORRUPTED LORD FINN</span><i><b id="finn-boss-health" style="width:100%"></b></i></div>
+                <div><span id="finn-boss-health-label">CORRUPTED LORD FINN · 420 HP</span><i><b id="finn-boss-health" style="width:100%"></b></i></div>
             </div>
             <div class="finn-boss-stage" id="finn-boss-stage" tabindex="0" aria-label="Boss fight arena">
                 <div class="finn-boss-grid" aria-hidden="true"></div>
@@ -7390,6 +7417,7 @@
                 <div class="finn-battle-box" id="finn-battle-box" aria-label="Battle area">
                     <div class="finn-boss-player" id="finn-boss-player" aria-label="Player"></div>
                 </div>
+                <div class="finn-boss-phase-banner hidden" id="finn-boss-phase-banner" aria-live="assertive"></div>
             </div>
             <div class="finn-boss-dialogue" id="finn-boss-dialogue" role="status" aria-live="polite">The Rift is listening. Defeat the corruption.</div>
             <footer class="finn-boss-footer">
@@ -7416,14 +7444,8 @@
                     <div class="realm-copy"><span class="realm-kicker">AVAILABLE</span><h3>Forge Realm</h3><p>Craft potions and event tools with collected items.</p><span class="realm-status" id="forge-realm-status"></span><button class="btn" id="forge-realm-action" type="button">UNLOCK · 1 ORE + 30 ROCK</button></div>
                 </article>
                 <article class="realm-card realm-coming realm-corrupted" aria-disabled="true">
-                    <div class="realm-art realm-art-unknown" aria-label="A corrupted violet signal behind the sealed third realm" role="img">
-                        <svg class="realm-fracture" viewBox="0 0 400 180" preserveAspectRatio="none" aria-hidden="true">
-                            <defs><linearGradient id="realm-fracture-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d2ff"/><stop offset=".45" stop-color="#b969ff"/><stop offset="1" stop-color="#7045c4"/></linearGradient></defs>
-                            <path d="M283 2 274 18 281 29 260 42 268 53 247 66 255 78 235 91 243 104 221 116 229 128 206 140 212 151 191 166 M260 42 279 47 286 60 M247 66 229 59 222 47 M243 104 264 110 271 121 M221 116 203 107 195 94"/>
-                            <path d="M102 0 111 15 101 27 119 39 112 52 128 64 122 76"/>
-                            <path d="M40 14 53 28 45 39 65 54 57 66 74 79 66 94 M355 12 342 27 351 40 332 55 341 69 322 83 330 96 M305 112 291 124 302 135 285 148 293 162 279 178 M151 106 164 117 155 129 174 141 167 155"/>
-                        </svg>
-                        <span class="realm-question-logo">∅</span>
+                    <div class="realm-art realm-art-unknown" aria-label="A glowing violet gateway to the sealed third realm" role="img">
+                        <span class="realm-rift-mark" aria-hidden="true">✦</span>
                     </div>
                     <div class="realm-copy"><span class="realm-kicker">UPDATE 7 · THE RIFTED</span><h3>Rift Realm</h3><p>Explore fractured zones, open Rift chests, and recover the realm’s rarest anomalies.</p><span class="realm-status" id="rift-realm-status">Release countdown loading...</span><button class="btn" id="rift-realm-action" type="button" disabled>SEALED UNTIL MONDAY · 10PM NZ</button></div>
                 </article>
