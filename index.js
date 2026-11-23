@@ -2249,6 +2249,7 @@ app.post('/api/finn-boss/defeat', async (req, res) => {
   try {
     const user = await findUser(req.session.username);
     if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+    if (!user.portal_unlocked) return res.status(403).json({ success: false, error: 'Unlock the Portal Gateway before claiming Corrupted Lord Finn victory rewards.' });
     const items = normalizeRecord(user.items);
     const alreadyRewarded = items.finn_boss_defeated === true;
     let reward = null;
