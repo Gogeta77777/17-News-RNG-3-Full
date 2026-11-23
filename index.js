@@ -97,21 +97,8 @@ const MAX_LUCK_EFFECT_MULTIPLIER = 25;
 const MAX_TOTAL_LUCK_MULTIPLIER = 100;
 const MAX_PROGRESSION_VALUE = Number.MAX_SAFE_INTEGER;
 
-function getNextRiftReleaseAt(now = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-NZ', {
-    timeZone: 'Pacific/Auckland',
-    year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-  }).formatToParts(now).reduce((result, part) => {
-    result[part.type] = part.value;
-    return result;
-  }, {});
-  const aucklandNow = new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:00+13:00`);
-  const weekday = aucklandNow.getUTCDay();
-  let daysUntilMonday = (1 - weekday + 7) % 7;
-  if (weekday === 1 && Number(parts.hour) >= 22) daysUntilMonday = 7;
-  const release = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + daysUntilMonday, 9, 0, 0));
-  return release;
+function getNextRiftReleaseAt() {
+  return new Date(Date.UTC(2026, 10, 23, 9, 0, 0));
 }
 const HALLOWEEN_END_AT = Date.UTC(2026, 10, 1);
 const LOCAL_SETTINGS_PATH = path.join(os.tmpdir(), '17-news-rng-3-settings.json');
@@ -2263,10 +2250,11 @@ app.post('/api/finn-boss/defeat', async (req, res) => {
     const user = await findUser(req.session.username);
     if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
     const items = normalizeRecord(user.items);
-    const alreadyRewarded = (Number(items.finn_energy) || 0) >= 1;
+    const alreadyRewarded = items.finn_boss_defeated === true;
     let reward = null;
     if (!alreadyRewarded) {
-      items.finn_energy = 1;
+      items.finn_energy = (Number(items.finn_energy) || 0) + 1;
+      items.finn_boss_defeated = true;
       await updateUser(req.session.username, {
         items: JSON.stringify(items),
         coins: addProgressionValue(user.coins, 100000)
