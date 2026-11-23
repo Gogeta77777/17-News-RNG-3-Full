@@ -122,6 +122,22 @@ let diveCooldownTimer = null;
 let diveRetryTimer = null;
 let diveCollectPending = false;
 let autoRollTimer = null;
+let riftMoveFrame = null;
+let riftLastMoveSentAt = 0;
+const riftHeldKeys = new Set();
+const riftState = {
+  profile: null,
+  shop: [],
+  roster: [],
+  partyId: null,
+  party: null,
+  position: { x: 50, y: 58 },
+  positionSynced: false,
+  battle: null,
+  battlePosition: { x: 50, y: 82 },
+  battleHealth: 100,
+  lastPatternPulse: 0
+};
 let gameState = {
   activeEffects: {},
   diveServerOffset: 0,
@@ -1065,14 +1081,596 @@ async function enterOrUnlockRiftRealm() {
     if (!entry.success || !entry.user) throw new Error(entry.error || 'Unable to enter Rift Realm.');
     currentUser = entry.user;
     updateUI(currentUser);
+    const profileResponse = await handleAPI('/api/rift/profile');
+    if (!profileResponse.success || !profileResponse.profile) throw new Error(profileResponse.error || 'Unable to load Rift progression.');
+    riftState.profile = profileResponse.profile;
+    riftState.shop = profileResponse.shop || [];
     closeRealmSelector();
-    showPopup('Rift Realm opened. Exploration content arrives in the next Rift release.', 'success');
+    enterRiftRealm();
   } catch (error) {
     showPopup(error.message, 'error');
   } finally {
     isEnteringDimension = false;
     renderRealmSelector();
   }
+}
+
+function enterRiftRealm() {
+  showRealmTransition('Rift Realm', 'enter', 'rift');
+  document.getElementById('game-page')?.classList.add('hidden');
+  document.getElementById('rift-realm-screen')?.classList.remove('hidden');
+  gameState.currentDimension = 'rift-realm';
+  riftState.position = { x: 50, y: 58 };
+  riftState.positionSynced = false;
+  riftState.battle = null;
+  riftRenderProfile();
+  riftRenderLobby();
+  riftBindControls();
+  if (!riftMoveFrame) riftMoveFrame = requestAnimationFrame(riftMovementFrame);
+  window.emitRiftEvent?.('rift-join');
+  window.updatePlayerActivity?.('Exploring the Rift Realm');
+}
+
+function exitRiftRealm() {
+  if (riftMoveFrame) cancelAnimationFrame(riftMoveFrame);
+  riftMoveFrame = null;
+  riftHeldKeys.clear();
+  window.emitRiftEvent?.('rift-leave');
+  document.getElementById('rift-realm-screen')?.classList.add('hidden');
+  document.getElementById('rift-boss-arena')?.classList.add('hidden');
+  document.getElementById('rift-result')?.classList.add('hidden');
+  document.getElementById('game-page')?.classList.remove('hidden');
+  gameState.currentDimension = null;
+  riftState.battle = null;
+  window.updatePlayerActivity?.('At the RNG console');
+  showRealmTransition('Rift Realm', 'leave', 'rift');
+}
+
+async function riftRefreshProfile() {
+  const response = await handleAPI('/api/rift/profile');
+  if (!response.success || !response.profile) throw new Error(response.error || 'Unable to refresh Rift progression.');
+  riftState.profile = response.profile;
+  riftState.shop = response.shop || riftState.shop;
+  if (response.user) updateUI(response.user);
+  riftRenderProfile();
+  return response.profile;
+}
+
+function riftRenderProfile() {
+  const profile = riftState.profile;
+  if (!profile) return;
+  const previousLevelXp = Math.max(0, (profile.level - 1) ** 2 * 150);
+  const levelXp = Math.max(1, profile.nextLevelXp - previousLevelXp);
+  const progress = Math.max(0, Math.min(100, ((profile.xp - previousLevelXp) / levelXp) * 100));
+  const levelLabel = document.getElementById('rift-level-label');
+  const profileLevel = document.getElementById('rift-profile-level');
+  const xpFill = document.getElementById('rift-xp-fill');
+  const xpLabel = document.getElementById('rift-xp-label');
+  const coins = document.getElementById('rift-coin-count');
+  const chests = document.getElementById('rift-chest-count');
+  const stats = document.getElementById('rift-stats');
+  const points = document.getElementById('rift-points-label');
+  const chestButton = document.getElementById('rift-open-chest');
+  if (levelLabel) levelLabel.textContent = `LEVEL ${profile.level}`;
+  if (profileLevel) profileLevel.textContent = `Rift Level ${profile.level}`;
+  if (xpFill) xpFill.style.width = `${progress}%`;
+  if (xpLabel) xpLabel.textContent = `${profile.xp} / ${profile.nextLevelXp} XP`;
+  if (coins) coins.textContent = `${profile.coins} Rift Coins`;
+  if (chests) chests.textContent = `${profile.chests} Rift Chest${profile.chests === 1 ? '' : 's'}`;
+  if (stats) {
+    stats.replaceChildren();
+    Object.entries(profile.stats).forEach(([name, value]) => {
+      const card = document.createElement('span');
+      card.className = 'rift-stat';
+      const amount = document.createElement('b');
+      amount.textContent = String(value);
+      card.append(amount, document.createTextNode(name[0].toUpperCase() + name.slice(1)));
+      stats.appendChild(card);
+    });
+  }
+  if (points) points.textContent = `${profile.availablePoints} stat point${profile.availablePoints === 1 ? '' : 's'} available`;
+  document.querySelectorAll('[data-rift-stat]').forEach(button => {
+    button.disabled = profile.availablePoints < 1;
+  });
+  if (chestButton) {
+    chestButton.disabled = profile.chests < 1;
+    chestButton.textContent = profile.chests ? `OPEN RIFT CHEST · ${profile.chests}` : 'NO RIFT CHESTS';
+  }
+  const potions = document.getElementById('rift-owned-potions');
+  if (potions) {
+    potions.replaceChildren();
+    const potionLabels = {
+      rift_speed: 'Rift Speed',
+      rift_luck: 'Rift Luck',
+      rift_mixed: 'Rift Mixed',
+      speed: 'Speed',
+      luck: 'Luck'
+    };
+    Object.entries(profile.potions || {}).filter(([, count]) => Number(count) > 0).forEach(([key, count]) => {
+      const button = document.createElement('button');
+      button.className = 'btn';
+      button.type = 'button';
+      button.dataset.riftPotion = key;
+      button.textContent = `USE ${potionLabels[key] || key} · ${count}`;
+      potions.appendChild(button);
+    });
+    if (!potions.children.length) {
+      const empty = document.createElement('small');
+      empty.textContent = 'No Rift potions yet.';
+      potions.appendChild(empty);
+    }
+  }
+  riftRenderShop();
+}
+
+function riftRenderShop() {
+  const container = document.getElementById('rift-shop-items');
+  if (!container) return;
+  container.replaceChildren();
+  riftState.shop.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'rift-shop-item';
+    const label = document.createElement('span');
+    label.textContent = `${item.name} · ${item.cost} Rift Coins`;
+    const buy = document.createElement('button');
+    buy.className = 'btn';
+    buy.type = 'button';
+    buy.dataset.riftBuy = item.key;
+    buy.textContent = 'BUY';
+    buy.disabled = (Number(riftState.profile?.coins) || 0) < Number(item.cost);
+    row.append(label, buy);
+    container.appendChild(row);
+  });
+}
+
+function riftCreateAvatar(player, { local = false, x = 50, y = 50 } = {}) {
+  const avatar = document.createElement('div');
+  avatar.className = `rift-player-avatar${local ? ' is-local' : ''}`;
+  avatar.dataset.playerKey = String(player.username || '').toLowerCase();
+  avatar.style.left = `${x}%`;
+  avatar.style.top = `${y}%`;
+  avatar.style.setProperty('--rift-color', player.color || '#7dd3fc');
+  avatar.setAttribute('aria-label', `${player.username || 'Player'}${player.title ? `, ${player.title}` : ''}`);
+  const label = document.createElement('span');
+  label.className = 'rift-player-label';
+  label.textContent = player.username || 'Player';
+  if (player.title) {
+    const title = document.createElement('small');
+    title.className = 'rift-player-title';
+    title.textContent = player.title;
+    label.appendChild(title);
+  }
+  avatar.appendChild(label);
+  return avatar;
+}
+
+function riftRenderLobby() {
+  const map = document.getElementById('rift-map');
+  const playerLayer = document.getElementById('rift-player-list');
+  const roster = document.getElementById('rift-roster');
+  if (!map || !playerLayer || !roster) return;
+  playerLayer.replaceChildren();
+  roster.replaceChildren();
+  const currentName = String(currentUser?.username || '').toLowerCase();
+  const localPlayer = riftState.roster.find(player => String(player.username).toLowerCase() === currentName) || {
+    username: currentUser?.username || 'You',
+    title: currentUser?.active_title || '',
+    color: currentUser?.active_title === 'owner' ? '#fbbf24' : currentUser?.active_title === 'admin' ? '#fb7185' : '#7dd3fc'
+  };
+  const players = riftState.roster.some(player => String(player.username).toLowerCase() === currentName)
+    ? riftState.roster
+    : [...riftState.roster, { ...localPlayer, x: riftState.position.x, y: riftState.position.y }];
+  players.forEach(player => {
+    const isLocal = String(player.username).toLowerCase() === currentName;
+    const avatar = riftCreateAvatar(player, {
+      local: isLocal,
+      x: isLocal ? riftState.position.x : Number(player.x) || 50,
+      y: isLocal ? riftState.position.y : Number(player.y) || 50
+    });
+    playerLayer.appendChild(avatar);
+    const card = document.createElement('div');
+    card.className = 'rift-roster-player';
+    card.style.setProperty('--rift-color', player.color || '#7dd3fc');
+    const dot = document.createElement('i');
+    const name = document.createElement('span');
+    name.textContent = `${player.username}${player.title ? ` · ${player.title}` : ''}${isLocal ? ' (You)' : ''}`;
+    card.append(dot, name);
+    if (!isLocal && riftState.partyId && riftState.party?.leader === currentName) {
+      card.title = 'Use the invite field to invite this player.';
+    }
+    roster.appendChild(card);
+  });
+  const onlineCount = document.getElementById('rift-online-count');
+  if (onlineCount) onlineCount.textContent = `${riftState.roster.length} online`;
+  const options = document.getElementById('rift-player-options');
+  if (options) {
+    options.replaceChildren();
+    riftState.roster.filter(player => String(player.username).toLowerCase() !== currentName).forEach(player => {
+      const option = document.createElement('option');
+      option.value = player.username;
+      options.appendChild(option);
+    });
+  }
+}
+
+function riftSetParty(partyId, party) {
+  if (partyId && riftState.partyId && partyId !== riftState.partyId) return;
+  if (party) {
+    riftState.partyId = partyId;
+    riftState.party = party;
+  } else if (!partyId || partyId === riftState.partyId) {
+    riftState.partyId = null;
+    riftState.party = null;
+  }
+  const container = document.getElementById('rift-party-members');
+  if (!container) return;
+  container.replaceChildren();
+  if (!riftState.party?.members?.length) {
+    container.textContent = 'You are exploring solo.';
+    return;
+  }
+  riftState.party.members.forEach(member => {
+    const line = document.createElement('div');
+    line.style.color = member.color || '#e2e8f0';
+    line.textContent = `${member.username}${riftState.party.leader === String(member.username).toLowerCase() ? ' · PARTY LEADER' : ''}`;
+    container.appendChild(line);
+  });
+}
+
+function riftShowResult(success, message) {
+  document.getElementById('rift-boss-arena')?.classList.add('hidden');
+  const result = document.getElementById('rift-result');
+  if (!result) return;
+  document.getElementById('rift-result-kicker').textContent = success ? 'RIFT VICTORY' : 'ENCOUNTER ENDED';
+  document.getElementById('rift-result-title').textContent = success ? 'VICTORY' : 'DEFEAT';
+  document.getElementById('rift-result-copy').textContent = message;
+  result.classList.remove('hidden');
+}
+
+function showRiftChestReward(reward) {
+  const reveal = document.createElement('div');
+  reveal.className = `rift-chest-reveal${reward?.type === 'rarity' ? ' is-rarity' : ''}${reward?.key === 'corrupted-lord-finn' ? ' is-corrupted' : ''}`;
+  reveal.setAttribute('role', 'status');
+  reveal.setAttribute('aria-live', 'assertive');
+  const card = document.createElement('div');
+  card.className = 'rift-chest-reveal-card';
+  const emblem = document.createElement('span');
+  emblem.className = 'rift-chest-reveal-emblem';
+  emblem.setAttribute('aria-hidden', 'true');
+  emblem.textContent = reward?.key === 'corrupted-lord-finn' ? '◈' : '✦';
+  const kicker = document.createElement('span');
+  kicker.className = 'rift-kicker';
+  kicker.textContent = reward?.key === 'corrupted-lord-finn' ? 'RIFT ONLY · ANOMALY FOUND' : 'RIFT CHEST OPENED';
+  const title = document.createElement('strong');
+  title.textContent = reward?.name || 'Rift Reward';
+  const details = document.createElement('p');
+  details.textContent = reward?.type === 'item'
+    ? `+${reward.amount || 1} ${reward.name || 'item'}`
+    : reward?.type === 'potion'
+      ? 'Added to your Rift potion inventory.'
+      : reward?.type === 'rarity'
+        ? 'A new rarity has been added to your collection.'
+        : 'Your reward has been added to your inventory.';
+  const close = document.createElement('button');
+  close.className = 'btn';
+  close.type = 'button';
+  close.textContent = 'CONTINUE';
+  close.addEventListener('click', () => reveal.remove(), { once: true });
+  card.append(emblem, kicker, title, details, close);
+  reveal.appendChild(card);
+  document.body.appendChild(reveal);
+  setTimeout(() => reveal.remove(), 4800);
+}
+
+function riftRenderBossState(battle) {
+  if (!battle || !riftState.battle || battle.battleId !== riftState.battle.battleId) return;
+  riftState.battle = { ...riftState.battle, ...battle };
+  const hpFill = document.getElementById('rift-boss-hp-fill');
+  const hpLabel = document.getElementById('rift-boss-hp-label');
+  const phase = document.getElementById('rift-boss-phase');
+  const stateLabel = document.getElementById('rift-boss-state-label');
+  const bossName = document.getElementById('rift-boss-name');
+  const nameplate = document.getElementById('rift-boss-nameplate');
+  const avatar = document.getElementById('rift-boss-avatar');
+  const percent = Math.max(0, Math.min(100, battle.hp / battle.maxHp * 100));
+  if (hpFill) hpFill.style.width = `${percent}%`;
+  if (hpLabel) hpLabel.textContent = `${Math.ceil(percent)}%`;
+  if (phase) phase.textContent = `PHASE ${battle.phase}`;
+  if (bossName) bossName.textContent = battle.name || 'Rift Boss';
+  if (nameplate) nameplate.textContent = battle.name || 'RIFT BOSS';
+  if (stateLabel) {
+    const labels = { transition: 'PHASE SHIFT', telegraph: 'ATTACK TELEGRAPH', attacking: battle.pattern || 'DODGE', stunned: 'STAGGERED · ATTACK NOW' };
+    stateLabel.textContent = labels[battle.state] || 'IN BATTLE';
+  }
+  avatar?.classList.toggle('is-stunned', battle.state === 'stunned');
+}
+
+function riftRenderBattlePlayers(players = []) {
+  const layer = document.getElementById('rift-battle-players');
+  if (!layer) return;
+  layer.replaceChildren();
+  const currentName = String(currentUser?.username || '').toLowerCase();
+  players.forEach((player, index) => {
+    const isLocal = String(player.username).toLowerCase() === currentName;
+    const position = isLocal ? riftState.battlePosition : { x: 36 + (index % 4) * 9, y: 82 };
+    const avatar = riftCreateAvatar(player, { local: isLocal, ...position });
+    layer.appendChild(avatar);
+  });
+}
+
+function riftHandleAttackPattern(pattern) {
+  if (!riftState.battle || !pattern || pattern.battleId !== riftState.battle.battleId || pattern.pulse === riftState.lastPatternPulse) return;
+  riftState.lastPatternPulse = pattern.pulse;
+  const warning = document.getElementById('rift-arena-warning');
+  const effect = document.getElementById('rift-attack-effect');
+  const name = String(pattern.name || 'RIFT ATTACK').toUpperCase();
+  if (warning) warning.textContent = `${name} · DODGE NOW`;
+  if (effect) {
+    effect.className = `rift-attack-effect pattern-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    setTimeout(() => effect.classList.add('hidden'), 720);
+  }
+  const { x, y } = riftState.battlePosition;
+  let hit = false;
+  if (/sweep|spears/.test(name.toLowerCase())) {
+    hit = y > 37 && y < 70;
+  } else if (/halo|nova|spiral|collapse/.test(name.toLowerCase())) {
+    const radius = Math.hypot((x - 50) * 0.75, y - 24);
+    hit = radius > 24 && radius < 49;
+  } else if (/rain|volley|bolts/.test(name.toLowerCase())) {
+    const lane = 20 + Math.random() * 60;
+    hit = Math.abs(x - lane) < 11 && y < 90;
+  } else {
+    hit = Math.abs(x - 50) < 12 || (y > 43 && y < 67);
+  }
+  if (hit) {
+    riftState.battleHealth = Math.max(0, riftState.battleHealth - 14);
+    const health = document.getElementById('rift-player-hp-fill');
+    if (health) health.style.width = `${riftState.battleHealth}%`;
+    if (warning) warning.textContent = `HIT · ${riftState.battleHealth}% VITALITY`;
+    if (!riftState.battleHealth) {
+      const battleId = riftState.battle.battleId;
+      window.emitRiftEvent?.('rift-boss-retreat', { battleId });
+      riftState.battle = null;
+      riftShowResult(false, 'The Rift overwhelmed you. Recover, regroup, and challenge the boss again.');
+    }
+  } else if (warning) {
+    warning.textContent = `${name} MISSED · CLOSE IN WHEN STAGGERED`;
+  }
+}
+
+function riftBindControls() {
+  if (document.documentElement.dataset.riftControlsBound) return;
+  document.documentElement.dataset.riftControlsBound = 'true';
+  document.getElementById('rift-exit')?.addEventListener('click', exitRiftRealm);
+  document.getElementById('rift-boss-retreat')?.addEventListener('click', () => {
+    if (!riftState.battle) return;
+    const battleId = riftState.battle.battleId;
+    window.emitRiftEvent?.('rift-boss-retreat', { battleId });
+    riftState.battle = null;
+    riftShowResult(false, 'You left the encounter. Your Rift progress and rewards remain safe.');
+  });
+  document.getElementById('rift-result-close')?.addEventListener('click', () => {
+    document.getElementById('rift-result')?.classList.add('hidden');
+    riftState.battle = null;
+  });
+  document.getElementById('rift-attack-button')?.addEventListener('click', () => {
+    if (riftState.battle) window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
+  });
+  document.querySelectorAll('[data-rift-boss]').forEach(button => {
+    button.addEventListener('click', () => {
+      if (!window.emitRiftEvent?.('rift-boss-start', { bossKey: button.dataset.riftBoss })) return;
+      const warning = document.getElementById('rift-arena-warning');
+      if (warning) warning.textContent = 'CONNECTING TO RIFT ENCOUNTER…';
+    });
+  });
+  document.getElementById('rift-party-create')?.addEventListener('click', () => window.emitRiftEvent?.('rift-party-create'));
+  document.getElementById('rift-party-leave')?.addEventListener('click', () => window.emitRiftEvent?.('rift-party-leave'));
+  document.getElementById('rift-party-invite')?.addEventListener('click', () => {
+    const input = document.getElementById('rift-invite-player');
+    const username = input?.value.trim();
+    if (!username) return showPopup('Choose a player in the Rift lobby to invite.', 'error');
+    window.emitRiftEvent?.('rift-party-invite', { username });
+    if (input) input.value = '';
+  });
+  document.getElementById('rift-open-chest')?.addEventListener('click', async () => {
+    try {
+      const response = await handleAPI('/api/rift/chest/open', { method: 'POST', body: {} });
+      if (!response.success || !response.profile) throw new Error(response.error || 'Unable to open Rift Chest.');
+      riftState.profile = response.profile;
+      if (response.user) updateUI(response.user);
+      riftRenderProfile();
+      showRiftChestReward(response.reward);
+    } catch (error) {
+      showPopup(error.message, 'error');
+    }
+  });
+  document.getElementById('rift-stats')?.parentElement?.querySelectorAll('[data-rift-stat]').forEach(button => {
+    button.addEventListener('click', async () => {
+      try {
+        const response = await handleAPI('/api/rift/stats/allocate', { method: 'POST', body: { stat: button.dataset.riftStat, amount: 1 } });
+        if (!response.success || !response.profile) throw new Error(response.error || 'Unable to allocate stat point.');
+        riftState.profile = response.profile;
+        if (response.user) updateUI(response.user);
+        riftRenderProfile();
+      } catch (error) {
+        showPopup(error.message, 'error');
+      }
+    });
+  });
+  document.getElementById('rift-shop-items')?.addEventListener('click', async event => {
+    const button = event.target.closest('[data-rift-buy]');
+    if (!button) return;
+    try {
+      const response = await handleAPI('/api/rift/shop/buy', { method: 'POST', body: { item: button.dataset.riftBuy } });
+      if (!response.success || !response.profile) throw new Error(response.error || 'Unable to buy this item.');
+      riftState.profile = response.profile;
+      if (response.user) updateUI(response.user);
+      riftRenderProfile();
+      showPopup(`Purchased ${response.item}.`);
+    } catch (error) {
+      showPopup(error.message, 'error');
+    }
+  });
+  document.getElementById('rift-owned-potions')?.addEventListener('click', async event => {
+    const button = event.target.closest('[data-rift-potion]');
+    if (!button) return;
+    try {
+      const response = await handleAPI('/api/rift/potion/use', { method: 'POST', body: { potion: button.dataset.riftPotion } });
+      if (!response.success || !response.profile) throw new Error(response.error || 'Unable to use this potion.');
+      riftState.profile = response.profile;
+      if (response.user) updateUI(response.user);
+      riftRenderProfile();
+      showPopup(`${response.profile.buff?.name || 'Rift potion'} active for two minutes.`);
+    } catch (error) {
+      showPopup(error.message, 'error');
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (gameState.currentDimension !== 'rift-realm') return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName)) return;
+    const key = event.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+      event.preventDefault();
+      riftHeldKeys.add(key);
+    }
+    if ((key === ' ' || key === 'enter') && riftState.battle) {
+      event.preventDefault();
+      window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
+    }
+  });
+  document.addEventListener('keyup', event => riftHeldKeys.delete(event.key.toLowerCase()));
+  window.addEventListener('blur', () => riftHeldKeys.clear());
+  window.addEventListener('rift:rift-lobby-state', event => {
+    riftState.roster = Array.isArray(event.detail) ? event.detail : [];
+    if (!riftState.positionSynced) {
+      const local = riftState.roster.find(player => String(player.username).toLowerCase() === String(currentUser?.username || '').toLowerCase());
+      if (local) riftState.position = { x: Number(local.x) || 50, y: Number(local.y) || 54 };
+    }
+    riftRenderLobby();
+  });
+  window.addEventListener('rift:connection-lost', () => {
+    riftState.positionSynced = false;
+  });
+  window.addEventListener('rift:rift-player-moved', event => {
+    const player = riftState.roster.find(entry => String(entry.username).toLowerCase() === String(event.detail?.username).toLowerCase());
+    if (player) {
+      player.x = event.detail.x;
+      player.y = event.detail.y;
+      riftRenderLobby();
+    }
+  });
+  window.addEventListener('rift:rift-party-state', event => riftSetParty(event.detail?.partyId, event.detail?.party));
+  window.addEventListener('rift:rift-party-invite', event => {
+    const invite = event.detail;
+    if (window.confirm(`${invite.from} invited you to join their Rift party. Accept?`)) {
+      window.emitRiftEvent?.('rift-party-respond', { partyId: invite.partyId, accept: true });
+    } else {
+      window.emitRiftEvent?.('rift-party-respond', { partyId: invite.partyId, accept: false });
+    }
+  });
+  window.addEventListener('rift:rift-party-invite-sent', event => showPopup(`Party invite sent to ${event.detail?.username}.`));
+  window.addEventListener('rift:rift-boss-started', event => {
+    const battle = event.detail;
+    if (!battle?.battleId) return;
+    riftState.battle = battle;
+    riftState.battlePosition = { x: 50, y: 82 };
+    riftState.battleHealth = 100;
+    riftState.lastPatternPulse = 0;
+    document.getElementById('rift-player-hp-fill').style.width = '100%';
+    document.getElementById('rift-boss-avatar')?.classList.toggle('is-finn', battle.bossKey.includes('finn'));
+    document.getElementById('rift-boss-avatar')?.classList.toggle('is-angel', battle.bossKey === 'rift-angel');
+    document.getElementById('rift-boss-arena')?.classList.remove('hidden');
+    document.getElementById('rift-result')?.classList.add('hidden');
+    riftRenderBossState(battle);
+    riftRenderBattlePlayers(battle.party || []);
+  });
+  window.addEventListener('rift:rift-boss-state', event => riftRenderBossState(event.detail));
+  window.addEventListener('rift:rift-boss-party-state', event => {
+    if (event.detail?.battleId === riftState.battle?.battleId) riftRenderBattlePlayers(event.detail.party || []);
+  });
+  window.addEventListener('rift:rift-boss-player-moved', event => {
+    const player = document.querySelector(`#rift-battle-players [data-player-key="${CSS.escape(String(event.detail?.username || '').toLowerCase())}"]`);
+    if (player) {
+      player.style.left = `${Math.max(5, Math.min(95, Number(event.detail.x) || 50))}%`;
+      player.style.top = `${Math.max(5, Math.min(95, Number(event.detail.y) || 82))}%`;
+    }
+  });
+  window.addEventListener('rift:rift-boss-pattern', event => riftHandleAttackPattern(event.detail));
+  window.addEventListener('rift:rift-boss-hit', event => {
+    const effect = document.getElementById('rift-attack-effect');
+    const warning = document.getElementById('rift-arena-warning');
+    if (effect) {
+      effect.classList.remove('hidden');
+      setTimeout(() => effect.classList.add('hidden'), 500);
+    }
+    if (warning) warning.textContent = `-${event.detail?.damage || 0} DAMAGE · ${event.detail?.hitsRemaining || 0} STAGGER HITS LEFT`;
+  });
+  window.addEventListener('rift:rift-boss-ended', event => {
+    const result = event.detail;
+    if (result?.success) {
+      void riftRefreshProfile().catch(error => console.error('Rift reward refresh failed:', error));
+      riftShowResult(true, `${result.bossName} defeated! Your Rift Chest, Rift Coins, and Rift XP have been added to your profile.`);
+    } else if (riftState.battle) {
+      riftState.battle = null;
+      riftShowResult(false, 'The party left the encounter before defeating the boss.');
+    }
+  });
+  window.addEventListener('rift:rift-boss-retreated', () => {
+    riftState.battle = null;
+  });
+  window.addEventListener('rift:rift-reward', event => {
+    const reward = event.detail;
+    if (reward?.coins) showPopup(`${reward.bossName} defeated! +${reward.coins} Rift Coins, +${reward.xp} XP, and a Rift Chest.`, 'success');
+    void riftRefreshProfile().catch(error => console.error('Rift profile refresh failed:', error));
+  });
+  window.addEventListener('rift:rift-error', event => {
+    const message = event.detail?.error || 'Rift action failed.';
+    const warning = document.getElementById('rift-arena-warning');
+    if (riftState.battle && warning) warning.textContent = message;
+    else showPopup(message, 'error');
+  });
+}
+
+function riftMovementFrame(timestamp) {
+  if (gameState.currentDimension !== 'rift-realm') {
+    riftMoveFrame = null;
+    return;
+  }
+  const battlefield = document.getElementById('rift-battlefield');
+  const direction = {
+    x: Number(riftHeldKeys.has('d') || riftHeldKeys.has('arrowright')) - Number(riftHeldKeys.has('a') || riftHeldKeys.has('arrowleft')),
+    y: Number(riftHeldKeys.has('s') || riftHeldKeys.has('arrowdown')) - Number(riftHeldKeys.has('w') || riftHeldKeys.has('arrowup'))
+  };
+  if (gameState.currentDimension === 'rift-realm' && (direction.x || direction.y)) {
+    const movingInBattle = Boolean(riftState.battle && battlefield && !document.getElementById('rift-boss-arena')?.classList.contains('hidden'));
+    const target = movingInBattle ? riftState.battlePosition : riftState.position;
+    const profile = riftState.profile;
+    const speedMultiplier = profile?.buff && Number(profile.buff.endsAt) > Date.now() ? Number(profile.buff.speedMultiplier) || 1 : 1;
+    const speed = (18 + (Number(profile?.stats?.speed) || 0) * 2.5) * speedMultiplier;
+    const elapsed = Math.min(50, Math.max(0, timestamp - (riftState.lastFrameAt || timestamp)));
+    riftState.lastFrameAt = timestamp;
+    const magnitude = Math.hypot(direction.x, direction.y) || 1;
+    target.x = Math.max(5, Math.min(95, target.x + direction.x / magnitude * speed * elapsed / 1000));
+    target.y = Math.max(5, Math.min(95, target.y + direction.y / magnitude * speed * elapsed / 1000));
+    if (!movingInBattle) riftState.positionSynced = true;
+    const layer = movingInBattle ? document.getElementById('rift-battle-players') : document.getElementById('rift-player-list');
+    const avatar = layer?.querySelector(`[data-player-key="${CSS.escape(String(currentUser?.username || '').toLowerCase())}"]`);
+    if (avatar) {
+      avatar.style.left = `${target.x}%`;
+      avatar.style.top = `${target.y}%`;
+    }
+    if (timestamp - riftLastMoveSentAt >= 50) {
+      riftLastMoveSentAt = timestamp;
+      window.emitRiftEvent?.(movingInBattle ? 'rift-boss-move' : 'rift-move', {
+        ...(movingInBattle ? { battleId: riftState.battle.battleId } : {}),
+        x: target.x,
+        y: target.y
+      });
+    }
+  } else {
+    riftState.lastFrameAt = timestamp;
+  }
+  riftMoveFrame = requestAnimationFrame(riftMovementFrame);
 }
 
 async function enterOrUnlockForgeRealm() {
@@ -1114,8 +1712,8 @@ function showRealmTransition(realmName, mode = 'enter', realmType = 'portal') {
   const overlay = document.getElementById('realm-transition-overlay');
   if (!overlay) return;
   overlay.classList.remove('hidden');
-  overlay.classList.remove('sea-realm', 'forge-realm');
-  overlay.classList.add(realmType === 'sea' ? 'sea-realm' : 'forge-realm');
+  overlay.classList.remove('sea-realm', 'forge-realm', 'rift-realm');
+  overlay.classList.add(realmType === 'sea' ? 'sea-realm' : realmType === 'rift' ? 'rift-realm' : 'forge-realm');
   overlay.classList.toggle('is-leaving', mode === 'leave');
   overlay.innerHTML = `
     <div class="realm-transition-panel">
@@ -1738,6 +2336,10 @@ function syncCurrentActivity() {
   }
   if (gameState.currentDimension === 'forge-realm') {
     window.updatePlayerActivity?.('At the Forge');
+    return;
+  }
+  if (gameState.currentDimension === 'rift-realm') {
+    window.updatePlayerActivity?.('Exploring the Rift Realm');
     return;
   }
   const activityByTab = {
