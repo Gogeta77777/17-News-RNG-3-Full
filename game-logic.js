@@ -124,6 +124,7 @@ let diveCollectPending = false;
 let autoRollTimer = null;
 let riftMoveFrame = null;
 let riftLastMoveSentAt = 0;
+let riftLastNpcButton = null;
 const riftHeldKeys = new Set();
 const riftState = {
   profile: null,
@@ -136,7 +137,8 @@ const riftState = {
   battle: null,
   battlePosition: { x: 50, y: 82 },
   battleHealth: 100,
-  lastPatternPulse: 0
+  lastPatternPulse: 0,
+  projectileElements: new Map()
 };
 let gameState = {
   activeEffects: {},
@@ -1155,8 +1157,15 @@ function riftRenderProfile() {
   if (profileLevel) profileLevel.textContent = `Rift Level ${profile.level}`;
   if (xpFill) xpFill.style.width = `${progress}%`;
   if (xpLabel) xpLabel.textContent = `${profile.xp} / ${profile.nextLevelXp} XP`;
-  if (coins) coins.textContent = `${profile.coins} Rift Coins`;
+  if (coins) coins.textContent = `${profile.shards} Rift Shards`;
   if (chests) chests.textContent = `${profile.chests} Rift Chest${profile.chests === 1 ? '' : 's'}`;
+  const hudShards = document.getElementById('rift-hud-shards');
+  const hudChests = document.getElementById('rift-hud-chests');
+  const convertBalance = document.getElementById('rift-convert-balance');
+  if (hudShards) hudShards.textContent = `${profile.shards} Shards`;
+  if (hudChests) hudChests.textContent = `${profile.chests} Chests`;
+  if (convertBalance) convertBalance.textContent = `Available: ${profile.shards} Rift Shards`;
+  riftUpdateConvertPreview();
   if (stats) {
     stats.replaceChildren();
     Object.entries(profile.stats).forEach(([name, value]) => {
@@ -1211,13 +1220,13 @@ function riftRenderShop() {
     const row = document.createElement('div');
     row.className = 'rift-shop-item';
     const label = document.createElement('span');
-    label.textContent = `${item.name} · ${item.cost} Rift Coins`;
+    label.textContent = `${item.name} · ${item.cost} Rift Shards`;
     const buy = document.createElement('button');
     buy.className = 'btn';
     buy.type = 'button';
     buy.dataset.riftBuy = item.key;
     buy.textContent = 'BUY';
-    buy.disabled = (Number(riftState.profile?.coins) || 0) < Number(item.cost);
+    buy.disabled = (Number(riftState.profile?.shards) || 0) < Number(item.cost);
     row.append(label, buy);
     container.appendChild(row);
   });
@@ -1303,6 +1312,8 @@ function riftSetParty(partyId, party) {
     riftState.party = null;
   }
   const container = document.getElementById('rift-party-members');
+  const hudParty = document.getElementById('rift-hud-party');
+  if (hudParty) hudParty.textContent = party?.members?.length ? `${party.members.length} in party` : 'Solo explorer';
   if (!container) return;
   container.replaceChildren();
   if (!riftState.party?.members?.length) {
@@ -1390,10 +1401,25 @@ function riftRenderBattlePlayers(players = []) {
   if (!layer) return;
   layer.replaceChildren();
   const currentName = String(currentUser?.username || '').toLowerCase();
-  players.forEach((player, index) => {
+  players.forEach(player => {
     const isLocal = String(player.username).toLowerCase() === currentName;
-    const position = isLocal ? riftState.battlePosition : { x: 36 + (index % 4) * 9, y: 82 };
+    const position = {
+      x: Number(player.x) || 50,
+      y: Number(player.y) || 82
+    };
+    if (isLocal) {
+      riftState.battlePosition = position;
+      if (Number.isFinite(Number(player.health))) {
+        riftState.battleHealth = Number(player.health);
+        const health = document.getElementById('rift-player-hp-fill');
+        if (health) health.style.width = `${riftState.battleHealth}%`;
+        const label = document.getElementById('rift-player-health-label');
+        if (label) label.textContent = `VITALITY · ${riftState.battleHealth}%`;
+        document.getElementById('rift-attack-button')?.toggleAttribute('disabled', riftState.battleHealth <= 0);
+      }
+    }
     const avatar = riftCreateAvatar(player, { local: isLocal, ...position });
+    avatar.classList.toggle('is-defeated', player.alive === false);
     layer.appendChild(avatar);
   });
 }
@@ -1402,59 +1428,129 @@ function riftHandleAttackPattern(pattern) {
   if (!riftState.battle || !pattern || pattern.battleId !== riftState.battle.battleId || pattern.pulse === riftState.lastPatternPulse) return;
   riftState.lastPatternPulse = pattern.pulse;
   const warning = document.getElementById('rift-arena-warning');
-  const effect = document.getElementById('rift-attack-effect');
   const name = String(pattern.name || 'RIFT ATTACK').toUpperCase();
-  if (warning) warning.textContent = `${name} · DODGE NOW`;
-  if (effect) {
-    effect.className = `rift-attack-effect pattern-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-    setTimeout(() => effect.classList.add('hidden'), 720);
-  }
-  const { x, y } = riftState.battlePosition;
-  let hit = false;
-  if (/sweep|spears/.test(name.toLowerCase())) {
-    hit = y > 37 && y < 70;
-  } else if (/halo|nova|spiral|collapse/.test(name.toLowerCase())) {
-    const radius = Math.hypot((x - 50) * 0.75, y - 24);
-    hit = radius > 24 && radius < 49;
-  } else if (/rain|volley|bolts/.test(name.toLowerCase())) {
-    const lane = 20 + Math.random() * 60;
-    hit = Math.abs(x - lane) < 11 && y < 90;
-  } else {
-    hit = Math.abs(x - 50) < 12 || (y > 43 && y < 67);
-  }
-  if (hit) {
-    riftState.battleHealth = Math.max(0, riftState.battleHealth - 14);
-    const health = document.getElementById('rift-player-hp-fill');
-    if (health) health.style.width = `${riftState.battleHealth}%`;
-    if (warning) warning.textContent = `HIT · ${riftState.battleHealth}% VITALITY`;
-    if (!riftState.battleHealth) {
-      const battleId = riftState.battle.battleId;
-      window.emitRiftEvent?.('rift-boss-retreat', { battleId });
-      riftState.battle = null;
-      riftShowResult(false, 'The Rift overwhelmed you. Recover, regroup, and challenge the boss again.');
+  if (warning) warning.textContent = `${name} · DODGE THE PROJECTILES`;
+  riftRenderProjectiles(pattern.projectiles || []);
+}
+
+function riftRenderProjectiles(projectiles = []) {
+  const layer = document.getElementById('rift-projectile-layer');
+  if (!layer) return;
+  const visibleIds = new Set();
+  projectiles.forEach(projectile => {
+    visibleIds.add(projectile.id);
+    let element = riftState.projectileElements.get(projectile.id);
+    if (!element) {
+      element = document.createElement('span');
+      element.className = `rift-projectile projectile-${projectile.type || 'orb'}`;
+      element.setAttribute('aria-hidden', 'true');
+      element.style.setProperty('--projectile-color', projectile.color || '#fb7185');
+      layer.appendChild(element);
+      riftState.projectileElements.set(projectile.id, element);
     }
-  } else if (warning) {
-    warning.textContent = `${name} MISSED · CLOSE IN WHEN STAGGERED`;
+    element.style.left = `${projectile.x}%`;
+    element.style.top = `${projectile.y}%`;
+    element.style.setProperty('--projectile-angle', `${Math.atan2(projectile.vy, projectile.vx) * 180 / Math.PI + 90}deg`);
+  });
+  for (const [id, element] of riftState.projectileElements) {
+    if (visibleIds.has(id)) continue;
+    element.remove();
+    riftState.projectileElements.delete(id);
   }
+}
+
+function riftClearProjectiles() {
+  riftState.projectileElements.forEach(element => element.remove());
+  riftState.projectileElements.clear();
+}
+
+function riftUpdateConvertPreview() {
+  const input = document.getElementById('rift-convert-amount');
+  const preview = document.getElementById('rift-convert-preview');
+  if (!input || !preview) return;
+  const amount = Number(input.value);
+  if (!Number.isSafeInteger(amount) || amount < 1 || !Number.isSafeInteger(amount * 1_000_000)) {
+    preview.textContent = 'Enter a whole number of at least 1 Shard.';
+    return;
+  }
+  preview.textContent = `${amount.toLocaleString()} Shard${amount === 1 ? '' : 's'} → ${(amount * 1_000_000).toLocaleString()} coins`;
+}
+
+function riftOpenNpcPanel(name) {
+  const panel = document.getElementById('rift-npc-panel');
+  if (!panel) return;
+  const heading = document.getElementById('rift-panel-title');
+  const titles = { profile: 'Wayfarer · Profile', portal: 'Rift Challenge Portal', party: 'Party Beacon', shop: 'Shard Merchant', exchange: 'Coin Exchange' };
+  if (heading) heading.textContent = titles[name] || 'Rift menu';
+  panel.querySelectorAll('[data-rift-panel]').forEach(section => {
+    section.classList.toggle('hidden', section.dataset.riftPanel !== name);
+  });
+  panel.classList.remove('hidden');
+  if (name === 'exchange') {
+    const balance = document.getElementById('rift-convert-balance');
+    if (balance) balance.textContent = `Available: ${riftState.profile?.shards || 0} Rift Shards`;
+    document.getElementById('rift-convert-amount')?.focus();
+  } else {
+    panel.querySelector('.rift-panel-close')?.focus();
+  }
+}
+
+function riftCloseNpcPanel(restoreFocus = false) {
+  document.getElementById('rift-npc-panel')?.classList.add('hidden');
+  if (restoreFocus) riftLastNpcButton?.focus();
 }
 
 function riftBindControls() {
   if (document.documentElement.dataset.riftControlsBound) return;
   document.documentElement.dataset.riftControlsBound = 'true';
   document.getElementById('rift-exit')?.addEventListener('click', exitRiftRealm);
+  document.querySelectorAll('[data-rift-npc]').forEach(button => {
+    button.addEventListener('click', () => {
+      riftLastNpcButton = button;
+      riftOpenNpcPanel(button.dataset.riftNpc);
+    });
+  });
+  document.querySelectorAll('[data-rift-panel-close]').forEach(button => {
+    button.addEventListener('click', () => riftCloseNpcPanel(true));
+  });
+  document.getElementById('rift-convert-amount')?.addEventListener('input', riftUpdateConvertPreview);
+  document.getElementById('rift-convert-button')?.addEventListener('click', async event => {
+    const input = document.getElementById('rift-convert-amount');
+    const amount = Number(input?.value);
+    if (!Number.isSafeInteger(amount) || amount < 1 || !Number.isSafeInteger(amount * 1_000_000)) {
+      showPopup('Enter a valid whole number of Rift Shards to convert.', 'error');
+      return;
+    }
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const response = await handleAPI('/api/rift/convert', { method: 'POST', body: { shards: amount } });
+      if (!response.success || !response.profile || !response.converted) throw new Error(response.error || 'Unable to convert Rift Shards.');
+      riftState.profile = response.profile;
+      if (response.user) updateUI(response.user);
+      riftRenderProfile();
+      showPopup(`Converted ${response.converted.shards.toLocaleString()} Rift Shards into ${response.converted.coins.toLocaleString()} coins.`, 'success');
+    } catch (error) {
+      showPopup(error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
   document.getElementById('rift-boss-retreat')?.addEventListener('click', () => {
     if (!riftState.battle) return;
     const battleId = riftState.battle.battleId;
     window.emitRiftEvent?.('rift-boss-retreat', { battleId });
     riftState.battle = null;
+    riftClearProjectiles();
     riftShowResult(false, 'You left the encounter. Your Rift progress and rewards remain safe.');
   });
   document.getElementById('rift-result-close')?.addEventListener('click', () => {
     document.getElementById('rift-result')?.classList.add('hidden');
     riftState.battle = null;
+    riftClearProjectiles();
   });
   document.getElementById('rift-attack-button')?.addEventListener('click', () => {
-    if (riftState.battle) window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
+    if (riftState.battle && riftState.battleHealth > 0) window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
   });
   document.querySelectorAll('[data-rift-boss]').forEach(button => {
     button.addEventListener('click', () => {
@@ -1527,13 +1623,20 @@ function riftBindControls() {
   });
   document.addEventListener('keydown', event => {
     if (gameState.currentDimension !== 'rift-realm') return;
+    if (!document.getElementById('rift-npc-panel')?.classList.contains('hidden') && !riftState.battle) {
+      if (event.key === 'Escape') riftCloseNpcPanel(true);
+      return;
+    }
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName)) return;
+    if (!document.getElementById('rift-npc-panel')?.classList.contains('hidden')) {
+      return;
+    }
     const key = event.key.toLowerCase();
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
       event.preventDefault();
       riftHeldKeys.add(key);
     }
-    if ((key === ' ' || key === 'enter') && riftState.battle) {
+    if ((key === ' ' || key === 'enter') && riftState.battle && riftState.battleHealth > 0) {
       event.preventDefault();
       window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
     }
@@ -1573,14 +1676,22 @@ function riftBindControls() {
     const battle = event.detail;
     if (!battle?.battleId) return;
     riftState.battle = battle;
-    riftState.battlePosition = { x: 50, y: 82 };
+    const localName = String(currentUser?.username || '').toLowerCase();
+    const local = battle.party?.find(player => String(player.username).toLowerCase() === localName);
+    riftState.battlePosition = { x: Number(local?.x) || 50, y: Number(local?.y) || 82 };
     riftState.battleHealth = 100;
     riftState.lastPatternPulse = 0;
-    document.getElementById('rift-player-hp-fill').style.width = '100%';
+    riftClearProjectiles();
+    const health = document.getElementById('rift-player-hp-fill');
+    if (health) health.style.width = `${riftState.battleHealth}%`;
+    const healthLabel = document.getElementById('rift-player-health-label');
+    if (healthLabel) healthLabel.textContent = 'VITALITY · 100%';
+    document.getElementById('rift-attack-button')?.removeAttribute('disabled');
     document.getElementById('rift-boss-avatar')?.classList.toggle('is-finn', battle.bossKey.includes('finn'));
     document.getElementById('rift-boss-avatar')?.classList.toggle('is-angel', battle.bossKey === 'rift-angel');
     document.getElementById('rift-boss-arena')?.classList.remove('hidden');
     document.getElementById('rift-result')?.classList.add('hidden');
+    riftCloseNpcPanel();
     riftRenderBossState(battle);
     riftRenderBattlePlayers(battle.party || []);
   });
@@ -1596,6 +1707,26 @@ function riftBindControls() {
     }
   });
   window.addEventListener('rift:rift-boss-pattern', event => riftHandleAttackPattern(event.detail));
+  window.addEventListener('rift:rift-boss-projectiles', event => {
+    if (event.detail?.battleId !== riftState.battle?.battleId) return;
+    riftRenderProjectiles(event.detail.projectiles || []);
+  });
+  window.addEventListener('rift:rift-player-damaged', event => {
+    if (event.detail?.battleId !== riftState.battle?.battleId) return;
+    riftState.battleHealth = Math.max(0, Math.min(100, Number(event.detail.health) || 0));
+    const health = document.getElementById('rift-player-hp-fill');
+    const warning = document.getElementById('rift-arena-warning');
+    if (health) health.style.width = `${riftState.battleHealth}%`;
+    const healthLabel = document.getElementById('rift-player-health-label');
+    if (healthLabel) healthLabel.textContent = `VITALITY · ${riftState.battleHealth}%`;
+    if (warning) warning.textContent = `HIT · ${event.detail.damage || 0} DAMAGE · ${riftState.battleHealth}% VITALITY`;
+  });
+  window.addEventListener('rift:rift-player-defeated', event => {
+    if (event.detail?.battleId !== riftState.battle?.battleId) return;
+    const warning = document.getElementById('rift-arena-warning');
+    if (warning) warning.textContent = 'DEFEATED · YOUR PARTY CAN STILL FIGHT';
+    document.getElementById('rift-attack-button')?.setAttribute('disabled', 'disabled');
+  });
   window.addEventListener('rift:rift-boss-hit', event => {
     const effect = document.getElementById('rift-attack-effect');
     const warning = document.getElementById('rift-arena-warning');
@@ -1609,18 +1740,22 @@ function riftBindControls() {
     const result = event.detail;
     if (result?.success) {
       void riftRefreshProfile().catch(error => console.error('Rift reward refresh failed:', error));
-      riftShowResult(true, `${result.bossName} defeated! Your Rift Chest, Rift Coins, and Rift XP have been added to your profile.`);
+      riftState.battle = null;
+      riftClearProjectiles();
+      riftShowResult(true, `${result.bossName} defeated! Your Rift Chest, Rift Shards, and Rift XP have been added to your profile.`);
     } else if (riftState.battle) {
       riftState.battle = null;
-      riftShowResult(false, 'The party left the encounter before defeating the boss.');
+      riftClearProjectiles();
+      riftShowResult(false, 'The party was defeated or left the encounter. Regroup and try again.');
     }
   });
   window.addEventListener('rift:rift-boss-retreated', () => {
     riftState.battle = null;
+    riftClearProjectiles();
   });
   window.addEventListener('rift:rift-reward', event => {
     const reward = event.detail;
-    if (reward?.coins) showPopup(`${reward.bossName} defeated! +${reward.coins} Rift Coins, +${reward.xp} XP, and a Rift Chest.`, 'success');
+    if (reward?.shards) showPopup(`${reward.bossName} defeated! +${reward.shards} Rift Shards, +${reward.xp} XP, and a Rift Chest.`, 'success');
     void riftRefreshProfile().catch(error => console.error('Rift profile refresh failed:', error));
   });
   window.addEventListener('rift:rift-error', event => {
@@ -1641,7 +1776,7 @@ function riftMovementFrame(timestamp) {
     x: Number(riftHeldKeys.has('d') || riftHeldKeys.has('arrowright')) - Number(riftHeldKeys.has('a') || riftHeldKeys.has('arrowleft')),
     y: Number(riftHeldKeys.has('s') || riftHeldKeys.has('arrowdown')) - Number(riftHeldKeys.has('w') || riftHeldKeys.has('arrowup'))
   };
-  if (gameState.currentDimension === 'rift-realm' && (direction.x || direction.y)) {
+  if (gameState.currentDimension === 'rift-realm' && (direction.x || direction.y) && (!riftState.battle || riftState.battleHealth > 0)) {
     const movingInBattle = Boolean(riftState.battle && battlefield && !document.getElementById('rift-boss-arena')?.classList.contains('hidden'));
     const target = movingInBattle ? riftState.battlePosition : riftState.position;
     const profile = riftState.profile;
