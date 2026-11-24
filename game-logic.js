@@ -132,7 +132,7 @@ const riftState = {
   roster: [],
   partyId: null,
   party: null,
-  position: { x: 50, y: 58 },
+  position: { x: 50, y: 82 },
   positionSynced: false,
   battle: null,
   battlePosition: { x: 50, y: 82 },
@@ -1102,7 +1102,7 @@ function enterRiftRealm() {
   document.getElementById('game-page')?.classList.add('hidden');
   document.getElementById('rift-realm-screen')?.classList.remove('hidden');
   gameState.currentDimension = 'rift-realm';
-  riftState.position = { x: 50, y: 58 };
+  riftState.position = { x: 50, y: 82 };
   riftState.positionSynced = false;
   riftState.battle = null;
   riftRenderProfile();
@@ -1476,16 +1476,66 @@ function riftUpdateConvertPreview() {
   preview.textContent = `${amount.toLocaleString()} Shard${amount === 1 ? '' : 's'} → ${(amount * 1_000_000).toLocaleString()} coins`;
 }
 
+const RIFT_NPC_POSITIONS = {
+  portal: { x: 50, y: 42, label: 'Challenge Portal' },
+  shop: { x: 28, y: 27, label: 'Shard Merchant' },
+  exchange: { x: 27, y: 66, label: 'Coin Exchange' },
+  profile: { x: 72, y: 27, label: 'Rift Guide' },
+  party: { x: 73, y: 66, label: 'Party Beacon' }
+};
+
+function riftCanTalkToNpc(name) {
+  const npc = RIFT_NPC_POSITIONS[name];
+  const map = document.getElementById('rift-map');
+  if (!npc || !map) return false;
+  return Math.hypot(riftState.position.x - npc.x, riftState.position.y - npc.y) <= 12;
+}
+
+function riftUpdateNpcProximity() {
+  const prompt = document.getElementById('rift-interact-prompt');
+  if (!prompt || gameState.currentDimension !== 'rift-realm' || riftState.battle) return;
+  let nearest = null;
+  let nearestDistance = Infinity;
+  const map = document.getElementById('rift-map');
+  if (!map?.clientWidth || !map?.clientHeight) return;
+  Object.entries(RIFT_NPC_POSITIONS).forEach(([name, npc]) => {
+    const distance = Math.hypot(riftState.position.x - npc.x, riftState.position.y - npc.y);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = { name, ...npc };
+    }
+  });
+  const inRange = nearest && riftCanTalkToNpc(nearest.name);
+  document.querySelectorAll('[data-rift-npc]').forEach(button => {
+    button.classList.toggle('is-nearby', Boolean(inRange && button.dataset.riftNpc === nearest.name));
+  });
+  prompt.classList.toggle('hidden', !inRange);
+  if (inRange) prompt.textContent = `E · TALK TO ${nearest.label.toUpperCase()}`;
+}
+
+function riftInteractWithNpc(name) {
+  if (!riftCanTalkToNpc(name)) {
+    const npc = RIFT_NPC_POSITIONS[name];
+    showPopup(`Walk closer to the ${npc?.label || 'NPC'} to talk.`, 'error');
+    riftUpdateNpcProximity();
+    return false;
+  }
+  riftLastNpcButton = document.querySelector(`[data-rift-npc="${CSS.escape(name)}"]`);
+  riftOpenNpcPanel(name);
+  return true;
+}
+
 function riftOpenNpcPanel(name) {
   const panel = document.getElementById('rift-npc-panel');
-  if (!panel) return;
+  if (!panel || !riftCanTalkToNpc(name)) return;
   const heading = document.getElementById('rift-panel-title');
-  const titles = { profile: 'Wayfarer · Profile', portal: 'Rift Challenge Portal', party: 'Party Beacon', shop: 'Shard Merchant', exchange: 'Coin Exchange' };
+  const titles = { profile: 'Rift Guide · Profile', portal: 'Rift Challenge Portal', party: 'Party Beacon', shop: 'Shard Merchant', exchange: 'Coin Exchange' };
   if (heading) heading.textContent = titles[name] || 'Rift menu';
   panel.querySelectorAll('[data-rift-panel]').forEach(section => {
     section.classList.toggle('hidden', section.dataset.riftPanel !== name);
   });
   panel.classList.remove('hidden');
+  document.getElementById('rift-interact-prompt')?.classList.add('hidden');
   if (name === 'exchange') {
     const balance = document.getElementById('rift-convert-balance');
     if (balance) balance.textContent = `Available: ${riftState.profile?.shards || 0} Rift Shards`;
@@ -1506,8 +1556,7 @@ function riftBindControls() {
   document.getElementById('rift-exit')?.addEventListener('click', exitRiftRealm);
   document.querySelectorAll('[data-rift-npc]').forEach(button => {
     button.addEventListener('click', () => {
-      riftLastNpcButton = button;
-      riftOpenNpcPanel(button.dataset.riftNpc);
+      riftInteractWithNpc(button.dataset.riftNpc);
     });
   });
   document.querySelectorAll('[data-rift-panel-close]').forEach(button => {
@@ -1632,6 +1681,13 @@ function riftBindControls() {
       return;
     }
     const key = event.key.toLowerCase();
+    if (key === 'e' && !riftState.battle) {
+      event.preventDefault();
+      const nearest = Object.keys(RIFT_NPC_POSITIONS).find(name => riftCanTalkToNpc(name));
+      if (nearest) riftInteractWithNpc(nearest);
+      else showPopup('Walk closer to an NPC before talking.', 'error');
+      return;
+    }
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
       event.preventDefault();
       riftHeldKeys.add(key);
@@ -1641,6 +1697,7 @@ function riftBindControls() {
       window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
     }
   });
+  window.addEventListener('resize', riftUpdateNpcProximity);
   document.addEventListener('keyup', event => riftHeldKeys.delete(event.key.toLowerCase()));
   window.addEventListener('blur', () => riftHeldKeys.clear());
   window.addEventListener('rift:rift-lobby-state', event => {
@@ -1653,6 +1710,12 @@ function riftBindControls() {
   });
   window.addEventListener('rift:connection-lost', () => {
     riftState.positionSynced = false;
+  });
+  window.addEventListener('rift:rift-position-correction', event => {
+    if (!Number.isFinite(Number(event.detail?.x)) || !Number.isFinite(Number(event.detail?.y))) return;
+    riftState.position = { x: Number(event.detail.x), y: Number(event.detail.y) };
+    riftRenderLobby();
+    riftUpdateNpcProximity();
   });
   window.addEventListener('rift:rift-player-moved', event => {
     const player = riftState.roster.find(entry => String(entry.username).toLowerCase() === String(event.detail?.username).toLowerCase());
@@ -1802,8 +1865,10 @@ function riftMovementFrame(timestamp) {
         y: target.y
       });
     }
+    if (!movingInBattle) riftUpdateNpcProximity();
   } else {
     riftState.lastFrameAt = timestamp;
+    if (!riftState.battle) riftUpdateNpcProximity();
   }
   riftMoveFrame = requestAnimationFrame(riftMovementFrame);
 }
