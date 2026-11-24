@@ -300,6 +300,7 @@ function initMultiplayer() {
     'rift-boss-pattern',
     'rift-boss-projectiles',
     'rift-boss-player-moved',
+    'rift-boss-dashed',
     'rift-boss-party-state',
     'rift-boss-hit',
     'rift-player-damaged',
