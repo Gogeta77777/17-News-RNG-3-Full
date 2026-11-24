@@ -6847,6 +6847,7 @@
         .rift-player-label { position: absolute; top: 19px; left: 50%; padding: 3px 6px; border: 1px solid rgba(148, 163, 184, .2); border-radius: 3px; background: rgba(5, 8, 20, .86); color: #f8fafc; font-size: .61rem; font-weight: 700; white-space: nowrap; transform: translateX(-50%); }
         .rift-player-title { display: block; color: var(--rift-color, #7dd3fc); font-size: .52rem; text-align: center; }
         .rift-player-avatar.is-local { width: 19px; height: 19px; }
+        .rift-player-avatar.is-defeated { opacity: .4; filter: grayscale(1); }
         .rift-section-heading { display: flex; align-items: end; justify-content: space-between; margin: 18px 0 10px; }
         .rift-section-heading span { color: #a5b4fc; font-size: .62rem; font-weight: 800; letter-spacing: .14em; }
         .rift-section-heading h2, .rift-card h2 { margin: 4px 0 0; font: 700 1rem 'Orbitron', sans-serif; }
@@ -6929,8 +6930,114 @@
         @keyframes corruptedChestReveal { 50% { filter: hue-rotate(26deg) contrast(1.25); transform: translateX(3px); } }
         @keyframes corruptedChestCore { to { transform: scale(1.13) rotate(8deg); filter: hue-rotate(-18deg); } }
         @keyframes corruptedChestText { to { transform: skewX(-3deg) translateX(1px); } }
-        @media (max-width: 900px) { .rift-layout { grid-template-columns: minmax(0, 1fr); } .rift-map { min-height: 340px; } .rift-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (max-width: 580px) { .rift-layout { padding: 10px; } .rift-map { min-height: 300px; } .rift-sidebar { grid-template-columns: minmax(0, 1fr); } .rift-arena-top { grid-template-columns: auto 1fr; } .rift-arena-top .rift-boss-health { grid-column: 1 / -1; width: 100%; } .rift-arena-top > div:nth-child(2) { grid-column: 2; grid-row: 1; } .rift-boss-arena { inset: 8px; } .rift-arena-controls { justify-content: center; } .rift-header-actions { gap: 7px; } }
+        .rift-header { min-height: 60px; padding: 8px clamp(12px, 2vw, 22px); }
+        .rift-brand { display: flex; align-items: center; gap: 10px; }
+        .rift-brand h1 { font-size: 1.15rem; }
+        .rift-brand-mark { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid rgba(192,132,252,.52); border-radius: 9px 3px 9px 3px; background: linear-gradient(145deg,rgba(126,34,206,.3),rgba(8,14,34,.9)); color: #ddd6fe; font: 800 1.1rem 'Orbitron',sans-serif; box-shadow: 0 0 16px rgba(139,92,246,.25); }
+        .rift-header-actions { gap: 9px; font-size: .64rem; }
+        .rift-header-actions #rift-online-count { color: #a5b4fc; }
+        .rift-header-actions .btn { min-height: 30px; padding: 5px 10px; font-size: .68rem; }
+        .rift-layout { position: relative; display: block; flex: 1; width: min(1420px,100%); min-height: 0; padding: 10px 12px 40px; }
+        .rift-exploration { height: 100%; }
+        .rift-map { min-height: 410px; height: min(760px,calc(100dvh - 130px)); max-height: 100%; border-color: rgba(165,180,252,.25); border-radius: 10px; background: radial-gradient(ellipse at 50% 43%,rgba(83,68,158,.2),transparent 42%),linear-gradient(145deg,#111a31,#0a1020 52%,#111426); }
+        .rift-map::before { z-index: 0; inset: auto; top: 21%; left: 17%; width: 66%; height: 60%; border: 1px solid rgba(148,163,184,.08); border-radius: 50%; transform: rotate(-12deg); box-shadow: 0 0 0 20px rgba(148,163,184,.018),0 0 0 40px rgba(148,163,184,.013); }
+        .rift-map::after { z-index: 0; width: 70px; height: 70px; left: 50%; top: 42%; opacity: .46; }
+        .rift-map-grid { z-index: 0; background-size: 56px 56px; opacity: .48; }
+        .rift-landmass { position: absolute; z-index: 1; pointer-events: none; background: linear-gradient(145deg,rgba(35,47,78,.85),rgba(17,26,48,.85)); border: 1px solid rgba(148,163,184,.15); box-shadow: inset 0 0 20px rgba(148,163,184,.04); }
+        .rift-landmass-west { left: 4%; top: 24%; width: 22%; height: 36%; border-radius: 48% 32% 50% 40%; transform: rotate(-14deg); }
+        .rift-landmass-east { right: 4%; top: 27%; width: 22%; height: 34%; border-radius: 35% 50% 38% 50%; transform: rotate(12deg); }
+        .rift-walkway { position: absolute; z-index: 1; top: 34%; left: 22%; width: 56%; height: 19%; border-top: 1px solid rgba(165,180,252,.2); border-bottom: 1px solid rgba(165,180,252,.13); background: linear-gradient(90deg,transparent,rgba(99,102,241,.08),rgba(192,132,252,.12),rgba(99,102,241,.08),transparent); transform: skewY(-6deg); pointer-events: none; }
+        .rift-zone-label { top: 14px; left: 18px; display: grid; gap: 3px; color: #cbd5e1; font-size: .61rem; letter-spacing: .1em; }
+        .rift-zone-label span { color: #86efac; font-size: .52rem; letter-spacing: .17em; }
+        .rift-map-online { position: absolute; z-index: 3; top: 15px; right: 18px; display: flex; align-items: center; gap: 6px; color: #a7f3d0; font-size: .53rem; font-weight: 800; letter-spacing: .12em; }
+        .rift-map-online i { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+        .rift-player-list { position: absolute; z-index: 6; inset: 0; pointer-events: none; }
+        .rift-player-avatar { width: 15px; height: 15px; border-width: 1px; }
+        .rift-player-avatar.is-local { width: 18px; height: 18px; }
+        .rift-player-label { top: 17px; padding: 2px 5px; font-size: .55rem; }
+        .rift-player-title { font-size: .47rem; }
+        .rift-npc-button { position: absolute; z-index: 5; display: grid; justify-items: center; gap: 3px; min-width: 76px; padding: 0; border: 0; background: transparent; color: #e2e8f0; font: inherit; cursor: pointer; transform: translate(-50%,-50%); transition: filter .16s ease,scale .16s ease; }
+        .rift-npc-button:hover,.rift-npc-button:focus-visible { z-index: 9; filter: brightness(1.25); scale: 1.07; outline: none; }
+        .rift-npc-art { display: grid; width: 31px; height: 36px; place-items: center; border: 1px solid rgba(191,219,254,.35); border-radius: 13px 13px 8px 8px; background: radial-gradient(circle at 50% 24%,#f8fafc 0 10%,#a5b4fc 12%,#34436a 47%,#141c35 78%); color: #e9d5ff; font-size: 1rem; text-shadow: 0 0 10px #c084fc; box-shadow: 0 4px 13px rgba(0,0,0,.4),0 0 14px rgba(129,140,248,.2); }
+        .rift-npc-shop .rift-npc-art { background: radial-gradient(circle at 50% 23%,#fef3c7 0 9%,#fbbf24 12%,#7c5424 46%,#292016 78%); color: #fff7cc; }
+        .rift-npc-exchange .rift-npc-art { background: radial-gradient(circle at 50% 23%,#d1fae5 0 9%,#34d399 12%,#1d5c56 46%,#122a31 78%); }
+        .rift-npc-party .rift-npc-art { background: radial-gradient(circle at 50% 23%,#dbeafe 0 9%,#60a5fa 12%,#34477e 46%,#171d39 78%); }
+        .rift-npc-name { padding: 3px 5px; border: 1px solid rgba(148,163,184,.2); border-radius: 3px; background: rgba(5,9,21,.88); color: #f1f5f9; font-size: .48rem; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
+        .rift-npc-prompt { color: #c4b5fd; font-size: .46rem; font-weight: 800; letter-spacing: .12em; }
+        .rift-portal-npc { top: 42%; left: 50%; width: 70px; min-width: 0; height: 108px; border: 1px solid rgba(196,181,253,.64); border-radius: 50%; background: radial-gradient(ellipse,rgba(192,132,252,.24),rgba(9,12,30,.93) 62%); box-shadow: 0 0 20px rgba(168,85,247,.35),inset 0 0 18px rgba(147,51,234,.36); }
+        .rift-gate-core { position: absolute; inset: 8px 12px 21px; border-radius: 50%; background: radial-gradient(ellipse at 50% 44%,rgba(221,214,254,.8),rgba(126,34,206,.48) 14%,rgba(12,9,28,.98) 66%); box-shadow: inset 0 0 14px rgba(192,132,252,.7),0 0 15px rgba(168,85,247,.43); animation: riftCorePulse 3.8s ease-in-out infinite alternate; }
+        .rift-portal-npc .rift-npc-name { position: absolute; top: calc(100% + 5px); }
+        .rift-npc-shop { top: 27%; left: 28%; }
+        .rift-npc-exchange { top: 66%; left: 27%; }
+        .rift-npc-wayfarer { top: 27%; left: 72%; }
+        .rift-npc-party { top: 66%; left: 73%; }
+        .rift-map-hint { bottom: 8px; font-size: .54rem; }
+        .rift-roster { display: none; }
+        .rift-lobby-hud { position: absolute; z-index: 8; right: 18px; bottom: 7px; left: 18px; display: flex; justify-content: center; gap: 8px; pointer-events: none; }
+        .rift-lobby-hud span { padding: 5px 8px; border: 1px solid rgba(148,163,184,.17); border-radius: 4px; background: rgba(5,9,21,.83); color: #cbd5e1; font-size: .55rem; }
+        .rift-lobby-hud span i { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: #c4b5fd; }
+        .rift-npc-panel { position: fixed; z-index: 1250; inset: 0; display: grid; place-items: center; padding: 16px; }
+        .rift-npc-panel.hidden { display: none; }
+        .rift-panel-backdrop { position: absolute; inset: 0; border: 0; background: rgba(2,5,15,.58); backdrop-filter: blur(4px); }
+        .rift-panel-shell { position: relative; z-index: 1; width: min(440px,100%); max-height: min(580px,88vh); overflow: auto; border: 1px solid rgba(165,180,252,.28); border-radius: 8px; background: linear-gradient(145deg,#151b35,#080d1e 76%); box-shadow: 0 22px 65px rgba(0,0,0,.6),0 0 26px rgba(99,102,241,.16); animation: riftRevealIn .18s ease-out both; }
+        .rift-panel-header { position: sticky; z-index: 2; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid rgba(148,163,184,.15); background: rgba(12,17,36,.96); }
+        .rift-panel-header h2 { margin: 3px 0 0; font: 700 1rem 'Orbitron',sans-serif; }
+        .rift-panel-close { width: 30px; height: 30px; border: 1px solid rgba(148,163,184,.2); border-radius: 4px; background: rgba(148,163,184,.06); color: #e2e8f0; font-size: 1.2rem; cursor: pointer; }
+        .rift-panel-content { padding: 12px; }
+        .rift-panel-view.hidden { display: none; }
+        .rift-panel-content .rift-card { padding: 12px; border: 0; background: transparent; box-shadow: none; }
+        .rift-panel-content .rift-card h2 { margin-bottom: 7px; font-size: .92rem; }
+        .rift-panel-content .rift-card p { margin: 7px 0 10px; font-size: .69rem; }
+        .rift-currency-row { margin: 8px 0; }
+        .rift-xp-track { margin: 9px 0 4px; }
+        .rift-stat { padding: 5px 3px; }
+        .rift-stat-actions { margin: 7px 0 4px; }
+        .rift-boss-arena { position: absolute; z-index: 10; inset: 7px; grid-template-rows: auto minmax(0,1fr) auto; gap: 6px; padding: 9px; border-radius: 8px; background: radial-gradient(ellipse at 50% 22%,rgba(92,49,148,.22),transparent 56%),rgba(6,9,22,.96); }
+        .rift-arena-top { grid-template-columns: auto minmax(0,1fr) minmax(90px,.8fr); gap: 8px; }
+        .rift-arena-top h2 { font-size: clamp(.85rem,2.4vw,1.25rem); }
+        .rift-arena-top .btn,.rift-arena-controls .btn { min-height: 28px; padding: 5px 8px; font-size: .59rem; }
+        .rift-boss-health { font-size: .54rem; }
+        .rift-boss-health div { height: 7px; }
+        .rift-battlefield { min-height: 210px; height: 100%; }
+        .rift-boss-avatar { top: 17%; width: clamp(47px,7vw,72px); }
+        .rift-boss-nameplate { top: calc(17% + clamp(30px,4vw,46px)); font-size: .53rem; }
+        .rift-battle-players { position: absolute; inset: 0; }
+        .rift-projectile-layer { position: absolute; z-index: 5; inset: 0; overflow: hidden; pointer-events: none; }
+        .rift-projectile { position: absolute; display: block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.92); border-radius: 50%; background: radial-gradient(circle at 35% 32%,#fff,var(--projectile-color,#fb7185) 34%,rgba(30,10,42,.94) 78%); box-shadow: 0 0 7px #fff,0 0 15px var(--projectile-color,#fb7185),0 0 24px var(--projectile-color,#fb7185); transform: translate(-50%,-50%) rotate(var(--projectile-angle,0deg)); transition: left 55ms linear,top 55ms linear; will-change: left,top; }
+        .rift-projectile.projectile-shard,.rift-projectile.projectile-cross,.rift-projectile.projectile-spiral { width: 13px; height: 19px; border-radius: 3px 50% 50%; }
+        .rift-projectile.projectile-spear { width: 9px; height: 34px; border-radius: 50%; box-shadow: 0 0 8px #fff,0 0 17px var(--projectile-color,#c4b5fd),0 0 28px var(--projectile-color,#c4b5fd); }
+        .rift-projectile.projectile-sweep { width: 20px; height: 20px; }
+        .rift-projectile.projectile-halo { width: 18px; height: 18px; border-width: 2px; }
+        .rift-arena-warning { bottom: 14%; padding: 5px 8px; font-size: .57rem; }
+        .rift-player-health { bottom: 8px; left: 10px; }
+        .rift-arena-controls { gap: 6px; justify-content: center; font-size: .54rem; }
+        .rift-result { z-index: 1280; }
+        .rift-convert-label { display: block; margin: 10px 0 4px; color: #cbd5e1; font-size: .67rem; }
+        #rift-convert-preview,#rift-convert-balance { display: block; margin-top: 6px; color: #c4b5fd; }
+        @media (max-width: 600px) {
+            .rift-header { min-height: 52px; }
+            .rift-brand-mark { width: 30px; height: 30px; }
+            .rift-brand h1 { font-size: .94rem; }
+            .rift-header-actions { gap: 6px; }
+            .rift-header-actions .btn { padding: 4px 7px; }
+            .rift-layout { padding: 7px 7px 38px; }
+            .rift-map { height: calc(100dvh - 105px); min-height: 440px; }
+            .rift-landmass-west { left: 2%; width: 24%; }
+            .rift-landmass-east { right: 2%; width: 24%; }
+            .rift-npc-shop { left: 23%; }
+            .rift-npc-exchange { left: 23%; }
+            .rift-npc-wayfarer { left: 77%; }
+            .rift-npc-party { left: 77%; }
+            .rift-npc-art { width: 27px; height: 31px; }
+            .rift-npc-name { font-size: .43rem; }
+            .rift-lobby-hud { right: 7px; left: 7px; gap: 4px; }
+            .rift-lobby-hud span { padding: 4px 6px; font-size: .5rem; }
+            .rift-arena-top { grid-template-columns: 1fr 1.7fr; }
+            .rift-arena-top .rift-boss-health { grid-column: 1/-1; width: 100%; }
+            .rift-arena-top > div:nth-child(2) { grid-column: 2; grid-row: 1; }
+            .rift-boss-arena { inset: 5px; padding: 7px; }
+            .rift-arena-controls > span:first-child,.rift-arena-controls > span:nth-child(2) { display: none; }
+        }
         @media (prefers-reduced-motion: reduce) { .rift-map::after, .rift-boss-avatar.is-stunned, .rift-boss-avatar.is-angel::before, .rift-chest-reveal.is-corrupted .rift-chest-reveal-emblem, .rift-chest-reveal.is-corrupted .rift-chest-reveal-card, .rift-chest-reveal.is-corrupted .rift-chest-reveal-card strong { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
     </style>
 </head>
@@ -7608,79 +7715,88 @@
 
     <main class="rift-realm-screen hidden" id="rift-realm-screen" aria-label="Rift Realm">
         <header class="rift-header">
-            <div><span class="rift-kicker">UPDATE 7 PART 2 · THE RIFT REALM</span><h1>The Rift</h1></div>
-            <div class="rift-header-actions"><span id="rift-level-label">LEVEL 1</span><button class="btn" id="rift-exit" type="button">Exit Realm</button></div>
+            <div class="rift-brand"><span class="rift-brand-mark" aria-hidden="true">R</span><div><span class="rift-kicker">RIFT NETWORK</span><h1>Wayfarer’s Rest</h1></div></div>
+            <div class="rift-header-actions"><span id="rift-level-label">LEVEL 1</span><span id="rift-online-count">0 online</span><button class="btn" id="rift-exit" type="button">Exit</button></div>
         </header>
         <div class="rift-layout">
             <section class="rift-exploration">
                 <div class="rift-map" id="rift-map" tabindex="0" role="application" aria-label="Rift exploration map. Move with WASD or arrow keys.">
                     <div class="rift-map-grid" aria-hidden="true"></div>
-                    <div class="rift-gate" aria-hidden="true"></div>
-                    <div class="rift-zone-label">FRACTURED ARRIVAL</div>
+                    <div class="rift-landmass rift-landmass-west" aria-hidden="true"></div>
+                    <div class="rift-landmass rift-landmass-east" aria-hidden="true"></div>
+                    <div class="rift-walkway" aria-hidden="true"></div>
+                    <div class="rift-zone-label"><span>SAFE ZONE</span> WAYFARER’S REST</div>
                     <div class="rift-player-list" id="rift-player-list" aria-live="polite"></div>
-                    <p class="rift-map-hint">WASD / ARROWS · MOVE · EXPLORE THE LOBBY</p>
+                    <button class="rift-gate rift-npc-button rift-portal-npc" type="button" data-rift-npc="portal" aria-label="Rift Challenge Portal"><span class="rift-gate-core" aria-hidden="true"></span><span class="rift-npc-name">CHALLENGE PORTAL</span></button>
+                    <button class="rift-npc-button rift-npc-shop" type="button" data-rift-npc="shop" aria-label="Open Rift shop"><span class="rift-npc-art">✦</span><span class="rift-npc-name">SHARD MERCHANT</span><span class="rift-npc-prompt">SHOP</span></button>
+                    <button class="rift-npc-button rift-npc-exchange" type="button" data-rift-npc="exchange" aria-label="Convert Rift Shards to coins"><span class="rift-npc-art">⇄</span><span class="rift-npc-name">COIN EXCHANGE</span><span class="rift-npc-prompt">TRADE</span></button>
+                    <button class="rift-npc-button rift-npc-wayfarer" type="button" data-rift-npc="profile" aria-label="Open Rift progression and chests"><span class="rift-npc-art">✧</span><span class="rift-npc-name">WAYFARER</span><span class="rift-npc-prompt">PROFILE</span></button>
+                    <button class="rift-npc-button rift-npc-party" type="button" data-rift-npc="party" aria-label="Open Rift party"><span class="rift-npc-art">◎</span><span class="rift-npc-name">PARTY BEACON</span><span class="rift-npc-prompt">PARTY</span></button>
+                    <div class="rift-map-online" aria-hidden="true"><i></i> LOBBY ACTIVE</div>
+                    <p class="rift-map-hint">WASD / ARROWS · EXPLORE · TALK TO LOBBY NPCS</p>
+                    <section class="rift-boss-arena hidden" id="rift-boss-arena" aria-label="Rift boss battle">
+                        <div class="rift-arena-top">
+                            <button class="btn" id="rift-boss-retreat" type="button">LEAVE FIGHT</button>
+                            <div><span id="rift-boss-phase">PHASE 1</span><h2 id="rift-boss-name">Rift Boss</h2></div>
+                            <div class="rift-boss-health"><span id="rift-boss-hp-label">100%</span><div><i id="rift-boss-hp-fill"></i></div></div>
+                        </div>
+                        <div class="rift-battlefield" id="rift-battlefield">
+                            <div class="rift-battle-grid" aria-hidden="true"></div>
+                            <div class="rift-boss-avatar" id="rift-boss-avatar">✦</div>
+                            <span class="rift-boss-nameplate" id="rift-boss-nameplate">RIFT BOSS</span>
+                            <div class="rift-attack-effect hidden" id="rift-attack-effect" aria-hidden="true"></div>
+                            <div class="rift-projectile-layer" id="rift-projectile-layer" aria-hidden="true"></div>
+                            <div class="rift-battle-players" id="rift-battle-players"></div>
+                            <div class="rift-arena-warning" id="rift-arena-warning" aria-live="assertive">DODGE THE ATTACK · STRIKE WHILE STAGGERED</div>
+                            <div class="rift-player-health"><span id="rift-player-health-label">VITALITY · 100%</span><i><b id="rift-player-hp-fill"></b></i></div>
+                        </div>
+                        <footer class="rift-arena-controls"><span>MOVE · WASD / ARROWS</span><span>STRIKE · SPACE / ENTER</span><span id="rift-boss-state-label">Preparing encounter…</span><button class="btn" id="rift-attack-button" type="button">STRIKE · STAGGER ONLY</button></footer>
+                    </section>
                 </div>
-                <div class="rift-section-heading"><div><span>RIFT NETWORK</span><h2>Players in the Rift</h2></div><strong id="rift-online-count">0 online</strong></div>
                 <div class="rift-roster" id="rift-roster"></div>
             </section>
-            <aside class="rift-sidebar">
-                <section class="rift-card rift-profile-card">
-                    <span class="rift-kicker">YOUR PROGRESSION</span>
-                    <h2 id="rift-profile-level">Rift Level 1</h2>
-                    <div class="rift-xp-track"><span id="rift-xp-fill"></span></div>
-                    <small id="rift-xp-label">0 / 150 XP</small>
-                    <div class="rift-currency-row"><span id="rift-coin-count">0 Rift Coins</span><span id="rift-chest-count">0 Rift Chests</span></div>
-                    <div class="rift-stats" id="rift-stats"></div>
-                    <div class="rift-stat-actions">
-                        <button class="btn" data-rift-stat="damage" type="button">+ Damage</button>
-                        <button class="btn" data-rift-stat="speed" type="button">+ Speed</button>
-                        <button class="btn" data-rift-stat="luck" type="button">+ Luck</button>
-                    </div>
-                    <small id="rift-points-label">0 stat points available</small>
-                    <div class="rift-owned-potions" id="rift-owned-potions"></div>
-                    <button class="btn rift-chest-button" id="rift-open-chest" type="button">OPEN RIFT CHEST</button>
-                </section>
-                <section class="rift-card">
-                    <span class="rift-kicker">ENCOUNTERS</span><h2>Choose a boss</h2>
-                    <p>Fight together with your party, or enter alone. Dodge the patterns and strike only when the boss is staggered.</p>
-                    <button class="btn rift-boss-button" data-rift-boss="corrupted-lord-finn-full-power" type="button">CORRUPTED LORD FINN · FULL POWER</button>
-                    <button class="btn rift-boss-button" data-rift-boss="rift-angel" type="button">RIFT ANGEL · CHALLENGE</button>
-                </section>
-                <section class="rift-card">
-                    <span class="rift-kicker">PARTY LINK</span><h2>Your party</h2>
-                    <div class="rift-party-members" id="rift-party-members">You are exploring solo.</div>
-                    <div class="rift-party-actions">
-                        <button class="btn" id="rift-party-create" type="button">CREATE PARTY</button>
-                        <button class="btn" id="rift-party-leave" type="button">LEAVE PARTY</button>
-                    </div>
-                    <label class="rift-invite-label" for="rift-invite-player">Invite a lobby player</label>
-                    <div class="rift-invite-row"><input id="rift-invite-player" list="rift-player-options" maxlength="24" autocomplete="off"><datalist id="rift-player-options"></datalist><button class="btn" id="rift-party-invite" type="button">INVITE</button></div>
-                </section>
-                <section class="rift-card">
-                    <span class="rift-kicker">RIFT EXCHANGE</span><h2>Realm shop</h2>
-                    <div class="rift-shop-items" id="rift-shop-items"></div>
-                </section>
-            </aside>
+            <div class="rift-lobby-hud">
+                <span><i aria-hidden="true"></i> <b id="rift-hud-shards">0 Shards</b></span>
+                <span><i aria-hidden="true"></i> <b id="rift-hud-chests">0 Chests</b></span>
+                <span id="rift-hud-party">Solo explorer</span>
+            </div>
         </div>
-        <section class="rift-boss-arena hidden" id="rift-boss-arena" aria-label="Rift boss battle">
-            <div class="rift-arena-top">
-                <button class="btn" id="rift-boss-retreat" type="button">RETREAT</button>
-                <div><span id="rift-boss-phase">PHASE 1</span><h2 id="rift-boss-name">Rift Boss</h2></div>
-                <div class="rift-boss-health"><span id="rift-boss-hp-label">100%</span><div><i id="rift-boss-hp-fill"></i></div></div>
+        <section class="rift-npc-panel hidden" id="rift-npc-panel" role="dialog" aria-modal="true" aria-labelledby="rift-panel-title">
+            <button class="rift-panel-backdrop" type="button" data-rift-panel-close aria-label="Close lobby menu"></button>
+            <div class="rift-panel-shell">
+                <header class="rift-panel-header"><div><span class="rift-kicker">WAYFARER’S REST</span><h2 id="rift-panel-title">Rift menu</h2></div><button class="rift-panel-close" type="button" data-rift-panel-close aria-label="Close">×</button></header>
+                <div class="rift-panel-content">
+                    <section class="rift-card rift-panel-view hidden" data-rift-panel="profile">
+                        <span class="rift-kicker">YOUR PROGRESSION</span><h2 id="rift-profile-level">Rift Level 1</h2>
+                        <div class="rift-xp-track"><span id="rift-xp-fill"></span></div><small id="rift-xp-label">0 / 150 XP</small>
+                        <div class="rift-currency-row"><span id="rift-coin-count">0 Rift Shards</span><span id="rift-chest-count">0 Rift Chests</span></div>
+                        <div class="rift-stats" id="rift-stats"></div>
+                        <div class="rift-stat-actions"><button class="btn" data-rift-stat="damage" type="button">+ Damage</button><button class="btn" data-rift-stat="speed" type="button">+ Speed</button><button class="btn" data-rift-stat="luck" type="button">+ Luck</button></div>
+                        <small id="rift-points-label">0 stat points available</small><div class="rift-owned-potions" id="rift-owned-potions"></div>
+                        <button class="btn rift-chest-button" id="rift-open-chest" type="button">OPEN RIFT CHEST</button>
+                    </section>
+                    <section class="rift-card rift-panel-view hidden" data-rift-panel="portal">
+                        <span class="rift-kicker">CHALLENGE PORTAL</span><h2>Choose your encounter</h2>
+                        <p>Three phases. Read the telegraph, dodge real projectiles, and strike only during the stagger window. Each boss has distinct attacks and timing.</p>
+                        <button class="btn rift-boss-button" data-rift-boss="corrupted-lord-finn-full-power" type="button">CORRUPTED LORD FINN · FULL POWER</button><button class="btn rift-boss-button" data-rift-boss="rift-angel" type="button">RIFT ANGEL · CHALLENGE</button>
+                    </section>
+                    <section class="rift-card rift-panel-view hidden" data-rift-panel="party">
+                        <span class="rift-kicker">PARTY BEACON</span><h2>Your party</h2><div class="rift-party-members" id="rift-party-members">You are exploring solo.</div>
+                        <div class="rift-party-actions"><button class="btn" id="rift-party-create" type="button">CREATE PARTY</button><button class="btn" id="rift-party-leave" type="button">LEAVE PARTY</button></div>
+                        <label class="rift-invite-label" for="rift-invite-player">Invite a lobby player</label>
+                        <div class="rift-invite-row"><input id="rift-invite-player" list="rift-player-options" maxlength="24" autocomplete="off"><datalist id="rift-player-options"></datalist><button class="btn" id="rift-party-invite" type="button">INVITE</button></div>
+                    </section>
+                    <section class="rift-card rift-panel-view hidden" data-rift-panel="shop">
+                        <span class="rift-kicker">SHARD MERCHANT</span><h2>Rift shop</h2><p>Potions last two minutes. Rift Shards can also be exchanged for main-game coins.</p><div class="rift-shop-items" id="rift-shop-items"></div>
+                    </section>
+                    <section class="rift-card rift-panel-view hidden" data-rift-panel="exchange">
+                        <span class="rift-kicker">COIN EXCHANGE</span><h2>Convert Rift Shards</h2><p><strong>1 Rift Shard = 1,000,000 coins.</strong> Conversion is one-way.</p>
+                        <label class="rift-convert-label" for="rift-convert-amount">Shards to convert</label>
+                        <div class="rift-invite-row"><input id="rift-convert-amount" type="number" min="1" step="1" value="1" inputmode="numeric"><button class="btn" id="rift-convert-button" type="button">CONVERT</button></div>
+                        <small id="rift-convert-preview">1 Shard → 1,000,000 coins</small><small id="rift-convert-balance"></small>
+                    </section>
+                </div>
             </div>
-            <div class="rift-battlefield" id="rift-battlefield">
-                <div class="rift-battle-grid" aria-hidden="true"></div>
-                <div class="rift-boss-avatar" id="rift-boss-avatar">✦</div>
-                <span class="rift-boss-nameplate" id="rift-boss-nameplate">RIFT BOSS</span>
-                <div class="rift-attack-effect hidden" id="rift-attack-effect" aria-hidden="true"></div>
-                <div class="rift-battle-players" id="rift-battle-players"></div>
-                <div class="rift-arena-warning" id="rift-arena-warning" aria-live="assertive">DODGE THE ATTACK · STRIKE WHILE STAGGERED</div>
-                <div class="rift-player-health"><span>VITALITY</span><i><b id="rift-player-hp-fill"></b></i></div>
-            </div>
-            <footer class="rift-arena-controls">
-                <span>MOVE · WASD / ARROWS</span><span>ATTACK · SPACE / ENTER</span><span id="rift-boss-state-label">Preparing encounter…</span>
-                <button class="btn" id="rift-attack-button" type="button">ATTACK WHEN STAGGERED</button>
-            </footer>
         </section>
         <div class="rift-result hidden" id="rift-result" role="status" aria-live="assertive">
             <span class="rift-kicker" id="rift-result-kicker">RIFT ENCOUNTER</span><h2 id="rift-result-title">VICTORY</h2><p id="rift-result-copy"></p><button class="btn" id="rift-result-close" type="button">CONTINUE EXPLORING</button>
