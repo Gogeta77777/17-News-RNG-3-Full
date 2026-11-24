@@ -340,30 +340,47 @@ function advanceRiftBossProjectiles(battle, now = Date.now()) {
   battle.lastProjectileTickAt = now;
   const remaining = [];
   for (const projectile of battle.projectiles) {
+    const previousX = projectile.x;
+    const previousY = projectile.y;
     projectile.x += projectile.vx * delta;
     projectile.y += projectile.vy * delta;
     if (now >= projectile.expiresAt || projectile.x < -12 || projectile.x > 112 || projectile.y < -12 || projectile.y > 112) continue;
-    let hit = false;
+    const segmentX = projectile.x - previousX;
+    const segmentY = projectile.y - previousY;
+    const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+    let hitPlayerKey = null;
+    let hitProgress = Infinity;
     for (const usernameKey of battle.members) {
       if (projectile.hitPlayers.has(usernameKey) || (battle.playerHealth.get(usernameKey) || 0) <= 0 || (battle.dashUntil.get(usernameKey) || 0) > now) continue;
       const position = battle.positions.get(usernameKey);
-      if (!position || Math.hypot(position.x - projectile.x, position.y - projectile.y) > projectile.radius + 2.1) continue;
-      projectile.hitPlayers.add(usernameKey);
-      hit = true;
-      const health = Math.max(0, (battle.playerHealth.get(usernameKey) || 0) - projectile.damage);
-      battle.playerHealth.set(usernameKey, health);
-      io.to(`user:${usernameKey}`).emit('rift-player-damaged', {
+      if (!position) continue;
+      const progress = segmentLengthSquared
+        ? Math.max(0, Math.min(1, ((position.x - previousX) * segmentX + (position.y - previousY) * segmentY) / segmentLengthSquared))
+        : 0;
+      const closestX = previousX + segmentX * progress;
+      const closestY = previousY + segmentY * progress;
+      if (Math.hypot(position.x - closestX, position.y - closestY) > projectile.radius + 0.65) continue;
+      if (progress < hitProgress) {
+        hitPlayerKey = usernameKey;
+        hitProgress = progress;
+      }
+    }
+    if (hitPlayerKey) {
+      projectile.hitPlayers.add(hitPlayerKey);
+      const health = Math.max(0, (battle.playerHealth.get(hitPlayerKey) || 0) - projectile.damage);
+      battle.playerHealth.set(hitPlayerKey, health);
+      io.to(`user:${hitPlayerKey}`).emit('rift-player-damaged', {
         battleId: battle.id,
         health,
         damage: projectile.damage,
         projectileId: projectile.id
       });
       if (health === 0) {
-        io.to(`user:${usernameKey}`).emit('rift-player-defeated', { battleId: battle.id, bossName: RIFT_BOSSES[battle.bossKey].name });
+        io.to(`user:${hitPlayerKey}`).emit('rift-player-defeated', { battleId: battle.id, bossName: RIFT_BOSSES[battle.bossKey].name });
         io.to(battle.room).emit('rift-boss-party-state', getRiftBossSnapshot(battle));
       }
     }
-    if (!hit) remaining.push(projectile);
+    if (!hitPlayerKey) remaining.push(projectile);
   }
   battle.projectiles = remaining;
   if (battle.members.every(key => (battle.playerHealth.get(key) || 0) <= 0)) {
