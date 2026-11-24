@@ -93,24 +93,24 @@ const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_esse
 const RIFT_BOSSES = {
   'corrupted-lord-finn-full-power': {
     name: 'Corrupted Lord Finn (Full Power)',
-    maxHp: 1050,
+    maxHp: 750,
     shards: 1,
     xp: 120,
-    telegraphMs: [1800, 1450, 1100],
-    attackMs: [7000, 8000, 9000],
-    attackPeriodMs: [1150, 900, 720],
-    stunMs: 3500,
+    telegraphMs: [2400, 2100, 1800],
+    attackMs: [5000, 5600, 6200],
+    attackPeriodMs: [1500, 1300, 1100],
+    stunMs: 4500,
     patterns: [['RIFT BOLTS', 'RIFT SWEEP', 'FRACTURE BURST'], ['CROSSRIFT VOLLEY', 'RIFT SWEEP'], ['SPIRAL COLLAPSE', 'CROSSRIFT VOLLEY', 'FRACTURE BURST']]
   },
   'rift-angel': {
     name: 'Rift Angel',
-    maxHp: 1900,
+    maxHp: 1250,
     shards: 2,
     xp: 240,
-    telegraphMs: [1700, 1350, 1000],
-    attackMs: [8000, 9500, 11000],
-    attackPeriodMs: [1100, 850, 650],
-    stunMs: 3500,
+    telegraphMs: [2200, 1900, 1600],
+    attackMs: [5200, 5900, 6600],
+    attackPeriodMs: [1400, 1200, 1000],
+    stunMs: 4500,
     patterns: [['HALO NOVA', 'RIFT RAIN', 'LIGHT SPEARS'], ['HALO NOVA', 'LIGHT SPEARS', 'VOID RAIN'], ['CELESTIAL SPIRAL', 'VOID RAIN', 'LIGHT SPEARS']]
   }
 };
@@ -266,13 +266,13 @@ function spawnRiftBossProjectiles(battle, now = Date.now()) {
   const add = (x, y, vx, vy, type = 'orb', radius = 2.1, damage = 16) => {
     projectiles.push({
       id: `${battle.id}-${++battle.nextProjectileId}`,
-      x, y, vx, vy, type, radius, damage: Math.max(10, Math.round(damage * 0.85)),
+      x, y, vx, vy, type, radius, damage: Math.max(6, Math.round(damage * 0.55)),
       color: battle.bossKey === 'rift-angel' ? '#c4b5fd' : '#fb7185',
       expiresAt: now + 6500,
       hitPlayers: new Set()
     });
   };
-  const speed = 19 + phase * 4;
+  const speed = (19 + phase * 4) * 0.8;
   const bossX = 50;
   const bossY = 17;
 
