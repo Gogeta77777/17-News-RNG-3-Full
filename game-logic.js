@@ -125,6 +125,10 @@ let autoRollTimer = null;
 let riftMoveFrame = null;
 let riftLastMoveSentAt = 0;
 let riftLastNpcButton = null;
+let riftDashUntil = 0;
+let riftDashCooldownUntil = 0;
+let riftDashDirection = { x: 0, y: 1 };
+let riftLastMoveDirection = { x: 0, y: 1 };
 const riftHeldKeys = new Set();
 const riftState = {
   profile: null,
@@ -1117,6 +1121,8 @@ function exitRiftRealm() {
   if (riftMoveFrame) cancelAnimationFrame(riftMoveFrame);
   riftMoveFrame = null;
   riftHeldKeys.clear();
+  riftDashUntil = 0;
+  riftDashCooldownUntil = 0;
   window.emitRiftEvent?.('rift-leave');
   document.getElementById('rift-realm-screen')?.classList.add('hidden');
   document.getElementById('rift-boss-arena')?.classList.add('hidden');
@@ -1603,6 +1609,7 @@ function riftBindControls() {
   document.getElementById('rift-attack-button')?.addEventListener('click', () => {
     if (riftState.battle && riftState.battleHealth > 0) window.emitRiftEvent?.('rift-boss-attack', { battleId: riftState.battle.battleId });
   });
+  document.getElementById('rift-dash-button')?.addEventListener('click', riftDash);
   document.querySelectorAll('[data-rift-boss]').forEach(button => {
     button.addEventListener('click', () => {
       if (!window.emitRiftEvent?.('rift-boss-start', { bossKey: button.dataset.riftBoss })) return;
@@ -1683,6 +1690,11 @@ function riftBindControls() {
       return;
     }
     const key = event.key.toLowerCase();
+    if (key === 'q' && riftState.battle && riftState.battleHealth > 0 && !event.repeat) {
+      event.preventDefault();
+      riftDash();
+      return;
+    }
     if (key === 'e' && !riftState.battle) {
       event.preventDefault();
       const nearest = Object.keys(RIFT_NPC_POSITIONS).find(name => riftCanTalkToNpc(name));
@@ -1716,16 +1728,27 @@ function riftBindControls() {
   window.addEventListener('rift:rift-position-correction', event => {
     if (!Number.isFinite(Number(event.detail?.x)) || !Number.isFinite(Number(event.detail?.y))) return;
     riftState.position = { x: Number(event.detail.x), y: Number(event.detail.y) };
-    riftRenderLobby();
+    const localKey = CSS.escape(String(currentUser?.username || '').toLowerCase());
+    const avatar = document.querySelector(`#rift-player-list [data-player-key="${localKey}"]`);
+    if (avatar) {
+      avatar.style.left = `${riftState.position.x}%`;
+      avatar.style.top = `${riftState.position.y}%`;
+    } else {
+      riftRenderLobby();
+    }
     riftUpdateNpcProximity();
   });
   window.addEventListener('rift:rift-player-moved', event => {
-    const player = riftState.roster.find(entry => String(entry.username).toLowerCase() === String(event.detail?.username).toLowerCase());
-    if (player) {
-      player.x = event.detail.x;
-      player.y = event.detail.y;
-      riftRenderLobby();
-    }
+    const username = String(event.detail?.username || '');
+    const player = riftState.roster.find(entry => String(entry.username).toLowerCase() === username.toLowerCase());
+    if (!player || !Number.isFinite(Number(event.detail?.x)) || !Number.isFinite(Number(event.detail?.y))) return;
+    player.x = Number(event.detail.x);
+    player.y = Number(event.detail.y);
+    const key = CSS.escape(username.toLowerCase());
+    const avatar = document.querySelector(`#rift-player-list [data-player-key="${key}"]`);
+    if (!avatar) return;
+    avatar.style.left = `${player.x}%`;
+    avatar.style.top = `${player.y}%`;
   });
   window.addEventListener('rift:rift-party-state', event => riftSetParty(event.detail?.partyId, event.detail?.party));
   window.addEventListener('rift:rift-party-invite', event => {
@@ -1746,6 +1769,8 @@ function riftBindControls() {
     riftState.battlePosition = { x: Number(local?.x) || 50, y: Number(local?.y) || 82 };
     riftState.battleHealth = 100;
     riftState.lastPatternPulse = 0;
+    riftDashUntil = 0;
+    riftDashCooldownUntil = 0;
     riftClearProjectiles();
     const health = document.getElementById('rift-player-hp-fill');
     if (health) health.style.width = `${riftState.battleHealth}%`;
@@ -1770,6 +1795,15 @@ function riftBindControls() {
       player.style.left = `${Math.max(5, Math.min(95, Number(event.detail.x) || 50))}%`;
       player.style.top = `${Math.max(5, Math.min(95, Number(event.detail.y) || 82))}%`;
     }
+  });
+  window.addEventListener('rift:rift-boss-dashed', event => {
+    if (event.detail?.battleId !== riftState.battle?.battleId) return;
+    const player = document.querySelector(`#rift-battle-players [data-player-key="${CSS.escape(String(event.detail.username || '').toLowerCase())}"]`);
+    if (!player) return;
+    player.classList.remove('is-dashing');
+    void player.offsetWidth;
+    player.classList.add('is-dashing');
+    setTimeout(() => player.classList.remove('is-dashing'), Number(event.detail.durationMs) || 320);
   });
   window.addEventListener('rift:rift-boss-pattern', event => riftHandleAttackPattern(event.detail));
   window.addEventListener('rift:rift-boss-projectiles', event => {
@@ -1866,16 +1900,23 @@ function riftMovementFrame(timestamp) {
     return;
   }
   const battlefield = document.getElementById('rift-battlefield');
-  const direction = {
+  const inputDirection = {
     x: Number(riftHeldKeys.has('d') || riftHeldKeys.has('arrowright')) - Number(riftHeldKeys.has('a') || riftHeldKeys.has('arrowleft')),
     y: Number(riftHeldKeys.has('s') || riftHeldKeys.has('arrowdown')) - Number(riftHeldKeys.has('w') || riftHeldKeys.has('arrowup'))
   };
+  const movingInBattle = Boolean(riftState.battle && battlefield && !document.getElementById('rift-boss-arena')?.classList.contains('hidden'));
+  const dashing = movingInBattle && timestamp < riftDashUntil;
+  const direction = dashing ? riftDashDirection : inputDirection;
+  if ((inputDirection.x || inputDirection.y) && !dashing) {
+    const length = Math.hypot(inputDirection.x, inputDirection.y) || 1;
+    riftLastMoveDirection = { x: inputDirection.x / length, y: inputDirection.y / length };
+  }
+  riftUpdateDashButton(timestamp);
   if (gameState.currentDimension === 'rift-realm' && (direction.x || direction.y) && (!riftState.battle || riftState.battleHealth > 0)) {
-    const movingInBattle = Boolean(riftState.battle && battlefield && !document.getElementById('rift-boss-arena')?.classList.contains('hidden'));
     const target = movingInBattle ? riftState.battlePosition : riftState.position;
     const profile = riftState.profile;
     const speedMultiplier = profile?.buff && Number(profile.buff.endsAt) > Date.now() ? Number(profile.buff.speedMultiplier) || 1 : 1;
-    const speed = (18 + (Number(profile?.stats?.speed) || 0) * 2.5) * speedMultiplier;
+    const speed = (18 + (Number(profile?.stats?.speed) || 0) * 2.5) * speedMultiplier * (dashing ? 3.5 : 1);
     const elapsed = Math.min(50, Math.max(0, timestamp - (riftState.lastFrameAt || timestamp)));
     riftState.lastFrameAt = timestamp;
     const magnitude = Math.hypot(direction.x, direction.y) || 1;
@@ -1902,6 +1943,30 @@ function riftMovementFrame(timestamp) {
     if (!riftState.battle) riftUpdateNpcProximity();
   }
   riftMoveFrame = requestAnimationFrame(riftMovementFrame);
+}
+
+function riftDash() {
+  if (gameState.currentDimension !== 'rift-realm' || !riftState.battle || riftState.battleHealth <= 0) return;
+  const now = performance.now();
+  if (now < riftDashCooldownUntil) return;
+  const x = Number(riftHeldKeys.has('d') || riftHeldKeys.has('arrowright')) - Number(riftHeldKeys.has('a') || riftHeldKeys.has('arrowleft'));
+  const y = Number(riftHeldKeys.has('s') || riftHeldKeys.has('arrowdown')) - Number(riftHeldKeys.has('w') || riftHeldKeys.has('arrowup'));
+  const length = Math.hypot(x, y) || 1;
+  riftDashDirection = x || y
+    ? { x: x / length, y: y / length }
+    : riftLastMoveDirection;
+  if (!window.emitRiftEvent?.('rift-boss-dash', { battleId: riftState.battle.battleId })) return;
+  riftDashUntil = now + 320;
+  riftDashCooldownUntil = now + 1600;
+}
+
+function riftUpdateDashButton(now = performance.now()) {
+  const button = document.getElementById('rift-dash-button');
+  if (!button) return;
+  const remaining = Math.max(0, riftDashCooldownUntil - now);
+  const available = Boolean(riftState.battle && riftState.battleHealth > 0 && remaining <= 0);
+  button.disabled = !available;
+  button.textContent = available ? 'DASH · Q' : remaining > 0 ? `DASH · Q · ${(remaining / 1000).toFixed(1)}s` : 'DASH · Q';
 }
 
 async function enterOrUnlockForgeRealm() {
