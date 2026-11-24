@@ -1390,7 +1390,7 @@ function riftRenderBossState(battle) {
   if (bossName) bossName.textContent = battle.name || 'Rift Boss';
   if (nameplate) nameplate.textContent = battle.name || 'RIFT BOSS';
   if (stateLabel) {
-    const labels = { transition: 'PHASE SHIFT', telegraph: 'ATTACK TELEGRAPH', attacking: battle.pattern || 'DODGE', stunned: 'STAGGERED · ATTACK NOW' };
+    const labels = { transition: 'PHASE SHIFT', telegraph: 'GET READY', attacking: battle.pattern || 'DODGE', stunned: 'STUNNED · ATTACK NOW' };
     stateLabel.textContent = labels[battle.state] || 'IN BATTLE';
   }
   avatar?.classList.toggle('is-stunned', battle.state === 'stunned');
@@ -1414,7 +1414,7 @@ function riftRenderBattlePlayers(players = []) {
         const health = document.getElementById('rift-player-hp-fill');
         if (health) health.style.width = `${riftState.battleHealth}%`;
         const label = document.getElementById('rift-player-health-label');
-        if (label) label.textContent = `VITALITY · ${riftState.battleHealth}%`;
+        if (label) label.textContent = `HEALTH · ${riftState.battleHealth}%`;
         document.getElementById('rift-attack-button')?.toggleAttribute('disabled', riftState.battleHealth <= 0);
       }
     }
@@ -1454,7 +1454,8 @@ function riftRenderProjectiles(projectiles = []) {
   });
   for (const [id, element] of riftState.projectileElements) {
     if (visibleIds.has(id)) continue;
-    element.remove();
+    element.classList.add('is-impact');
+    setTimeout(() => element.remove(), 180);
     riftState.projectileElements.delete(id);
   }
 }
@@ -1531,6 +1532,7 @@ function riftOpenNpcPanel(name) {
   const heading = document.getElementById('rift-panel-title');
   const titles = { profile: 'Rift Guide · Profile', portal: 'Rift Challenge Portal', party: 'Party Beacon', shop: 'Shard Merchant', exchange: 'Coin Exchange' };
   if (heading) heading.textContent = titles[name] || 'Rift menu';
+  panel.querySelector('.rift-panel-shell')?.setAttribute('data-view', name);
   panel.querySelectorAll('[data-rift-panel]').forEach(section => {
     section.classList.toggle('hidden', section.dataset.riftPanel !== name);
   });
@@ -1748,7 +1750,7 @@ function riftBindControls() {
     const health = document.getElementById('rift-player-hp-fill');
     if (health) health.style.width = `${riftState.battleHealth}%`;
     const healthLabel = document.getElementById('rift-player-health-label');
-    if (healthLabel) healthLabel.textContent = 'VITALITY · 100%';
+    if (healthLabel) healthLabel.textContent = 'HEALTH · 100%';
     document.getElementById('rift-attack-button')?.removeAttribute('disabled');
     document.getElementById('rift-boss-avatar')?.classList.toggle('is-finn', battle.bossKey.includes('finn'));
     document.getElementById('rift-boss-avatar')?.classList.toggle('is-angel', battle.bossKey === 'rift-angel');
@@ -1777,12 +1779,41 @@ function riftBindControls() {
   window.addEventListener('rift:rift-player-damaged', event => {
     if (event.detail?.battleId !== riftState.battle?.battleId) return;
     riftState.battleHealth = Math.max(0, Math.min(100, Number(event.detail.health) || 0));
+    const projectile = riftState.projectileElements.get(event.detail.projectileId);
+    if (projectile) {
+      projectile.classList.add('is-impact');
+      riftState.projectileElements.delete(event.detail.projectileId);
+      setTimeout(() => projectile.remove(), 180);
+    }
     const health = document.getElementById('rift-player-hp-fill');
     const warning = document.getElementById('rift-arena-warning');
     if (health) health.style.width = `${riftState.battleHealth}%`;
     const healthLabel = document.getElementById('rift-player-health-label');
-    if (healthLabel) healthLabel.textContent = `VITALITY · ${riftState.battleHealth}%`;
-    if (warning) warning.textContent = `HIT · ${event.detail.damage || 0} DAMAGE · ${riftState.battleHealth}% VITALITY`;
+    if (healthLabel) healthLabel.textContent = `HEALTH · ${riftState.battleHealth}%`;
+    if (warning) warning.textContent = `HIT · ${event.detail.damage || 0} DAMAGE · ${riftState.battleHealth}% HEALTH`;
+    const battlefield = document.getElementById('rift-battlefield');
+    const localName = String(currentUser?.username || '').toLowerCase();
+    const localPlayer = document.querySelector(`#rift-battle-players [data-player-key="${CSS.escape(localName)}"]`);
+    if (battlefield) {
+      battlefield.classList.remove('is-hit');
+      void battlefield.offsetWidth;
+      battlefield.classList.add('is-hit');
+      setTimeout(() => battlefield.classList.remove('is-hit'), 450);
+      const position = riftState.battlePosition || { x: 50, y: 82 };
+      const damagePop = document.createElement('span');
+      damagePop.className = 'rift-damage-pop';
+      damagePop.textContent = `-${event.detail.damage || 0} HEALTH`;
+      damagePop.style.left = `${Math.max(5, Math.min(95, Number(position.x) || 50))}%`;
+      damagePop.style.top = `${Math.max(5, Math.min(95, Number(position.y) || 82))}%`;
+      battlefield.appendChild(damagePop);
+      setTimeout(() => damagePop.remove(), 800);
+    }
+    if (localPlayer) {
+      localPlayer.classList.remove('is-hit');
+      void localPlayer.offsetWidth;
+      localPlayer.classList.add('is-hit');
+      setTimeout(() => localPlayer.classList.remove('is-hit'), 400);
+    }
   });
   window.addEventListener('rift:rift-player-defeated', event => {
     if (event.detail?.battleId !== riftState.battle?.battleId) return;
@@ -1797,7 +1828,7 @@ function riftBindControls() {
       effect.classList.remove('hidden');
       setTimeout(() => effect.classList.add('hidden'), 500);
     }
-    if (warning) warning.textContent = `-${event.detail?.damage || 0} DAMAGE · ${event.detail?.hitsRemaining || 0} STAGGER HITS LEFT`;
+    if (warning) warning.textContent = `-${event.detail?.damage || 0} DAMAGE · ${event.detail?.hitsRemaining || 0} HITS LEFT`;
   });
   window.addEventListener('rift:rift-boss-ended', event => {
     const result = event.detail;
@@ -4620,7 +4651,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dialogue = phaseDialogue[Math.floor(Math.random() * phaseDialogue.length)];
       finnBossStunHits = 0;
       showFinnBossPhaseBanner(`PHASE ${['II', 'III'][phase - 2]} · ${phase === 2 ? 'THE RIFT HUNTS' : 'REALM’S LAST GATE'}`);
-      setFinnBossState('stunned', 3, `Corrupted Lord Finn: ${dialogue} You have 3 seconds to strike.`, `PHASE ${['I', 'II', 'III'][phase - 1]} · STAGGERED`);
+      setFinnBossState('stunned', 3, `Corrupted Lord Finn: ${dialogue} You have 3 seconds to strike.`, `PHASE ${['I', 'II', 'III'][phase - 1]} · STUNNED`);
     }
     updateFinnBossAttackAvailability();
   };
@@ -4632,7 +4663,7 @@ document.addEventListener('DOMContentLoaded', () => {
     [finnBossAttack, finnBossMiniAttack].forEach(button => {
       if (!button) return;
       button.disabled = !canAttack;
-      button.title = !inRange ? 'Move close to Corrupted Lord Finn to attack.' : finnBossState !== 'stunned' ? 'Attack when Corrupted Lord Finn is staggered.' : '';
+      button.title = !inRange ? 'Move close to Corrupted Lord Finn to attack.' : finnBossState !== 'stunned' ? 'Attack when Corrupted Lord Finn is stunned.' : '';
     });
   };
 
@@ -4859,7 +4890,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!finnBossActive || finnBossState !== 'stunned' || finnAttackCooldown) return;
     const inRange = Math.abs(finnPlayerX - 50) <= 23 && finnPlayerY <= 34;
     if (!inRange) {
-      if (finnBossDialogue) finnBossDialogue.textContent = 'Get closer while Finn is staggered to land a strike!';
+      if (finnBossDialogue) finnBossDialogue.textContent = 'Get closer while Finn is stunned to land a hit!';
       return;
     }
     finnAttackCooldown = true;
@@ -4905,7 +4936,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (finnBossState === 'telegraph' && finnBossStateTime <= 0) {
       finnBossPatternTime = 0;
       const tuning = getFinnBossTuning();
-      setFinnBossState('attacking', tuning.attackDuration, 'Dodge the Rift attacks, then strike while Finn is staggered.', `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ATTACKING`);
+      setFinnBossState('attacking', tuning.attackDuration, 'Dodge the Rift attacks, then attack while Finn is stunned.', `PHASE ${['I', 'II', 'III'][finnBossPhaseNumber - 1]} · ATTACKING`);
     } else if (finnBossState === 'attacking') {
       finnBossPatternTime += delta;
       const tuning = getFinnBossTuning();
@@ -4921,7 +4952,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (finnBossStateTime <= 0) {
         finnBossStunHits = 0;
-        setFinnBossState('stunned', 3, 'Finn is stunned for 3 seconds! Move close and land up to two hits with ATTACK or Space.', 'STAGGERED · 2 HITS / 3 SECONDS');
+        setFinnBossState('stunned', 3, 'Finn is stunned for 3 seconds! Move close and land up to two hits with ATTACK or Space.', 'STUNNED · 2 HITS / 3 SECONDS');
       }
     } else if (finnBossState === 'stunned' && finnBossStateTime <= 0) beginFinnBossCycle();
 
