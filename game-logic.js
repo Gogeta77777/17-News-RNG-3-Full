@@ -1436,10 +1436,10 @@ function riftHandleAttackPattern(pattern) {
   const warning = document.getElementById('rift-arena-warning');
   const name = String(pattern.name || 'RIFT ATTACK').toUpperCase();
   if (warning) warning.textContent = `${name} · DODGE THE PROJECTILES`;
-  riftRenderProjectiles(pattern.projectiles || []);
+  riftRenderProjectiles(pattern.projectiles || [], false);
 }
 
-function riftRenderProjectiles(projectiles = []) {
+function riftRenderProjectiles(projectiles = [], removeMissing = true) {
   const layer = document.getElementById('rift-projectile-layer');
   if (!layer) return;
   const visibleIds = new Set();
@@ -1458,11 +1458,13 @@ function riftRenderProjectiles(projectiles = []) {
     element.style.top = `${projectile.y}%`;
     element.style.setProperty('--projectile-angle', `${Math.atan2(projectile.vy, projectile.vx) * 180 / Math.PI + 90}deg`);
   });
-  for (const [id, element] of riftState.projectileElements) {
-    if (visibleIds.has(id)) continue;
-    element.classList.add('is-impact');
-    setTimeout(() => element.remove(), 180);
-    riftState.projectileElements.delete(id);
+  if (removeMissing) {
+    for (const [id, element] of riftState.projectileElements) {
+      if (visibleIds.has(id)) continue;
+      element.classList.add('is-impact');
+      setTimeout(() => element.remove(), 180);
+      riftState.projectileElements.delete(id);
+    }
   }
 }
 
