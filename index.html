@@ -6871,7 +6871,14 @@
         .rift-owned-potions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
         .rift-owned-potions .btn { padding: 5px 7px; font-size: .6rem; }
         .rift-chest-button { width: 100%; margin-top: 9px; border-color: rgba(251, 191, 36, .55) !important; color: #fde68a !important; }
-        .rift-boss-button { width: 100%; margin-top: 8px; padding: 10px 7px; font-size: .68rem; }
+        .rift-boss-button { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; width: 100%; min-height: 100px; margin: 0; padding: 13px; border: 1px solid rgba(167,139,250,.32); border-radius: 6px; background: linear-gradient(145deg,rgba(31,41,75,.9),rgba(9,13,31,.96)); color: #f8fafc; text-align: left; }
+        .rift-boss-button:hover,.rift-boss-button:focus-visible { border-color: rgba(196,181,253,.8); box-shadow: 0 0 18px rgba(139,92,246,.2); }
+        .rift-boss-button strong { font-size: .74rem; line-height: 1.35; }
+        .rift-boss-button small { color: #cbd5e1; font-size: .64rem; font-weight: 500; line-height: 1.4; }
+        .rift-boss-difficulty { padding: 3px 6px; border-radius: 3px; background: rgba(52,211,153,.12); color: #6ee7b7; font-size: .56rem; font-weight: 900; letter-spacing: .1em; }
+        .rift-boss-difficulty.is-hard { background: rgba(248,113,113,.12); color: #fda4af; }
+        .rift-boss-choice-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin-top: 12px; }
+        .rift-boss-help { margin-top: 12px !important; padding: 9px; border-left: 2px solid rgba(167,139,250,.65); background: rgba(99,102,241,.08); }
         .rift-party-members { margin: 10px 0; color: #cbd5e1; font-size: .7rem; }
         .rift-invite-label { color: #a5b4fc; font-size: .65rem; }
         .rift-invite-row { display: flex; gap: 6px; margin-top: 5px; }
@@ -6897,8 +6904,8 @@
         .rift-boss-avatar.is-angel { border-color: rgba(224, 231, 255, .9); border-radius: 48% 48% 42% 42%; background: radial-gradient(circle at 38% 28%, #fff, #a5b4fc 28%, #6d28d9 62%, #1e1b4b 85%); box-shadow: 0 0 32px rgba(165, 180, 252, .9), 0 0 54px rgba(192, 132, 252, .52), inset 0 0 20px rgba(255,255,255,.4); }
         .rift-boss-avatar.is-angel::before { position: absolute; inset: -11px; border: 1px solid rgba(224, 231, 255, .72); border-radius: 50%; box-shadow: 0 0 14px rgba(199, 210, 254, .7); content: ''; animation: riftAngelHalo 5s linear infinite; }
         @keyframes riftAngelHalo { to { transform: rotate(360deg); } }
-        .rift-boss-avatar.is-stunned { animation: riftBossStagger .18s linear infinite alternate; }
-        @keyframes riftBossStagger { to { transform: translate(-50%, -50%) rotate(9deg) scale(.93); filter: brightness(1.55); } }
+        .rift-boss-avatar.is-stunned { animation: riftBossStun .18s linear infinite alternate; }
+        @keyframes riftBossStun { to { transform: translate(-50%, -50%) rotate(9deg) scale(.93); filter: brightness(1.55); } }
         .rift-boss-nameplate { position: absolute; top: calc(20% + clamp(34px, 5vw, 54px)); left: 50%; color: #f5d0fe; font-size: .63rem; font-weight: 800; text-shadow: 0 0 10px #7e22ce; transform: translateX(-50%); }
         .rift-battle-players { position: absolute; inset: 0; }
         .rift-battle-players .rift-player-avatar { z-index: 4; width: 15px; height: 15px; }
@@ -6964,7 +6971,7 @@
         .rift-npc-party .rift-npc-art { background: radial-gradient(circle at 50% 23%,#dbeafe 0 9%,#60a5fa 12%,#34477e 46%,#171d39 78%); }
         .rift-npc-name { padding: 3px 5px; border: 1px solid rgba(148,163,184,.2); border-radius: 3px; background: rgba(5,9,21,.88); color: #f1f5f9; font-size: .48rem; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
         .rift-npc-prompt { color: #c4b5fd; font-size: .46rem; font-weight: 800; letter-spacing: .12em; }
-        .rift-portal-npc { top: 42%; left: 50%; width: 70px; min-width: 0; height: 108px; border: 1px solid rgba(196,181,253,.64); border-radius: 50%; background: radial-gradient(ellipse,rgba(192,132,252,.24),rgba(9,12,30,.93) 62%); box-shadow: 0 0 20px rgba(168,85,247,.35),inset 0 0 18px rgba(147,51,234,.36); }
+        .rift-portal-npc { z-index: 6; top: 42%; left: 50%; width: 70px; min-width: 0; height: 108px; padding: 0; border: 1px solid rgba(196,181,253,.64); border-radius: 50%; background: radial-gradient(ellipse,rgba(192,132,252,.24),rgba(9,12,30,.93) 62%); box-shadow: 0 0 20px rgba(168,85,247,.35),inset 0 0 18px rgba(147,51,234,.36); pointer-events: auto; transform: translate(-50%,-50%); }
         .rift-gate-core { position: absolute; inset: 8px 12px 21px; border-radius: 50%; background: radial-gradient(ellipse at 50% 44%,rgba(221,214,254,.8),rgba(126,34,206,.48) 14%,rgba(12,9,28,.98) 66%); box-shadow: inset 0 0 14px rgba(192,132,252,.7),0 0 15px rgba(168,85,247,.43); animation: riftCorePulse 3.8s ease-in-out infinite alternate; }
         .rift-portal-npc .rift-npc-name { position: absolute; top: calc(100% + 5px); }
         .rift-npc-shop { top: 27%; left: 28%; }
@@ -6980,6 +6987,7 @@
         .rift-npc-panel.hidden { display: none; }
         .rift-panel-backdrop { position: absolute; inset: 0; border: 0; background: rgba(2,5,15,.58); backdrop-filter: blur(4px); }
         .rift-panel-shell { position: relative; z-index: 1; width: min(440px,100%); max-height: min(580px,88vh); overflow: auto; border: 1px solid rgba(165,180,252,.28); border-radius: 8px; background: linear-gradient(145deg,#151b35,#080d1e 76%); box-shadow: 0 22px 65px rgba(0,0,0,.6),0 0 26px rgba(99,102,241,.16); animation: riftRevealIn .18s ease-out both; }
+        .rift-panel-shell[data-view="portal"] { width: min(560px,100%); }
         .rift-panel-header { position: sticky; z-index: 2; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid rgba(148,163,184,.15); background: rgba(12,17,36,.96); }
         .rift-panel-header h2 { margin: 3px 0 0; font: 700 1rem 'Orbitron',sans-serif; }
         .rift-panel-close { width: 30px; height: 30px; border: 1px solid rgba(148,163,184,.2); border-radius: 4px; background: rgba(148,163,184,.06); color: #e2e8f0; font-size: 1.2rem; cursor: pointer; }
@@ -7004,6 +7012,15 @@
         .rift-battle-players { position: absolute; inset: 0; }
         .rift-projectile-layer { position: absolute; z-index: 5; inset: 0; overflow: hidden; pointer-events: none; }
         .rift-projectile { position: absolute; display: block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.92); border-radius: 50%; background: radial-gradient(circle at 35% 32%,#fff,var(--projectile-color,#fb7185) 34%,rgba(30,10,42,.94) 78%); box-shadow: 0 0 7px #fff,0 0 15px var(--projectile-color,#fb7185),0 0 24px var(--projectile-color,#fb7185); transform: translate(-50%,-50%) rotate(var(--projectile-angle,0deg)); transition: left 55ms linear,top 55ms linear; will-change: left,top; }
+        .rift-projectile.is-impact { z-index: 8; pointer-events: none; animation: riftProjectileImpact .18s ease-out forwards; }
+        @keyframes riftProjectileImpact { to { opacity: 0; transform: translate(-50%,-50%) scale(2.4); filter: brightness(2); } }
+        .rift-battlefield::after { position: absolute; z-index: 5; inset: 0; border: 2px solid rgba(248,113,113,0); background: radial-gradient(ellipse,rgba(248,113,113,.16),rgba(127,29,29,.1) 62%,transparent 100%); content: ""; opacity: 0; pointer-events: none; }
+        .rift-battlefield.is-hit::after { animation: riftPlayerHit .42s ease-out both; }
+        @keyframes riftPlayerHit { 20% { border-color: rgba(248,113,113,.72); opacity: 1; } 100% { border-color: rgba(248,113,113,0); opacity: 0; } }
+        .rift-battle-players .rift-player-avatar.is-hit { animation: riftAvatarHit .36s ease-out; }
+        @keyframes riftAvatarHit { 20% { filter: brightness(2) drop-shadow(0 0 9px #fb7185); } 55% { filter: brightness(1.5) drop-shadow(0 0 6px #fb7185); } }
+        .rift-damage-pop { position: absolute; z-index: 8; color: #fecaca; font-size: .7rem; font-weight: 900; text-shadow: 0 1px 5px #7f1d1d,0 0 10px #ef4444; pointer-events: none; transform: translate(-50%,-50%); animation: riftDamagePop .75s ease-out forwards; }
+        @keyframes riftDamagePop { to { opacity: 0; transform: translate(-50%,-180%); } }
         .rift-projectile.projectile-shard,.rift-projectile.projectile-cross,.rift-projectile.projectile-spiral { width: 13px; height: 19px; border-radius: 3px 50% 50%; }
         .rift-projectile.projectile-spear { width: 9px; height: 34px; border-radius: 50%; box-shadow: 0 0 8px #fff,0 0 17px var(--projectile-color,#c4b5fd),0 0 28px var(--projectile-color,#c4b5fd); }
         .rift-projectile.projectile-sweep { width: 20px; height: 20px; }
@@ -7033,6 +7050,7 @@
             .rift-lobby-hud { right: 7px; left: 7px; gap: 4px; }
             .rift-lobby-hud span { padding: 4px 6px; font-size: .5rem; }
             .rift-arena-top { grid-template-columns: 1fr 1.7fr; }
+            .rift-boss-choice-list { grid-template-columns: 1fr; }
             .rift-arena-top .rift-boss-health { grid-column: 1/-1; width: 100%; }
             .rift-arena-top > div:nth-child(2) { grid-column: 2; grid-row: 1; }
             .rift-boss-arena { inset: 5px; padding: 7px; }
@@ -7661,7 +7679,7 @@
                     <span class="finn-boss-keys"><button class="finn-boss-mini-attack" id="finn-boss-key-attack" type="button" disabled>ATTACK</button><span>or</span><kbd>SPACE</kbd> <span>· close range</span></span>
                 </div>
                 <div class="finn-boss-control">
-                    <strong>STAGGER WINDOW</strong>
+                    <strong>STUN WINDOW</strong>
                     <span class="finn-boss-keys">Up to <b>2 hits</b> within <b>3 seconds</b></span>
                 </div>
                 <div class="finn-boss-control">
@@ -7787,10 +7805,10 @@
                             <div class="rift-attack-effect hidden" id="rift-attack-effect" aria-hidden="true"></div>
                             <div class="rift-projectile-layer" id="rift-projectile-layer" aria-hidden="true"></div>
                             <div class="rift-battle-players" id="rift-battle-players"></div>
-                            <div class="rift-arena-warning" id="rift-arena-warning" aria-live="assertive">DODGE THE ATTACK · STRIKE WHILE STAGGERED</div>
-                            <div class="rift-player-health"><span id="rift-player-health-label">VITALITY · 100%</span><i><b id="rift-player-hp-fill"></b></i></div>
+                            <div class="rift-arena-warning" id="rift-arena-warning" aria-live="assertive">DODGE ATTACKS · HIT WHEN THE BOSS IS STUNNED</div>
+                            <div class="rift-player-health"><span id="rift-player-health-label">HEALTH · 100%</span><i><b id="rift-player-hp-fill"></b></i></div>
                         </div>
-                        <footer class="rift-arena-controls"><span>MOVE · WASD / ARROWS</span><span>STRIKE · SPACE / ENTER</span><span id="rift-boss-state-label">Preparing encounter…</span><button class="btn" id="rift-attack-button" type="button">STRIKE · STAGGER ONLY</button></footer>
+                        <footer class="rift-arena-controls"><span>MOVE · WASD / ARROWS</span><span>ATTACK · SPACE / ENTER</span><span id="rift-boss-state-label">Preparing encounter…</span><button class="btn" id="rift-attack-button" type="button">ATTACK WHEN STUNNED</button></footer>
                     </section>
                 </div>
                 <div class="rift-roster" id="rift-roster"></div>
@@ -7816,9 +7834,21 @@
                         <button class="btn rift-chest-button" id="rift-open-chest" type="button">OPEN RIFT CHEST</button>
                     </section>
                     <section class="rift-card rift-panel-view hidden" data-rift-panel="portal">
-                        <span class="rift-kicker">CHALLENGE PORTAL</span><h2>Choose your encounter</h2>
-                        <p>Three phases. Read the telegraph, dodge real projectiles, and strike only during the stagger window. Each boss has distinct attacks and timing.</p>
-                        <button class="btn rift-boss-button" data-rift-boss="corrupted-lord-finn-full-power" type="button">CORRUPTED LORD FINN · FULL POWER</button><button class="btn rift-boss-button" data-rift-boss="rift-angel" type="button">RIFT ANGEL · CHALLENGE</button>
+                        <span class="rift-kicker">CHALLENGE PORTAL</span><h2>Choose a boss</h2>
+                        <p>Pick a fight. Both bosses have three phases.</p>
+                        <div class="rift-boss-choice-list">
+                            <button class="btn rift-boss-button" data-rift-boss="corrupted-lord-finn-full-power" type="button">
+                                <span class="rift-boss-difficulty">EASIEST · START HERE</span>
+                                <strong>Corrupted Lord Finn · Full Power</strong>
+                                <small>Lower health and slower attacks.</small>
+                            </button>
+                            <button class="btn rift-boss-button" data-rift-boss="rift-angel" type="button">
+                                <span class="rift-boss-difficulty is-hard">HARDEST · PARTY RECOMMENDED</span>
+                                <strong>Rift Angel</strong>
+                                <small>More health and faster attacks.</small>
+                            </button>
+                        </div>
+                        <p class="rift-boss-help">Move with WASD or arrow keys. Dodge attacks, then hit the boss while it is stunned.</p>
                     </section>
                     <section class="rift-card rift-panel-view hidden" data-rift-panel="party">
                         <span class="rift-kicker">PARTY BEACON</span><h2>Your party</h2><div class="rift-party-members" id="rift-party-members">You are exploring solo.</div>
