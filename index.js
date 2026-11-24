@@ -4167,10 +4167,10 @@ io.on('connection', async (socket) => {
     }
     riftLobbyPlayers.set(key, {
       ...identity,
-      x: existing?.x ?? 48 + Math.random() * 4,
-      y: existing?.y ?? 52 + Math.random() * 4,
+      x: existing?.x ?? 49 + Math.random() * 2,
+      y: existing?.y ?? 79 + Math.random() * 2,
       socketId: socket.id,
-      lastMoveAt: 0
+      lastMoveAt: Date.now()
     });
     socket.data.riftJoined = true;
     await socket.join('rift-lobby');
@@ -4188,13 +4188,22 @@ io.on('connection', async (socket) => {
     const player = riftLobbyPlayers.get(key);
     if (!player || player.socketId !== socket.id) return;
     const now = Date.now();
-    if (now - player.lastMoveAt < 40) return;
-    player.lastMoveAt = now;
+    if (now - (socket.data.riftLastMovePacketAt || 0) < 40) return;
+    socket.data.riftLastMovePacketAt = now;
     const x = Number(data?.x);
     const y = Number(data?.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-    player.x = Math.max(4, Math.min(96, x));
-    player.y = Math.max(8, Math.min(92, y));
+    const nextX = Math.max(4, Math.min(96, x));
+    const nextY = Math.max(8, Math.min(92, y));
+    const elapsed = Math.max(0, Math.min(1000, now - player.lastMoveAt));
+    const moved = Math.hypot(nextX - player.x, nextY - player.y);
+    if (moved > 1.5 + elapsed * 0.035) {
+      socket.emit('rift-position-correction', { x: player.x, y: player.y });
+      return;
+    }
+    player.x = nextX;
+    player.y = nextY;
+    player.lastMoveAt = now;
     socket.to('rift-lobby').emit('rift-player-moved', { username: player.username, x: player.x, y: player.y });
   });
 
@@ -4288,6 +4297,11 @@ io.on('connection', async (socket) => {
       return;
     }
     const usernameKey = normalizeUsername(socketUsername);
+    const lobbyPlayer = riftLobbyPlayers.get(usernameKey);
+    if (!lobbyPlayer || Math.hypot(lobbyPlayer.x - 50, lobbyPlayer.y - 42) > 12) {
+      socket.emit('rift-error', { error: 'Walk up to the Challenge Portal in the lobby before starting a boss fight.' });
+      return;
+    }
     const partyId = riftPartyByUsername.get(usernameKey);
     const party = partyId ? riftParties.get(partyId) : null;
     if (party && party.leader !== usernameKey) {
