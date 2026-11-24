@@ -291,6 +291,7 @@ function initMultiplayer() {
   [
     'rift-lobby-state',
     'rift-player-moved',
+    'rift-position-correction',
     'rift-party-state',
     'rift-party-invite',
     'rift-party-invite-sent',
