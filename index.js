@@ -328,20 +328,27 @@ function advanceRiftBossProjectiles(battle, now = Date.now()) {
     projectile.x += projectile.vx * delta;
     projectile.y += projectile.vy * delta;
     if (now >= projectile.expiresAt || projectile.x < -12 || projectile.x > 112 || projectile.y < -12 || projectile.y > 112) continue;
+    let hit = false;
     for (const usernameKey of battle.members) {
       if (projectile.hitPlayers.has(usernameKey) || (battle.playerHealth.get(usernameKey) || 0) <= 0) continue;
       const position = battle.positions.get(usernameKey);
       if (!position || Math.hypot(position.x - projectile.x, position.y - projectile.y) > projectile.radius + 2.1) continue;
       projectile.hitPlayers.add(usernameKey);
+      hit = true;
       const health = Math.max(0, (battle.playerHealth.get(usernameKey) || 0) - projectile.damage);
       battle.playerHealth.set(usernameKey, health);
-      io.to(`user:${usernameKey}`).emit('rift-player-damaged', { battleId: battle.id, health, damage: projectile.damage });
+      io.to(`user:${usernameKey}`).emit('rift-player-damaged', {
+        battleId: battle.id,
+        health,
+        damage: projectile.damage,
+        projectileId: projectile.id
+      });
       if (health === 0) {
         io.to(`user:${usernameKey}`).emit('rift-player-defeated', { battleId: battle.id, bossName: RIFT_BOSSES[battle.bossKey].name });
         io.to(battle.room).emit('rift-boss-party-state', getRiftBossSnapshot(battle));
       }
     }
-    remaining.push(projectile);
+    if (!hit) remaining.push(projectile);
   }
   battle.projectiles = remaining;
   if (battle.members.every(key => (battle.playerHealth.get(key) || 0) <= 0)) {
@@ -4361,7 +4368,7 @@ io.on('connection', async (socket) => {
     if (!battle || battle.ended || !battle.members.includes(usernameKey) || (battle.playerHealth.get(usernameKey) || 0) <= 0) return;
     advanceRiftBossState(battle);
     if (battle.state !== 'stunned' || Date.now() >= battle.stateUntil) {
-      socket.emit('rift-error', { error: 'The boss can only be attacked while staggered.' });
+      socket.emit('rift-error', { error: 'You can only attack when the boss is stunned.' });
       return;
     }
     if (Date.now() - (battle.lastAttackAt.get(usernameKey) || 0) < 450) return;
