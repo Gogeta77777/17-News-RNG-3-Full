@@ -93,24 +93,24 @@ const INBOX_ITEM_GIFTS = new Set(['fragments', 'clovers', 'essence', 'light_esse
 const RIFT_BOSSES = {
   'corrupted-lord-finn-full-power': {
     name: 'Corrupted Lord Finn (Full Power)',
-    maxHp: 1200,
+    maxHp: 1050,
     shards: 1,
     xp: 120,
-    telegraphMs: [1500, 1100, 750],
+    telegraphMs: [1800, 1450, 1100],
     attackMs: [7000, 8000, 9000],
-    attackPeriodMs: [1000, 760, 580],
-    stunMs: 3000,
+    attackPeriodMs: [1150, 900, 720],
+    stunMs: 3500,
     patterns: [['RIFT BOLTS', 'RIFT SWEEP', 'FRACTURE BURST'], ['CROSSRIFT VOLLEY', 'RIFT SWEEP'], ['SPIRAL COLLAPSE', 'CROSSRIFT VOLLEY', 'FRACTURE BURST']]
   },
   'rift-angel': {
     name: 'Rift Angel',
-    maxHp: 2200,
+    maxHp: 1900,
     shards: 2,
     xp: 240,
-    telegraphMs: [1350, 950, 600],
+    telegraphMs: [1700, 1350, 1000],
     attackMs: [8000, 9500, 11000],
-    attackPeriodMs: [920, 680, 480],
-    stunMs: 3000,
+    attackPeriodMs: [1100, 850, 650],
+    stunMs: 3500,
     patterns: [['HALO NOVA', 'RIFT RAIN', 'LIGHT SPEARS'], ['HALO NOVA', 'LIGHT SPEARS', 'VOID RAIN'], ['CELESTIAL SPIRAL', 'VOID RAIN', 'LIGHT SPEARS']]
   }
 };
@@ -134,6 +134,21 @@ function getRiftProfile(user) {
     potions: normalizeRecord(items.rift_potions),
     buff: Number(items.rift_buff?.endsAt) > Date.now() ? items.rift_buff : null
   };
+}
+
+function getRiftMovementConfig(user) {
+  const profile = getRiftProfile(user);
+  return {
+    moveSpeed: 18 + profile.stats.speed * 2.5,
+    speedMultiplier: profile.buff ? Math.max(1, Number(profile.buff.speedMultiplier) || 1) : 1,
+    speedBuffEndsAt: Number(profile.buff?.endsAt) || 0
+  };
+}
+
+function updateRiftLobbyMovement(user) {
+  if (!user?.username) return;
+  const player = riftLobbyPlayers.get(normalizeUsername(user?.username));
+  if (player) Object.assign(player, getRiftMovementConfig(user));
 }
 
 function getRiftPlayerIdentity(user) {
@@ -251,7 +266,7 @@ function spawnRiftBossProjectiles(battle, now = Date.now()) {
   const add = (x, y, vx, vy, type = 'orb', radius = 2.1, damage = 16) => {
     projectiles.push({
       id: `${battle.id}-${++battle.nextProjectileId}`,
-      x, y, vx, vy, type, radius, damage,
+      x, y, vx, vy, type, radius, damage: Math.max(10, Math.round(damage * 0.85)),
       color: battle.bossKey === 'rift-angel' ? '#c4b5fd' : '#fb7185',
       expiresAt: now + 6500,
       hitPlayers: new Set()
@@ -330,7 +345,7 @@ function advanceRiftBossProjectiles(battle, now = Date.now()) {
     if (now >= projectile.expiresAt || projectile.x < -12 || projectile.x > 112 || projectile.y < -12 || projectile.y > 112) continue;
     let hit = false;
     for (const usernameKey of battle.members) {
-      if (projectile.hitPlayers.has(usernameKey) || (battle.playerHealth.get(usernameKey) || 0) <= 0) continue;
+      if (projectile.hitPlayers.has(usernameKey) || (battle.playerHealth.get(usernameKey) || 0) <= 0 || (battle.dashUntil.get(usernameKey) || 0) > now) continue;
       const position = battle.positions.get(usernameKey);
       if (!position || Math.hypot(position.x - projectile.x, position.y - projectile.y) > projectile.radius + 2.1) continue;
       projectile.hitPlayers.add(usernameKey);
@@ -2646,6 +2661,7 @@ app.post('/api/rift/stats/allocate', async (req, res) => {
     items.rift_stats = stats;
     await updateUser(user.username, { items: JSON.stringify(items) });
     const updated = await findUser(user.username);
+    if (stat === 'speed') updateRiftLobbyMovement(updated);
     res.json({ success: true, profile: getRiftProfile(updated), user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Rift stat allocation error:', error.message || error);
@@ -2746,6 +2762,7 @@ app.post('/api/rift/potion/use', async (req, res) => {
     };
     await updateUser(user.username, { items: JSON.stringify(items) });
     const updated = await findUser(user.username);
+    updateRiftLobbyMovement(updated);
     res.json({ success: true, profile: getRiftProfile(updated), user: sanitizeUser(updated) });
   } catch (error) {
     console.error('Rift potion use error:', error.message || error);
@@ -4164,6 +4181,7 @@ io.on('connection', async (socket) => {
     }
     const key = normalizeUsername(socketUsername);
     const identity = getRiftPlayerIdentity(user);
+    const movement = getRiftMovementConfig(user);
     const existing = riftLobbyPlayers.get(key);
     if (existing?.socketId && existing.socketId !== socket.id) {
       const previousSocket = io.sockets.sockets.get(existing.socketId);
@@ -4174,6 +4192,7 @@ io.on('connection', async (socket) => {
     }
     riftLobbyPlayers.set(key, {
       ...identity,
+      ...movement,
       x: existing?.x ?? 49 + Math.random() * 2,
       y: existing?.y ?? 79 + Math.random() * 2,
       socketId: socket.id,
@@ -4204,7 +4223,9 @@ io.on('connection', async (socket) => {
     const nextY = Math.max(8, Math.min(92, y));
     const elapsed = Math.max(0, Math.min(1000, now - player.lastMoveAt));
     const moved = Math.hypot(nextX - player.x, nextY - player.y);
-    if (moved > 1.5 + elapsed * 0.035) {
+    const speedMultiplier = player.speedBuffEndsAt > now ? (player.speedMultiplier || 1) : 1;
+    const maxSpeed = (player.moveSpeed || 18) * speedMultiplier;
+    if (moved > 1.5 + elapsed * maxSpeed * 1.15 / 1000) {
       socket.emit('rift-position-correction', { x: player.x, y: player.y });
       return;
     }
@@ -4330,6 +4351,7 @@ io.on('connection', async (socket) => {
       members, memberUsernames: new Map(members.map(key => [key, riftLobbyPlayers.get(key).username])),
       positions: new Map(members.map((key, index) => [key, { x: 50 + (index - (members.length - 1) / 2) * 7, y: 82 }])),
       playerHealth: new Map(members.map(key => [key, 100])),
+      dashUntil: new Map(), dashCooldownAt: new Map(),
       projectiles: [], nextProjectileId: 0, lastProjectileTickAt: now,
       lastAttackAt: new Map(), state: 'transition', phase: 1, cycle: -1, attackPulse: 0,
       pattern: '', stateUntil: now + 1300, nextPatternAt: now + 1300, stunHits: 0, ended: false
@@ -4340,6 +4362,22 @@ io.on('connection', async (socket) => {
       await Promise.all(memberSockets.filter(memberSocket => memberSocket.data.riftJoined).map(memberSocket => memberSocket.join(room)));
     }
     io.to(room).emit('rift-boss-started', getRiftBossSnapshot(battle));
+  });
+
+  socket.on('rift-boss-dash', data => {
+    const battle = riftBossBattles.get(String(data?.battleId || ''));
+    const usernameKey = normalizeUsername(socketUsername);
+    if (!battle || battle.ended || !battle.members.includes(usernameKey) || (battle.playerHealth.get(usernameKey) || 0) <= 0 || !socket.data.riftJoined) return;
+    const now = Date.now();
+    if (now < (battle.dashCooldownAt.get(usernameKey) || 0)) return;
+    const durationMs = 320;
+    battle.dashCooldownAt.set(usernameKey, now + 1600);
+    battle.dashUntil.set(usernameKey, now + durationMs);
+    io.to(battle.room).emit('rift-boss-dashed', {
+      battleId: battle.id,
+      username: socketUsername,
+      durationMs
+    });
   });
 
   socket.on('rift-boss-move', data => {
